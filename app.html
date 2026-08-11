@@ -11,6 +11,174 @@
   <!-- Google AdSense SDK Script -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6055348642277254"
      crossorigin="anonymous"></script>
+
+  <style>
+    /* ── Notification Bell Button ── */
+    .notif-bell-wrap { display:flex; align-items:center; gap:8px; }
+    #notif-bell-btn {
+      background: rgba(255,255,255,0.7);
+      border: 1.5px solid var(--border-subtle, #e2e8f0);
+      border-radius: 50%;
+      width: 38px; height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 1.15rem;
+      transition: all 0.2s;
+      position: relative;
+    }
+    #notif-bell-btn:hover { background: rgba(255,255,255,0.95); transform: scale(1.08); }
+    #notif-bell-btn.notif-active { border-color: #10b981; background: rgba(16,185,129,0.08); }
+    #notif-bell-btn.notif-denied { border-color: #ef4444; background: rgba(239,68,68,0.08); }
+    #notif-bell-btn .bell-dot {
+      position:absolute; top:6px; right:6px;
+      width:8px; height:8px;
+      background: #ef4444; border-radius:50%;
+      border: 1.5px solid #fff;
+      display: none;
+    }
+    #notif-bell-btn.has-unread .bell-dot { display:block; }
+
+    /* ── SuperAdmin Badge ── */
+    #superadmin-badge {
+      display: none;
+      background: linear-gradient(135deg, #7c3aed, #ec4899);
+      color: #fff;
+      font-size: 0.6rem;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* ── SuperAdmin Notification Panel ── */
+    #superadmin-notif-panel {
+      display: none;
+      background: linear-gradient(135deg, rgba(124,58,237,0.06), rgba(236,72,153,0.06));
+      border: 1.5px solid rgba(124,58,237,0.2);
+      border-radius: 20px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+    .superadmin-panel-title {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: #7c3aed;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .notif-input {
+      width: 100%;
+      border: 1.5px solid rgba(124,58,237,0.25);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      background: rgba(255,255,255,0.8);
+      color: #1e293b;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+    .notif-input:focus { outline: none; border-color: #7c3aed; }
+    .notif-textarea { min-height: 72px; resize: none; }
+    .btn-send-notif {
+      width: 100%;
+      background: linear-gradient(135deg, #7c3aed, #ec4899);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 13px;
+      font-size: 0.9rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      margin-top: 4px;
+    }
+    .btn-send-notif:hover { opacity:0.92; transform: translateY(-1px); }
+    .btn-send-notif:active { transform: translateY(0); }
+    .btn-test-notif {
+      width: 100%;
+      background: rgba(124,58,237,0.08);
+      color: #7c3aed;
+      border: 1.5px solid rgba(124,58,237,0.2);
+      border-radius: 14px;
+      padding: 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+    .btn-test-notif:hover { background: rgba(124,58,237,0.14); }
+
+    /* ── In-App Notification Banner ── */
+    .notif-banner {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 420px;
+      background: linear-gradient(135deg, #1e1b4b, #312e81);
+      color: #fff;
+      border-radius: 18px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      z-index: 9999;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1);
+      animation: bannerSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    @keyframes bannerSlideIn {
+      from { opacity:0; transform: translateX(-50%) translateY(-20px) scale(0.95); }
+      to   { opacity:1; transform: translateX(-50%) translateY(0) scale(1); }
+    }
+    .notif-banner-icon { font-size: 1.5rem; margin-top: 1px; flex-shrink:0; }
+    .notif-banner-content { flex:1; min-width:0; }
+    .notif-banner-title { font-size: 0.9rem; font-weight: 800; margin-bottom: 3px; }
+    .notif-banner-body { font-size: 0.8rem; opacity: 0.85; word-break:break-word; }
+    .notif-banner-close {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: #fff;
+      border-radius: 50%;
+      width: 26px; height: 26px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      display: flex; align-items:center; justify-content:center;
+      flex-shrink: 0;
+      margin-top: -2px;
+    }
+
+    /* ── Toast messages ── */
+    .toast-msg {
+      position: fixed;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      z-index: 9998;
+      animation: bannerSlideIn 0.3s ease both;
+      white-space: nowrap;
+      max-width: calc(100vw - 32px);
+    }
+    .toast-success { background: #059669; }
+    .toast-error   { background: #dc2626; }
+    .toast-warn    { background: #d97706; }
+    .toast-info    { background: #2563eb; }
+  </style>
 </head>
 <body>
 
@@ -31,6 +199,17 @@
     </div>
 
     <!-- Top Right User Avatar & Dropdown Menu -->
+    <div class="notif-bell-wrap">
+      <!-- SuperAdmin badge -->
+      <span id="superadmin-badge">⚡ Admin</span>
+
+      <!-- Bell icon — visible to all for enabling notifications -->
+      <button id="notif-bell-btn" title="Enable Notifications" onclick="handleBellClick()">
+        🔔
+        <span class="bell-dot"></span>
+      </button>
+    </div>
+
     <div class="user-menu-wrapper">
       <button class="user-avatar-btn" id="avatar-btn" onclick="toggleUserDropdown(event)">
         <div class="avatar-circle">
@@ -150,6 +329,34 @@
           </div>
         </div>
 
+      </div>
+
+      <!-- ── SuperAdmin: Send Notification Panel ── -->
+      <div id="superadmin-notif-panel">
+        <div class="superadmin-panel-title">
+          <span>📣</span>
+          <span>Send Push Notification</span>
+          <span style="font-size:0.65rem; color:#ec4899; font-weight:600; margin-left:auto;">SUPERADMIN</span>
+        </div>
+        <input
+          type="text"
+          id="notif-title-input"
+          class="notif-input"
+          placeholder="Notification Title e.g. Attention Staff"
+          maxlength="80"
+        >
+        <textarea
+          id="notif-body-input"
+          class="notif-input notif-textarea"
+          placeholder="Message body — e.g. Please submit today's entry by 5 PM."
+          maxlength="200"
+        ></textarea>
+        <button class="btn-send-notif" onclick="handleSendNotification()">
+          📤 Send to All Devices
+        </button>
+        <button class="btn-test-notif" onclick="handleTestNotification()">
+          🔕 Test Sound &amp; In-App Alert
+        </button>
       </div>
 
       <!-- AdSense Container -->
@@ -338,6 +545,7 @@
   <script src="assets/js/config.js"></script>
   <script src="assets/js/auth.js"></script>
   <script src="assets/js/sheets.js"></script>
+  <script src="assets/js/notifications.js"></script>
   <script src="assets/js/app.js"></script>
 
   <script>
@@ -367,6 +575,29 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch(() => {});
       });
+    }
+
+    // ── Bell click: request notification permission ──
+    async function handleBellClick() {
+      await requestNotificationPermission();
+    }
+
+    // ── SuperAdmin: Send Notification ──
+    async function handleSendNotification() {
+      const title = document.getElementById('notif-title-input').value.trim();
+      const body  = document.getElementById('notif-body-input').value.trim();
+      if (!title) { showToast('⚠️ Please enter a notification title.', 'warn'); return; }
+      if (!body)  { showToast('⚠️ Please enter a message body.', 'warn'); return; }
+      await sendPushNotification(title, body);
+    }
+
+    // ── SuperAdmin: Test sound & in-app alert ──
+    function handleTestNotification() {
+      showInAppNotification(
+        '🔔 Test Alert — PrintTrack',
+        'This is a test notification with sound. Real push will reach all devices!',
+        true
+      );
     }
   </script>
 

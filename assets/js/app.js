@@ -28,6 +28,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const auth = await requireAuth();
     currentUser = auth.user;
     populateHeader(currentUser);
+
+    // Init push notifications (subscribe + show SuperAdmin panel if applicable)
+    if (typeof initNotifications === "function") {
+      initNotifications().catch(e => console.warn("[Notifications] init error:", e.message));
+    }
+
     await loadPrinterDropdowns();
     await loadHistory();
     setDefaultDate();
@@ -40,6 +46,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error("App boot error:", err);
   }
 });
+
 
 // ── Header & User Dropdown Info ───────────────────────────
 function populateHeader(user) {
