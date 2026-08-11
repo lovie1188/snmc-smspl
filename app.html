@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PrintTrack — Dashboard</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#070a12">
+  <meta name="theme-color" content="#f8fafc">
   <link rel="stylesheet" href="assets/css/app.css">
 
   <!-- Google AdSense SDK Script -->
@@ -42,7 +42,7 @@
       <!-- Dropdown Popup -->
       <div class="user-dropdown" id="user-dropdown">
         <div class="dropdown-user-header">
-          <div class="avatar-circle" style="width:40px; height:40px;">
+          <div class="avatar-circle" style="width:36px; height:36px;">
             <span id="drop-user-initials">U</span>
             <img id="drop-user-photo" alt="Profile">
           </div>
@@ -75,57 +75,85 @@
     </div>
   </header>
 
+  <!-- Floating Quick Action Button (Skynex Scan Style) -->
+  <div class="skynex-fab" onclick="showTab('entry')" title="Quick Entry">
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </div>
+
   <!-- App Main Content -->
   <main class="app-main">
 
-    <!-- TAB 0: LANDING DASHBOARD PAGE -->
+    <!-- TAB 0: LANDING DASHBOARD PAGE (Skynex UI) -->
     <section id="tab-dashboard" class="tab-panel active">
       
-      <!-- Welcome Greeting Banner -->
-      <div class="native-card" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(99, 102, 241, 0.1)); border-color: rgba(59, 130, 246, 0.25);">
-        <div style="font-size: 0.72rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px;">Welcome Back 👋</div>
-        <div style="font-size: 1.2rem; font-weight: 800; color: #fff; margin-top: 2px;" id="dash-greeting-name">Printer Tracker Admin</div>
-        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">SNMC Daily Printer Reading & Paper Entry Dashboard</div>
+      <!-- Skynex Hero Greeting -->
+      <div style="margin-bottom: 20px;">
+        <div class="hero-greeting">Hello <span class="hero-greeting-name" id="dash-greeting-name">Admin</span> 👋</div>
+        <h1 class="hero-title-skynex">
+          Printer <em>Log</em><br>Starts
+        </h1>
       </div>
 
-      <!-- Quick Action Cards Grid -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+      <!-- Main Overview Widget Card -->
+      <div class="skynex-card">
+        <div class="skynex-card-title">
+          <div>
+            <div style="font-size: 0.95rem; font-weight: 800;">Daily System Health</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">Google Sheets API Live Sync</div>
+          </div>
+          <div class="arrow-btn" onclick="loadHistory(); showTab('history');">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+          </div>
+        </div>
+
+        <div style="font-size: 2.2rem; font-weight: 800; color: var(--text); margin-bottom: 6px;">
+          100% <span style="font-size: 0.8rem; font-weight: 700; color: #10b981; margin-left: 6px;">Operational</span>
+        </div>
+
+        <!-- Custom Progress Bar -->
+        <div style="width: 100%; height: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 20px; overflow: hidden; margin-bottom: 18px;">
+          <div style="width: 100%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--purple)); border-radius: 20px;"></div>
+        </div>
+
+        <!-- Metric Pill Widgets Row -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="background: rgba(255,255,255,0.7); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 12px;">
+            <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted);">Sheet Status</div>
+            <div style="font-size: 1.1rem; font-weight: 800; color: var(--primary);">Connected</div>
+            <div style="font-size: 0.65rem; color: #10b981; font-weight: 600;">A:L Range Sync</div>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.7); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 12px;">
+            <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted);">Dropdown Data</div>
+            <div style="font-size: 1.1rem; font-weight: 800; color: var(--purple);">printerdetails</div>
+            <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600;">Live Options</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Widgets Grid -->
+      <div class="skynex-grid">
         
-        <!-- Action Card 1: New Entry -->
-        <div class="native-card" onclick="showTab('entry')" style="cursor: pointer; transition: all 0.15s ease; border-color: rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-          <div style="width: 42px; height: 42px; background: rgba(59, 130, 246, 0.15); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.4rem; margin-bottom: 10px;">
-            📝
+        <div class="skynex-widget w-blue" onclick="showTab('entry')">
+          <div class="w-icon">📝</div>
+          <div>
+            <div class="w-title">New Entry</div>
+            <div class="w-sub">Log daily reading & rims</div>
           </div>
-          <div style="font-size: 0.95rem; font-weight: 800; color: #fff; margin-bottom: 2px;">New Entry</div>
-          <div style="font-size: 0.7rem; color: var(--text-muted);">Add daily reading & paper issue</div>
         </div>
 
-        <!-- Action Card 2: History View -->
-        <div class="native-card" onclick="showTab('history'); loadHistory();" style="cursor: pointer; transition: all 0.15s ease; border-color: rgba(16, 185, 129, 0.3);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-          <div style="width: 42px; height: 42px; background: rgba(16, 185, 129, 0.15); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--green); font-size: 1.4rem; margin-bottom: 10px;">
-            📊
+        <div class="skynex-widget w-purple" onclick="showTab('history'); loadHistory();">
+          <div class="w-icon">📊</div>
+          <div>
+            <div class="w-title">View History</div>
+            <div class="w-sub">Check past daily logs</div>
           </div>
-          <div style="font-size: 0.95rem; font-weight: 800; color: #fff; margin-bottom: 2px;">View History</div>
-          <div style="font-size: 0.7rem; color: var(--text-muted);">Check past daily logs & stats</div>
         </div>
 
-      </div>
-
-      <!-- Quick Info / Status Card -->
-      <div class="native-card">
-        <div class="section-title">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-          System Info
-        </div>
-        <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.5;">
-          • Connected Sheet: <strong>dailyentry & printerdetails</strong><br>
-          • Direct Cloud Sync via Google Sheets API<br>
-          • PWA App Version: 2.1 (Sleek Native Dashboard)
-        </div>
       </div>
 
       <!-- AdSense Container -->
-      <div class="ad-container" style="margin-top:12px; text-align:center; min-height:80px; background:rgba(255,255,255,0.02); border-radius:10px; display:flex; align-items:center; justify-content:center;">
+      <div class="ad-container" style="margin-top:12px; text-align:center; min-height:80px; background:rgba(255,255,255,0.4); border-radius:16px; display:flex; align-items:center; justify-content:center;">
         <ins class="adsbygoogle"
              style="display:block"
              data-ad-client="ca-pub-6055348642277254"
@@ -141,10 +169,9 @@
 
     <!-- TAB 1: NEW ENTRY FORM -->
     <section id="tab-entry" class="tab-panel">
-      <div class="native-card">
-        <div class="section-title">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          Daily Reading & Rim Entry
+      <div class="skynex-card">
+        <div class="skynex-card-title">
+          <div style="font-size: 1rem; font-weight: 800;">Daily Reading & Rim Entry</div>
         </div>
 
         <form id="entry-form" onsubmit="submitEntry(event)">
@@ -224,14 +251,13 @@
           </div>
 
           <button type="submit" class="btn-native-submit" id="submit-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
             Save Entry
           </button>
 
         </form>
 
         <!-- Google AdSense Banner Placement -->
-        <div class="ad-container" style="margin-top:16px; text-align:center; min-height:80px; background:rgba(255,255,255,0.02); border-radius:10px; display:flex; align-items:center; justify-content:center;">
+        <div class="ad-container" style="margin-top:16px; text-align:center; min-height:80px; background:rgba(255,255,255,0.4); border-radius:16px; display:flex; align-items:center; justify-content:center;">
           <ins class="adsbygoogle"
                style="display:block"
                data-ad-client="ca-pub-6055348642277254"
@@ -248,10 +274,9 @@
 
     <!-- TAB 2: HISTORY TABLE -->
     <section id="tab-history" class="tab-panel">
-      <div class="native-card">
-        <div class="section-title">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          Recent Daily Entries
+      <div class="skynex-card">
+        <div class="skynex-card-title">
+          <div style="font-size: 1rem; font-weight: 800;">Recent Daily Entries</div>
         </div>
 
         <div class="table-container">
@@ -264,14 +289,14 @@
             <tbody id="history-body"></tbody>
           </table>
 
-          <div id="no-history" style="display:none; text-align:center; padding:36px; color:var(--text-dim);">
+          <div id="no-history" style="display:none; text-align:center; padding:36px; color:var(--text-muted);">
             <div style="font-size:2rem; margin-bottom:8px;">📝</div>
             <p>No entries found yet.</p>
           </div>
         </div>
 
         <!-- Google AdSense Banner Placement -->
-        <div class="ad-container" style="margin-top:16px; text-align:center; min-height:80px; background:rgba(255,255,255,0.02); border-radius:10px; display:flex; align-items:center; justify-content:center;">
+        <div class="ad-container" style="margin-top:16px; text-align:center; min-height:80px; background:rgba(255,255,255,0.4); border-radius:16px; display:flex; align-items:center; justify-content:center;">
           <ins class="adsbygoogle"
                style="display:block"
                data-ad-client="ca-pub-6055348642277254"
@@ -288,20 +313,20 @@
 
   </main>
 
-  <!-- Native Bottom Navigation Bar -->
+  <!-- Skynex Style Bottom Navigation Bar -->
   <nav class="bottom-nav">
     <button class="nav-item active" id="nav-dashboard" onclick="showTab('dashboard')">
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <span>Home</span>
     </button>
 
     <button class="nav-item" id="nav-entry" onclick="showTab('entry')">
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       <span>Entry</span>
     </button>
     
     <button class="nav-item" id="nav-history" onclick="showTab('history'); loadHistory();">
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       <span>History</span>
     </button>
   </nav>
