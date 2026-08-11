@@ -1,5 +1,5 @@
 // ============================================================
-// app.js — PrintTrack Main Application Logic (Updated A-L Schema)
+// app.js — PrintTrack Main Application Logic (Smart Conditional Logic)
 // ============================================================
 
 let printerData = { headers: [], rows: [] };
@@ -62,27 +62,66 @@ function populateHeader(user) {
     if (initEl)     initEl.textContent     = initial;
     if (dropInitEl) dropInitEl.textContent = initial;
   }
-  
-  const recEl = document.getElementById("received-by");
-  if (recEl) recEl.value = user.name || user.email || "";
 }
 
-// ── Toggle Issue / Receive visibility ─────────────────────
+// ── Smart Conditional Logic for ISSUE / RECEIVE ───────────
 function toggleIssueReceiveFields() {
-  const val = document.getElementById("issue-receive-select")?.value || "ISSUE";
+  const typeVal       = document.getElementById("issue-receive-select")?.value || "ISSUE";
   const groupRecieved = document.getElementById("group-rim-recieved");
   const groupIssued   = document.getElementById("group-rim-issued");
+  
+  const recInput      = document.getElementById("received-by");
+  const issueInput    = document.getElementById("issued-by");
+  const userName      = currentUser?.name || currentUser?.email || "";
 
-  if (val === "ISSUE") {
+  if (typeVal === "ISSUE") {
+    // 1. Show Rim Issued, Hide Rim Recieved
     if (groupRecieved) groupRecieved.style.display = "none";
     if (groupIssued)   groupIssued.style.display   = "block";
-  } else if (val === "RECEIVE") {
+    
+    // 2. Smart Name Logic for ISSUE:
+    // Logged in Google User is Issuer -> Issued By is Readonly Auto-fill
+    // Receiver Name is Manually Entered
+    if (issueInput) {
+      issueInput.value = userName;
+      issueInput.readOnly = true;
+      issueInput.placeholder = "Auto (Google Account)";
+    }
+    if (recInput) {
+      recInput.value = "";
+      recInput.readOnly = false;
+      recInput.placeholder = "Enter Receiver Name (Manual)";
+    }
+
+  } else if (typeVal === "RECEIVE") {
+    // 1. Show Rim Recieved, Hide Rim Issued
     if (groupRecieved) groupRecieved.style.display = "block";
     if (groupIssued)   groupIssued.style.display   = "none";
+
+    // 2. Smart Name Logic for RECEIVE:
+    // Logged in Google User is Receiver -> Received By is Readonly Auto-fill
+    // Issuer Name is Manually Entered
+    if (recInput) {
+      recInput.value = userName;
+      recInput.readOnly = true;
+      recInput.placeholder = "Auto (Google Account)";
+    }
+    if (issueInput) {
+      issueInput.value = "";
+      issueInput.readOnly = false;
+      issueInput.placeholder = "Enter Issuer Name (Manual)";
+    }
+
   } else {
+    // BOTH Option
     if (groupRecieved) groupRecieved.style.display = "block";
     if (groupIssued)   groupIssued.style.display   = "block";
+    
+    if (recInput)   { recInput.value = userName; recInput.readOnly = false; }
+    if (issueInput) { issueInput.value = ""; issueInput.readOnly = false; }
   }
+  
+  calcBalance();
 }
 
 // ── Load printerdetails → dropdowns ──────────────────────
@@ -171,14 +210,11 @@ function setDefaultDate() {
 }
 
 function calcBalance() {
-  const opening  = parseFloat(document.getElementById("opening-reading")?.value || 0);
-  const closing  = parseFloat(document.getElementById("closing-reading")?.value || 0);
   const recieved = parseFloat(document.getElementById("rim-recieved")?.value || 0);
   const issued   = parseFloat(document.getElementById("rim-issued")?.value || 0);
   
   const balEl    = document.getElementById("rim-balance");
   if (balEl) {
-    // If opening & closing available -> calc printed pages or net balance
     const diff = (recieved - issued);
     balEl.value = diff;
     balEl.style.color = diff < 0 ? "#ef4444" : "";
@@ -188,20 +224,6 @@ function calcBalance() {
 async function submitEntry(event) {
   event.preventDefault();
   const btn = document.getElementById("submit-btn");
-
-  // Columns A-L Map:
-  // A: Serial No.
-  // B: Date
-  // C: counter Number
-  // D: Opening reading
-  // E: Closing Reading
-  // F: ISSUE / RECEIVE
-  // G: Rim recieved
-  // H: Issued
-  // I: balance
-  // J: Remark
-  // K: ReceivedBy
-  // L: Issued BY
 
   const serialNo     = document.getElementById("serial-no")?.value || currentSerialNo;
   const date         = document.getElementById("entry-date")?.value?.trim();
@@ -213,7 +235,7 @@ async function submitEntry(event) {
   const issued       = document.getElementById("rim-issued")?.value?.trim() || "0";
   const balance      = document.getElementById("rim-balance")?.value?.trim() || "0";
   const remark       = document.getElementById("remark")?.value?.trim() || "";
-  const receivedBy   = document.getElementById("received-by")?.value?.trim() || currentUser?.name || currentUser?.email || "";
+  const receivedBy   = document.getElementById("received-by")?.value?.trim() || "";
   const issuedBy     = document.getElementById("issued-by")?.value?.trim() || "";
 
   if (!date || !counter) {
@@ -245,9 +267,6 @@ async function submitEntry(event) {
     document.getElementById("entry-form").reset();
     setDefaultDate();
     toggleIssueReceiveFields();
-    if (document.getElementById("received-by")) {
-      document.getElementById("received-by").value = currentUser?.name || currentUser?.email || "";
-    }
     await loadHistory();
     showTab("history");
   } catch (err) {
