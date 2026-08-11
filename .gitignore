@@ -1,0 +1,6 @@
+# Ignore private schema & dependencies
+.schema
+node_modules/
+.env
+.tmp.drivedownload/
+.tmp.driveupload/

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PrintTrack — Welcome</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#070a12">
+  <link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body class="login-page">
+
+  <div class="login-container">
+
+    <!-- App Hero Header -->
+    <div class="hero-section">
+      <div class="app-badge-icon">🖨️</div>
+      <h1 class="hero-title">PrintTrack</h1>
+      <p class="hero-subtitle">SNMC Daily Printer Reading & Paper Entry System</p>
+    </div>
+
+    <!-- Feature Highlights Chips -->
+    <div class="features-grid">
+      <div class="feature-chip">
+        <div class="f-icon">🔒</div>
+        <div class="f-label">Secure Auth</div>
+      </div>
+      <div class="feature-chip">
+        <div class="f-icon">📊</div>
+        <div class="f-label">Live Sheets</div>
+      </div>
+      <div class="feature-chip">
+        <div class="f-icon">⚡</div>
+        <div class="f-label">Fast Entry</div>
+      </div>
+    </div>
+
+    <!-- Action Card -->
+    <div class="login-card">
+      <button class="btn-google-native" id="login-btn" onclick="handleLogin()">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google">
+        <span>Sign in with Google</span>
+      </button>
+
+      <div class="login-footer-info">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span>Use authorized Google account to log entries</span>
+      </div>
+
+      <div class="login-msg" id="login-msg"></div>
+    </div>
+
+  </div>
+
+  <footer class="app-footer">
+    <p>SOFTTECHSEVA © 2026 • PrintTrack Pro PWA</p>
+  </footer>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/auth.js"></script>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const msg = urlParams.get('msg');
+    const msgEl = document.getElementById('login-msg');
+    
+    if (msg === 'token_expired') {
+      msgEl.textContent = 'Session expired. Please sign in again to access Google Sheets.';
+      msgEl.className = 'login-msg warn';
+      msgEl.style.display = 'block';
+    } else if (msg === 'not_signed_in') {
+      msgEl.textContent = 'Please sign in with Google to continue.';
+      msgEl.className = 'login-msg info';
+      msgEl.style.display = 'block';
+    }
+
+    if (getAccessToken() && getStoredUser()) {
+      window.location.href = 'app.html';
+    }
+
+    async function handleLogin() {
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner" style="border-top-color:#0f172a;"></span> Connecting...`;
+
+      try {
+        await signInWithGoogle();
+        window.location.href = 'app.html';
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = `<img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google"> <span>Sign in with Google</span>`;
+        msgEl.textContent = 'Sign in failed: ' + (err.message || err);
+        msgEl.className = 'login-msg error';
+        msgEl.style.display = 'block';
+      }
+    }
+  </script>
+
+</body>
+</html>
