@@ -81,8 +81,7 @@ body {
   width: 88px; height: 88px; margin: 0 auto 20px;
   background: linear-gradient(135deg, #3b82f6, #6366f1);
   border-radius: 26px;
-  display: flex; align-items: center; justify-content: justify;
-  align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   font-size: 2.6rem;
   box-shadow: 0 16px 40px var(--primary-glow), inset 0 2px 4px rgba(255,255,255,0.3);
   position: relative;
@@ -106,7 +105,6 @@ body {
   line-height: 1.4; max-width: 320px; margin: 0 auto;
 }
 
-/* Feature Chips Row */
 .features-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
   margin-bottom: 32px;
@@ -120,7 +118,6 @@ body {
 .feature-chip .f-icon { font-size: 1.3rem; margin-bottom: 6px; }
 .feature-chip .f-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
 
-/* Native Card Login Action */
 .login-card {
   background: var(--surface-card);
   border: 1px solid var(--border);
@@ -290,6 +287,13 @@ body {
 .native-select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px;
+}
+
+/* ── FIX: Dark Theme Dropdown Options Visibility ──────────── */
+.native-select option {
+  background-color: #151f38 !important;
+  color: #f8fafc !important;
+  padding: 12px !important;
 }
 
 .native-input:focus, .native-select:focus, .native-textarea:focus {
