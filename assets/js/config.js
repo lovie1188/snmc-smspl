@@ -20,7 +20,7 @@ const APP_CONFIG = {
     dailyRange: "A:L"
   },
   adsense: {
-    client: "ca-pub-XXXXXXXXXXXXXXXX", // Replace with your Publisher ID (e.g. ca-pub-1234567890123456)
+    client: "ca-pub-6055348642277254", // Official AdSense Publisher ID
     slotBanner: "1234567890"            // Replace with your Ad Unit Slot ID
   }
 };
