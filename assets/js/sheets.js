@@ -48,26 +48,57 @@ async function fetchPrinterDetails() {
 
 // ── Fetch dailyentry (for history) ───────────────────────
 async function fetchDailyEntries() {
-  const data = await sheetsRequest(`${SHEET_ID}/values/${DAILY_TAB}!${DAILY_RANGE}`);
-  if (!data || !data.values || data.values.length < 2) return { headers: [], rows: [] };
+  const data = await sheetsRequest(`${SHEET_ID}/values/'${DAILY_TAB}'!${DAILY_RANGE}`);
+  if (!data || !data.values || data.values.length === 0) {
+    return { headers: [], rows: [] };
+  }
 
-  const headers = data.values[0].map(h => String(h).trim());
-  const rows = data.values.slice(1)
+  const rawValues = data.values;
+  const expectedHeaders = [
+    "Serial No.", 
+    "Date", 
+    "counter Number", 
+    "Opening reading", 
+    "Closing Reading", 
+    "ISSUE / RECEIVE", 
+    "Rim recieved", 
+    "Issued", 
+    "balance", 
+    "Remark", 
+    "ReceivedBy", 
+    "Issued BY"
+  ];
+
+  let headers = [];
+  let dataStartIndex = 0;
+
+  // Check if first row contains actual headers
+  if (rawValues.length > 0 && isNaN(rawValues[0][0]) && String(rawValues[0][0]).toLowerCase().includes("serial")) {
+    headers = rawValues[0].map(h => String(h).trim());
+    dataStartIndex = 1;
+  } else {
+    headers = expectedHeaders;
+    dataStartIndex = 0;
+  }
+
+  const rows = rawValues.slice(dataStartIndex)
     .filter(row => row.some(cell => String(cell).trim() !== ""))
     .map(row => {
       const obj = {};
-      headers.forEach((h, i) => { obj[h] = String(row[i] || "").trim(); });
+      headers.forEach((h, i) => {
+        obj[h] = (row[i] !== undefined && row[i] !== null) ? String(row[i]).trim() : "";
+      });
       return obj;
     });
 
-  // Newest entries first (last 50)
-  return { headers, rows: [...rows].reverse().slice(0, 50) };
+  // Latest entries first (up to 100 entries)
+  return { headers, rows: [...rows].reverse().slice(0, 100) };
 }
 
 // ── Append a new daily entry row ─────────────────────────
 async function appendDailyEntry(rowArray) {
   const data = await sheetsRequest(
-    `${SHEET_ID}/values/${DAILY_TAB}!${DAILY_RANGE}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    `${SHEET_ID}/values/'${DAILY_TAB}'!${DAILY_RANGE}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
     {
       method: "POST",
       body: JSON.stringify({ values: [rowArray] })

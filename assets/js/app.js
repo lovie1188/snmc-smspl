@@ -1,5 +1,5 @@
 // ============================================================
-// app.js — PrintTrack Main Application Logic (Smart Conditional Logic)
+// app.js — PrintTrack Main Application Logic (Enhanced History Render)
 // ============================================================
 
 let printerData = { headers: [], rows: [] };
@@ -75,13 +75,9 @@ function toggleIssueReceiveFields() {
   const userName      = currentUser?.name || currentUser?.email || "";
 
   if (typeVal === "ISSUE") {
-    // 1. Show Rim Issued, Hide Rim Recieved
     if (groupRecieved) groupRecieved.style.display = "none";
     if (groupIssued)   groupIssued.style.display   = "block";
     
-    // 2. Smart Name Logic for ISSUE:
-    // Logged in Google User is Issuer -> Issued By is Readonly Auto-fill
-    // Receiver Name is Manually Entered
     if (issueInput) {
       issueInput.value = userName;
       issueInput.readOnly = true;
@@ -90,17 +86,13 @@ function toggleIssueReceiveFields() {
     if (recInput) {
       recInput.value = "";
       recInput.readOnly = false;
-      recInput.placeholder = "Enter Receiver Name (Manual)";
+      recInput.placeholder = "Enter Receiver Name";
     }
 
   } else if (typeVal === "RECEIVE") {
-    // 1. Show Rim Recieved, Hide Rim Issued
     if (groupRecieved) groupRecieved.style.display = "block";
     if (groupIssued)   groupIssued.style.display   = "none";
 
-    // 2. Smart Name Logic for RECEIVE:
-    // Logged in Google User is Receiver -> Received By is Readonly Auto-fill
-    // Issuer Name is Manually Entered
     if (recInput) {
       recInput.value = userName;
       recInput.readOnly = true;
@@ -109,11 +101,10 @@ function toggleIssueReceiveFields() {
     if (issueInput) {
       issueInput.value = "";
       issueInput.readOnly = false;
-      issueInput.placeholder = "Enter Issuer Name (Manual)";
+      issueInput.placeholder = "Enter Issuer Name";
     }
 
   } else {
-    // BOTH Option
     if (groupRecieved) groupRecieved.style.display = "block";
     if (groupIssued)   groupIssued.style.display   = "block";
     
@@ -180,18 +171,32 @@ async function loadHistory() {
     }
     if (noData) noData.style.display = "none";
 
+    const displayHeaders = headers.length ? headers : EXPECTED_HEADERS;
+
+    // Render Table Head
     const thead = document.getElementById("history-head");
     if (thead) {
-      const displayHeaders = headers.length ? headers : EXPECTED_HEADERS;
       thead.innerHTML = `<tr>${displayHeaders.map(h => `<th>${h}</th>`).join("")}</tr>`;
     }
 
+    // Render Table Rows cleanly
     rows.forEach(row => {
       const tr = document.createElement("tr");
-      const displayHeaders = headers.length ? headers : EXPECTED_HEADERS;
-      tr.innerHTML = displayHeaders.map(h => `<td>${row[h] || ""}</td>`).join("");
+      
+      const cellsHtml = displayHeaders.map(h => {
+        let val = row[h] !== undefined ? row[h] : "";
+        // Special badge formatting for ISSUE / RECEIVE column
+        if (h.toLowerCase().includes("issue / receive") || h.toLowerCase() === "type") {
+          const typeClass = val === "RECEIVE" ? "badge-receive" : "badge-issue";
+          return `<td><span class="badge ${typeClass}">${val || "ISSUE"}</span></td>`;
+        }
+        return `<td>${val}</td>`;
+      }).join("");
+
+      tr.innerHTML = cellsHtml;
       tbody.appendChild(tr);
     });
+
   } catch (err) {
     if (loading) loading.style.display = "none";
     showToast("History load failed: " + err.message, "error");

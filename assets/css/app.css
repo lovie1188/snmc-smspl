@@ -244,7 +244,7 @@ body {
   padding-top: calc(var(--header-h) + 16px);
   padding-bottom: calc(var(--nav-h) + 24px);
   padding-left: 16px; padding-right: 16px;
-  max-width: 540px; margin: 0 auto;
+  max-width: 600px; margin: 0 auto;
 }
 
 .tab-panel { display: none; }
@@ -289,7 +289,6 @@ body {
   background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px;
 }
 
-/* ── FIX: Dark Theme Dropdown Options Visibility ──────────── */
 .native-select option {
   background-color: #151f38 !important;
   color: #f8fafc !important;
@@ -344,13 +343,41 @@ body {
   background: var(--primary); border-radius: 0 0 4px 4px; box-shadow: 0 2px 8px var(--primary);
 }
 
-.table-container { overflow-x: auto; border-radius: 14px; border: 1px solid var(--border); }
-.native-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; white-space: nowrap; }
-.native-table th {
-  background: rgba(59, 130, 246, 0.12); padding: 12px 14px; text-align: left;
-  font-weight: 700; color: var(--primary); font-size: 0.75rem; border-bottom: 1px solid var(--border);
+/* ── History Table Clean Styling ─────────────────────────── */
+.table-container {
+  overflow-x: auto;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(7, 10, 18, 0.4);
+  max-width: 100%;
 }
-.native-table td { padding: 11px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text-muted); }
+.native-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 0.8rem; white-space: nowrap;
+}
+.native-table th {
+  background: rgba(30, 41, 59, 0.9);
+  padding: 12px 14px; text-align: left;
+  font-weight: 700; color: #93c5fd; font-size: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 10;
+}
+.native-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--text-muted);
+}
+.native-table tr:hover td {
+  background: rgba(255,255,255,0.02);
+}
+
+/* Badges for Issue / Receive */
+.badge {
+  padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700;
+  display: inline-block; text-transform: uppercase;
+}
+.badge-issue   { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+.badge-receive { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
 
 .toast {
   position: fixed; bottom: calc(var(--nav-h) + 16px); left: 50%;
