@@ -18,6 +18,10 @@ const APP_CONFIG = {
     dailyTab: "dailyentry",
     printerTab: "printerdetails",
     dailyRange: "A:L"
+  },
+  adsense: {
+    client: "ca-pub-XXXXXXXXXXXXXXXX", // Replace with your Publisher ID (e.g. ca-pub-1234567890123456)
+    slotBanner: "1234567890"            // Replace with your Ad Unit Slot ID
   }
 };
 
