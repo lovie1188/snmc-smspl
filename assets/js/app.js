@@ -1,5 +1,5 @@
 // ============================================================
-// app.js — PrintTrack Main Application Logic (Enhanced History Render)
+// app.js — PrintTrack Main Application Logic (Dashboard Landing)
 // ============================================================
 
 let printerData = { headers: [], rows: [] };
@@ -33,7 +33,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     setDefaultDate();
     toggleIssueReceiveFields();
     showLoader(false);
-    showTab("entry");
+    
+    // Always default to Landing Dashboard after login!
+    showTab("dashboard");
   } catch (err) {
     console.error("App boot error:", err);
   }
@@ -47,11 +49,13 @@ function populateHeader(user) {
   const dropInitEl  = document.getElementById("drop-user-initials");
   const dropNameEl  = document.getElementById("drop-user-name");
   const dropEmailEl = document.getElementById("drop-user-email");
+  const dashNameEl  = document.getElementById("dash-greeting-name");
 
   const initial = (user.name || user.email || "U").charAt(0).toUpperCase();
 
   if (dropNameEl)  dropNameEl.textContent  = user.name || "User";
   if (dropEmailEl) dropEmailEl.textContent = user.email || "";
+  if (dashNameEl)  dashNameEl.textContent  = user.name || user.email || "User";
 
   if (user.photo) {
     if (photoEl) { photoEl.src = user.photo; photoEl.style.display = "block"; }
@@ -173,19 +177,16 @@ async function loadHistory() {
 
     const displayHeaders = headers.length ? headers : EXPECTED_HEADERS;
 
-    // Render Table Head
     const thead = document.getElementById("history-head");
     if (thead) {
       thead.innerHTML = `<tr>${displayHeaders.map(h => `<th>${h}</th>`).join("")}</tr>`;
     }
 
-    // Render Table Rows cleanly
     rows.forEach(row => {
       const tr = document.createElement("tr");
       
       const cellsHtml = displayHeaders.map(h => {
         let val = row[h] !== undefined ? row[h] : "";
-        // Special badge formatting for ISSUE / RECEIVE column
         if (h.toLowerCase().includes("issue / receive") || h.toLowerCase() === "type") {
           const typeClass = val === "RECEIVE" ? "badge-receive" : "badge-issue";
           return `<td><span class="badge ${typeClass}">${val || "ISSUE"}</span></td>`;
