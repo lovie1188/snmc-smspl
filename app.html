@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PrintTrack — Daily Entry</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#090d16">
+  <meta name="theme-color" content="#070a12">
   <link rel="stylesheet" href="assets/css/app.css">
 </head>
 <body>
@@ -74,23 +74,26 @@
       <div class="native-card">
         <div class="section-title">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          New Rim Entry
+          New Daily Entry (A-L)
         </div>
 
         <form id="entry-form" onsubmit="submitEntry(event)">
           
           <div class="form-row">
+            <!-- A: Serial No -->
             <div class="form-group">
               <label>Serial No.</label>
               <input type="text" class="native-input" id="serial-no" readonly placeholder="Auto">
             </div>
 
+            <!-- B: Date -->
             <div class="form-group">
               <label>Date <span class="req">*</span></label>
               <input type="date" class="native-input" id="entry-date" required>
             </div>
           </div>
 
+          <!-- C: Counter Number -->
           <div class="form-group">
             <label>Counter Number <span class="req">*</span></label>
             <select class="native-select" id="counter-select" required>
@@ -99,34 +102,64 @@
           </div>
 
           <div class="form-row">
+            <!-- D: Opening reading -->
             <div class="form-group">
+              <label>Opening Reading</label>
+              <input type="number" class="native-input" id="opening-reading" placeholder="0" min="0" oninput="calcBalance()">
+            </div>
+
+            <!-- E: Closing Reading -->
+            <div class="form-group">
+              <label>Closing Reading</label>
+              <input type="number" class="native-input" id="closing-reading" placeholder="0" min="0" oninput="calcBalance()">
+            </div>
+          </div>
+
+          <!-- F: ISSUE / RECEIVE -->
+          <div class="form-group">
+            <label>ISSUE / RECEIVE <span class="req">*</span></label>
+            <select class="native-select" id="issue-receive-select" required onchange="toggleIssueReceiveFields()">
+              <option value="ISSUE">ISSUE</option>
+              <option value="RECEIVE">RECEIVE</option>
+              <option value="BOTH">BOTH (Issue & Receive)</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <!-- G: Rim recieved -->
+            <div class="form-group" id="group-rim-recieved">
               <label>Rim Recieved</label>
               <input type="number" class="native-input" id="rim-recieved" placeholder="0" min="0" step="1" oninput="calcBalance()">
             </div>
 
-            <div class="form-group">
+            <!-- H: Issued -->
+            <div class="form-group" id="group-rim-issued">
               <label>Rim Issued</label>
               <input type="number" class="native-input" id="rim-issued" placeholder="0" min="0" step="1" oninput="calcBalance()">
             </div>
           </div>
 
+          <!-- I: Balance -->
           <div class="form-group">
-            <label>Balance (Recieved - Issued)</label>
+            <label>Balance</label>
             <input type="number" class="native-input" id="rim-balance" readonly placeholder="0">
           </div>
 
           <div class="form-row">
+            <!-- K: ReceivedBy -->
             <div class="form-group">
               <label>Received By</label>
               <input type="text" class="native-input" id="received-by" readonly placeholder="Auto account">
             </div>
 
+            <!-- L: Issued BY -->
             <div class="form-group">
               <label>Issued By</label>
               <input type="text" class="native-input" id="issued-by" placeholder="Issuer Name">
             </div>
           </div>
 
+          <!-- J: Remark -->
           <div class="form-group">
             <label>Remark</label>
             <textarea class="native-textarea" id="remark" rows="2" placeholder="Optional notes..."></textarea>
@@ -146,7 +179,7 @@
       <div class="native-card">
         <div class="section-title">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          Recent Daily Entries
+          Recent Daily Entries (A-L)
         </div>
 
         <div class="table-container">
@@ -207,7 +240,6 @@
       if (btn) btn.classList.remove('active');
     }
 
-    // Close dropdown on outside click
     document.addEventListener('click', (e) => {
       const wrapper = document.querySelector('.user-menu-wrapper');
       if (wrapper && !wrapper.contains(e.target)) {

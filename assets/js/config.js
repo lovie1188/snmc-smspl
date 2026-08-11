@@ -17,7 +17,7 @@ const APP_CONFIG = {
     id: "1Zbx8wOV3FTTxEH0k4i_F2v7SA2_pSp3R6VACroY19H0",
     dailyTab: "dailyentry",
     printerTab: "printerdetails",
-    dailyRange: "A:I"
+    dailyRange: "A:L"
   }
 };
 

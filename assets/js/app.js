@@ -1,10 +1,25 @@
 // ============================================================
-// app.js — PrintTrack Main Application Logic (Native UI Version)
+// app.js — PrintTrack Main Application Logic (Updated A-L Schema)
 // ============================================================
 
 let printerData = { headers: [], rows: [] };
 let currentUser = null;
 let currentSerialNo = 1;
+
+const EXPECTED_HEADERS = [
+  "Serial No.", 
+  "Date", 
+  "counter Number", 
+  "Opening reading", 
+  "Closing Reading", 
+  "ISSUE / RECEIVE", 
+  "Rim recieved", 
+  "Issued", 
+  "balance", 
+  "Remark", 
+  "ReceivedBy", 
+  "Issued BY"
+];
 
 // ── Boot ──────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
@@ -16,6 +31,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadPrinterDropdowns();
     await loadHistory();
     setDefaultDate();
+    toggleIssueReceiveFields();
     showLoader(false);
     showTab("entry");
   } catch (err) {
@@ -47,9 +63,26 @@ function populateHeader(user) {
     if (dropInitEl) dropInitEl.textContent = initial;
   }
   
-  // ReceivedBy default
   const recEl = document.getElementById("received-by");
   if (recEl) recEl.value = user.name || user.email || "";
+}
+
+// ── Toggle Issue / Receive visibility ─────────────────────
+function toggleIssueReceiveFields() {
+  const val = document.getElementById("issue-receive-select")?.value || "ISSUE";
+  const groupRecieved = document.getElementById("group-rim-recieved");
+  const groupIssued   = document.getElementById("group-rim-issued");
+
+  if (val === "ISSUE") {
+    if (groupRecieved) groupRecieved.style.display = "none";
+    if (groupIssued)   groupIssued.style.display   = "block";
+  } else if (val === "RECEIVE") {
+    if (groupRecieved) groupRecieved.style.display = "block";
+    if (groupIssued)   groupIssued.style.display   = "none";
+  } else {
+    if (groupRecieved) groupRecieved.style.display = "block";
+    if (groupIssued)   groupIssued.style.display   = "block";
+  }
 }
 
 // ── Load printerdetails → dropdowns ──────────────────────
@@ -110,15 +143,13 @@ async function loadHistory() {
 
     const thead = document.getElementById("history-head");
     if (thead) {
-      const expectedHeaders = ["Serial No.", "Date", "Counter Number", "Rim recieved", "Issued", "balance", "Remark", "ReceivedBy", "Issued BY"];
-      const displayHeaders = headers.length ? headers : expectedHeaders;
+      const displayHeaders = headers.length ? headers : EXPECTED_HEADERS;
       thead.innerHTML = `<tr>${displayHeaders.map(h => `<th>${h}</th>`).join("")}</tr>`;
     }
 
     rows.forEach(row => {
       const tr = document.createElement("tr");
-      const expectedHeaders = ["Serial No.", "Date", "Counter Number", "Rim recieved", "Issued", "balance", "Remark", "ReceivedBy", "Issued BY"];
-      const displayHeaders = headers.length ? headers : expectedHeaders;
+      const displayHeaders = headers.length ? headers : EXPECTED_HEADERS;
       tr.innerHTML = displayHeaders.map(h => `<td>${row[h] || ""}</td>`).join("");
       tbody.appendChild(tr);
     });
@@ -140,11 +171,15 @@ function setDefaultDate() {
 }
 
 function calcBalance() {
+  const opening  = parseFloat(document.getElementById("opening-reading")?.value || 0);
+  const closing  = parseFloat(document.getElementById("closing-reading")?.value || 0);
   const recieved = parseFloat(document.getElementById("rim-recieved")?.value || 0);
   const issued   = parseFloat(document.getElementById("rim-issued")?.value || 0);
+  
   const balEl    = document.getElementById("rim-balance");
   if (balEl) {
-    const diff = recieved - issued;
+    // If opening & closing available -> calc printed pages or net balance
+    const diff = (recieved - issued);
     balEl.value = diff;
     balEl.style.color = diff < 0 ? "#ef4444" : "";
   }
@@ -154,22 +189,52 @@ async function submitEntry(event) {
   event.preventDefault();
   const btn = document.getElementById("submit-btn");
 
-  const serialNo   = document.getElementById("serial-no")?.value || currentSerialNo;
-  const date       = document.getElementById("entry-date")?.value?.trim();
-  const counter    = document.getElementById("counter-select")?.value?.trim();
-  const recieved   = document.getElementById("rim-recieved")?.value?.trim() || "0";
-  const issued     = document.getElementById("rim-issued")?.value?.trim() || "0";
-  const balance    = document.getElementById("rim-balance")?.value?.trim() || "0";
-  const remark     = document.getElementById("remark")?.value?.trim() || "";
-  const receivedBy = document.getElementById("received-by")?.value?.trim() || currentUser?.name || currentUser?.email || "";
-  const issuedBy   = document.getElementById("issued-by")?.value?.trim() || "";
+  // Columns A-L Map:
+  // A: Serial No.
+  // B: Date
+  // C: counter Number
+  // D: Opening reading
+  // E: Closing Reading
+  // F: ISSUE / RECEIVE
+  // G: Rim recieved
+  // H: Issued
+  // I: balance
+  // J: Remark
+  // K: ReceivedBy
+  // L: Issued BY
+
+  const serialNo     = document.getElementById("serial-no")?.value || currentSerialNo;
+  const date         = document.getElementById("entry-date")?.value?.trim();
+  const counter      = document.getElementById("counter-select")?.value?.trim();
+  const opening      = document.getElementById("opening-reading")?.value?.trim() || "";
+  const closing      = document.getElementById("closing-reading")?.value?.trim() || "";
+  const issueReceive = document.getElementById("issue-receive-select")?.value || "ISSUE";
+  const recieved     = document.getElementById("rim-recieved")?.value?.trim() || "0";
+  const issued       = document.getElementById("rim-issued")?.value?.trim() || "0";
+  const balance      = document.getElementById("rim-balance")?.value?.trim() || "0";
+  const remark       = document.getElementById("remark")?.value?.trim() || "";
+  const receivedBy   = document.getElementById("received-by")?.value?.trim() || currentUser?.name || currentUser?.email || "";
+  const issuedBy     = document.getElementById("issued-by")?.value?.trim() || "";
 
   if (!date || !counter) {
     showToast("Please select Date and Counter Number.", "warn");
     return;
   }
 
-  const row = [serialNo, date, counter, recieved, issued, balance, remark, receivedBy, issuedBy];
+  const row = [
+    serialNo,
+    date,
+    counter,
+    opening,
+    closing,
+    issueReceive,
+    recieved,
+    issued,
+    balance,
+    remark,
+    receivedBy,
+    issuedBy
+  ];
 
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner"></span> Saving...`;
@@ -179,6 +244,7 @@ async function submitEntry(event) {
     showToast("✅ Entry saved to Google Sheets!", "success");
     document.getElementById("entry-form").reset();
     setDefaultDate();
+    toggleIssueReceiveFields();
     if (document.getElementById("received-by")) {
       document.getElementById("received-by").value = currentUser?.name || currentUser?.email || "";
     }
