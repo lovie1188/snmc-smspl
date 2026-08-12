@@ -21,7 +21,9 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
-  self.skipWaiting();
+  // DO NOT call self.skipWaiting() here.
+  // skipWaiting causes immediate SW activation + clients.claim() which
+  // triggers page reload loops in PWABuilder APK WebView environments.
 });
 
 // ── Activate ──
@@ -31,7 +33,9 @@ self.addEventListener('activate', (event) => {
       Promise.all(keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : null))
     )
   );
-  self.clients.claim();
+  // DO NOT call self.clients.claim() here.
+  // clients.claim() causes the SW to immediately control all open clients
+  // which triggers reload loops in PWABuilder APK WebView environments.
 });
 
 // ── Fetch (Cache-First) ──

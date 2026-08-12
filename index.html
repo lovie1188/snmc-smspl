@@ -5,12 +5,185 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PrintTrack — Welcome</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#070a12">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="assets/css/app.css">
 
   <!-- Google AdSense SDK Script -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6055348642277254"
      crossorigin="anonymous"></script>
+
+  <style>
+    /* ───────────────────────────────────────────────────
+       Login Page — Standalone Premium Dark Theme
+       (Self-contained so app.css changes never break login)
+       ─────────────────────────────────────────────────── */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body.login-page {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(99,102,241,0.25) 0%, transparent 45%),
+        radial-gradient(circle at 80% 90%, rgba(168,85,247,0.22) 0%, transparent 45%),
+        radial-gradient(circle at 60% 40%, rgba(236,72,153,0.12) 0%, transparent 40%),
+        #070c1a;
+      background-attachment: fixed;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 48px 20px 28px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Ambient glow blobs */
+    body.login-page::before {
+      content: '';
+      position: fixed; top: -60px; left: -60px;
+      width: 280px; height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(99,102,241,0.18), transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+    body.login-page::after {
+      content: '';
+      position: fixed; bottom: -80px; right: -60px;
+      width: 320px; height: 320px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(168,85,247,0.16), transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .login-container {
+      width: 100%; max-width: 380px;
+      display: flex; flex-direction: column;
+      align-items: center; z-index: 10;
+    }
+
+    /* ── Hero Section ── */
+    .hero-section { text-align: center; margin-bottom: 32px; }
+
+    .app-badge-icon {
+      width: 72px; height: 72px; margin: 0 auto 18px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      border-radius: 24px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.08),
+        0 16px 40px rgba(99,102,241,0.4),
+        0 4px 12px rgba(0,0,0,0.3);
+      animation: badgePulse 3s ease-in-out infinite;
+    }
+    @keyframes badgePulse {
+      0%,100% { box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 16px 40px rgba(99,102,241,0.4), 0 4px 12px rgba(0,0,0,0.3); }
+      50%      { box-shadow: 0 0 0 1px rgba(255,255,255,0.12), 0 20px 50px rgba(168,85,247,0.5), 0 4px 12px rgba(0,0,0,0.3); }
+    }
+
+    .hero-title {
+      font-size: 2.4rem; font-weight: 800;
+      letter-spacing: -0.8px; color: #f8fafc;
+      margin-bottom: 8px; line-height: 1.1;
+    }
+
+    .hero-subtitle {
+      font-size: 0.82rem; color: rgba(148,163,184,0.9);
+      font-weight: 500; line-height: 1.5;
+      max-width: 260px; margin: 0 auto;
+    }
+
+    /* ── Feature Chips Row ── */
+    .features-grid {
+      display: flex; gap: 10px; justify-content: center;
+      margin-bottom: 28px; flex-wrap: wrap;
+    }
+
+    .feature-chip {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 40px;
+      padding: 7px 14px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .feature-chip .f-icon { font-size: 1rem; line-height: 1; }
+    .feature-chip .f-label {
+      font-size: 0.75rem; font-weight: 700;
+      color: rgba(226,232,240,0.9); white-space: nowrap;
+    }
+
+    /* ── Login Card ── */
+    .login-card {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 28px;
+      padding: 24px 20px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
+    }
+
+    /* ── Google Button ── */
+    .btn-google-native {
+      width: 100%; padding: 15px 20px;
+      background: #ffffff;
+      color: #0f172a;
+      border: none; border-radius: 16px;
+      font-size: 0.95rem; font-weight: 700;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .btn-google-native:hover  { background: #f8fafc; transform: translateY(-1px); box-shadow: 0 10px 28px rgba(0,0,0,0.35); }
+    .btn-google-native:active { transform: scale(0.97); }
+    .btn-google-native img { width: 22px; height: 22px; flex-shrink: 0; }
+
+    /* ── Footer Info ── */
+    .login-footer-info {
+      display: flex; align-items: center; gap: 7px;
+      margin-top: 16px; justify-content: center;
+      font-size: 0.75rem; color: rgba(148,163,184,0.7);
+      font-weight: 500;
+    }
+    .login-footer-info svg { flex-shrink: 0; color: rgba(148,163,184,0.6); }
+
+    /* ── Login Message ── */
+    .login-msg {
+      display: none; margin-top: 12px;
+      padding: 10px 14px; border-radius: 12px;
+      font-size: 0.78rem; font-weight: 600; text-align: center; line-height: 1.4;
+    }
+    .login-msg.error { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); }
+    .login-msg.warn  { background: rgba(245,158,11,0.12); color: #fcd34d; border: 1px solid rgba(245,158,11,0.2); }
+    .login-msg.info  { background: rgba(59,130,246,0.12); color: #93c5fd; border: 1px solid rgba(59,130,246,0.2); }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(15,23,42,0.2);
+      border-top-color: #0f172a;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── App Footer ── */
+    .app-footer {
+      font-size: 0.7rem; color: rgba(100,116,139,0.6);
+      font-weight: 600; text-align: center; z-index: 10;
+    }
+
+    /* ── AdSense container dark theme ── */
+    .ad-container { background: rgba(255,255,255,0.03) !important; }
+  </style>
 </head>
 <body class="login-page">
 
@@ -82,6 +255,19 @@
   <script src="assets/js/auth.js"></script>
 
   <script>
+    // ── SUPPRESS PWA Install Popup (prevents loop in PWABuilder APK) ──
+    // The beforeinstallprompt keeps firing in WebView/APK and blocking the UI.
+    // We capture and permanently suppress it on the login page.
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      // Do NOT show the prompt — swallow it silently
+      return false;
+    });
+
+    // ── DO NOT register service worker on login page ──
+    // SW on login page can intercept navigation and cause reload loops in PWABuilder APK.
+    // SW is registered only in app.html.
+
     const urlParams = new URLSearchParams(window.location.search);
     const msg = urlParams.get('msg');
     const msgEl = document.getElementById('login-msg');
@@ -96,18 +282,19 @@
       msgEl.style.display = 'block';
     }
 
+    // Auto-redirect if already logged in
     if (getAccessToken() && getStoredUser()) {
-      window.location.href = 'app.html';
+      window.location.replace('app.html');
     }
 
     async function handleLogin() {
       const btn = document.getElementById('login-btn');
       btn.disabled = true;
-      btn.innerHTML = `<span class="spinner" style="border-top-color:#0f172a;"></span> Connecting...`;
+      btn.innerHTML = `<span class="spinner"></span>&nbsp; Connecting...`;
 
       try {
         await signInWithGoogle();
-        window.location.href = 'app.html';
+        window.location.replace('app.html');
       } catch (err) {
         btn.disabled = false;
         btn.innerHTML = `<img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google"> <span>Sign in with Google</span>`;

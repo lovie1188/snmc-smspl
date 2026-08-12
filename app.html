@@ -571,11 +571,30 @@
       }
     });
 
+    // \u2500\u2500 SUPPRESS PWA Install Popup in APK \u2500\u2500
+    // PWABuilder APK wraps in WebView and the beforeinstallprompt event
+    // fires repeatedly, blocking the UI. We suppress it here.
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      return false;
+    });
+
+    // \u2500\u2500 Service Worker Registration (safe, no reload loop) \u2500\u2500
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
+        navigator.serviceWorker.register('sw.js').then((reg) => {
+          // Only update check \u2014 do NOT auto-reload on update to prevent loop
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener('statechange', () => {
+              // New SW installed but do NOT force reload \u2014 let user continue
+            });
+          });
+        }).catch(() => {});
       });
     }
+
 
     // ── Bell click: request notification permission ──
     async function handleBellClick() {
