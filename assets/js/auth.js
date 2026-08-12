@@ -108,29 +108,29 @@ async function requireAuth() {
   const token = getAccessToken();
   const user  = getStoredUser();
 
+  // 1. If we have both token and user stored, return immediately
   if (token && user) return { token, user };
 
-  // Wait for Firebase auth state to settle before deciding to redirect
+  // 2. Otherwise wait for Firebase Auth state to settle
   return new Promise((resolve, reject) => {
     const unsubscribe = firebase.auth().onAuthStateChanged((fbUser) => {
-      unsubscribe(); // Unsubscribe to avoid loop
+      unsubscribe(); // Prevent duplicate triggers
       if (fbUser) {
-        // User logged in via Firebase; keep local data or restore user info
-        const existingUser = getStoredUser() || {
+        const storedUser = getStoredUser() || {
           name: fbUser.displayName || "User",
           email: fbUser.email || "",
           photo: fbUser.photoURL || "",
           uid: fbUser.uid
         };
-        const existingToken = getAccessToken();
-        if (existingToken) {
-          resolve({ token: existingToken, user: existingUser });
-          return;
-        }
+        const storedToken = getAccessToken() || "firebase_authenticated";
+        
+        // Save back to localStorage so subsequent checks succeed
+        setSessionData(storedToken, storedUser);
+        resolve({ token: storedToken, user: storedUser });
+      } else {
+        redirectToLogin("not_signed_in");
+        reject("unauthenticated");
       }
-      // Truly unauthenticated or expired OAuth token
-      redirectToLogin(fbUser ? "token_expired" : "not_signed_in");
-      reject("unauthenticated");
     });
   });
 }
