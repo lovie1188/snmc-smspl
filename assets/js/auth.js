@@ -27,24 +27,43 @@ function setSessionData(token, user) {
   if (user)  localStorage.setItem(KEY_USER, JSON.stringify(user));
 }
 
-// ── Google Sign-In (with Popup fallback to Redirect for Android WebView/APK) ──
+// Detect iOS / Safari browser
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
+    (navigator.userAgent.includes("Safari") && !navigator.userAgent.includes("Chrome"));
+}
+
+// ── Google Sign-In (Smart fallback: Native Redirect on iOS/Safari, Popup on Desktop) ──
 async function signInWithGoogle() {
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.addScope(SHEETS_SCOPE);
   provider.setCustomParameters({ prompt: "select_account" });
 
-  // Timeout guard: If popup hangs (common in WebView/PWA APK), fallback to redirect
+  // iOS Safari blocks cross-domain popup windows aggressively — use redirect directly on iOS
+  if (isIOS()) {
+    console.log("[Auth] iOS/Safari detected. Executing signInWithRedirect directly...");
+    await firebase.auth().signInWithRedirect(provider);
+    return;
+  }
+
+  // Timeout guard: If popup hangs on Android WebView or Desktop, fallback to redirect
   const popupPromise = firebase.auth().signInWithPopup(provider);
   const timeoutPromise = new Promise((_, reject) => 
-    setTimeout(() => reject(new Error("POPUP_TIMEOUT")), 15000)
+    setTimeout(() => reject(new Error("POPUP_TIMEOUT")), 12000)
   );
 
   let result;
   try {
     result = await Promise.race([popupPromise, timeoutPromise]);
   } catch (err) {
-    if (err.message === "POPUP_TIMEOUT" || err.code === "auth/popup-blocked" || err.code === "auth/operation-not-supported-in-this-environment") {
-      console.warn("Popup blocked/timed out in environment, switching to redirect...");
+    if (
+      err.message === "POPUP_TIMEOUT" || 
+      err.code === "auth/popup-blocked" || 
+      err.code === "auth/popup-closed-by-user" ||
+      err.code === "auth/operation-not-supported-in-this-environment"
+    ) {
+      console.warn("[Auth] Popup issue detected (" + err.code + "), switching to redirect...");
       await firebase.auth().signInWithRedirect(provider);
       return;
     }
