@@ -12,18 +12,34 @@ if (!firebase.apps.length) {
 const KEY_TOKEN = "pt_gtoken";
 const KEY_USER  = "pt_user";
 
-// ── Google Sign-In ────────────────────────────────────────
+// ── Google Sign-In (with Popup fallback to Redirect for Android WebView/APK) ──
 async function signInWithGoogle() {
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.addScope(SHEETS_SCOPE);
-  // Force account picker each time so user can pick correct account
   provider.setCustomParameters({ prompt: "select_account" });
 
-  const result = await firebase.auth().signInWithPopup(provider);
-  const token  = result.credential.accessToken;
+  // Timeout guard: If popup hangs (common in WebView/PWA APK), fallback to redirect
+  const popupPromise = firebase.auth().signInWithPopup(provider);
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error("POPUP_TIMEOUT")), 15000)
+  );
+
+  let result;
+  try {
+    result = await Promise.race([popupPromise, timeoutPromise]);
+  } catch (err) {
+    if (err.message === "POPUP_TIMEOUT" || err.code === "auth/popup-blocked" || err.code === "auth/operation-not-supported-in-this-environment") {
+      console.warn("Popup blocked/timed out in environment, switching to redirect...");
+      await firebase.auth().signInWithRedirect(provider);
+      return;
+    }
+    throw err;
+  }
+
+  const token = result.credential ? result.credential.accessToken : null;
 
   // Persist token & user info for this session
-  sessionStorage.setItem(KEY_TOKEN, token);
+  if (token) sessionStorage.setItem(KEY_TOKEN, token);
   sessionStorage.setItem(KEY_USER, JSON.stringify({
     name:  result.user.displayName  || "User",
     email: result.user.email        || "",
@@ -33,6 +49,22 @@ async function signInWithGoogle() {
 
   return { token, user: getStoredUser() };
 }
+
+// Check redirect result on load (for mobile APK/WebView fallback)
+firebase.auth().getRedirectResult().then((result) => {
+  if (result && result.user && result.credential) {
+    sessionStorage.setItem(KEY_TOKEN, result.credential.accessToken);
+    sessionStorage.setItem(KEY_USER, JSON.stringify({
+      name:  result.user.displayName  || "User",
+      email: result.user.email        || "",
+      photo: result.user.photoURL     || "",
+      uid:   result.user.uid
+    }));
+    window.location.replace("app.html");
+  }
+}).catch((err) => {
+  console.error("Redirect sign-in error:", err);
+});
 
 // ── Helpers ───────────────────────────────────────────────
 function getStoredUser() {
