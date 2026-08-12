@@ -51,7 +51,7 @@ async function signInWithGoogle() {
     throw err;
   }
 
-  const token = result.credential ? result.credential.accessToken : null;
+  const token = result && result.credential ? result.credential.accessToken : null;
 
   // Persist token & user info in localStorage
   setSessionData(token, {
@@ -66,8 +66,9 @@ async function signInWithGoogle() {
 
 // Check redirect result on load (for mobile APK/WebView fallback)
 firebase.auth().getRedirectResult().then((result) => {
-  if (result && result.user && result.credential) {
-    setSessionData(result.credential.accessToken, {
+  if (result && result.user) {
+    const token = result.credential ? result.credential.accessToken : null;
+    setSessionData(token, {
       name:  result.user.displayName  || "User",
       email: result.user.email        || "",
       photo: result.user.photoURL     || "",
@@ -98,7 +99,7 @@ async function requireAuth() {
           photo: fbUser.photoURL || "",
           uid: fbUser.uid
         };
-        const storedToken = getAccessToken() || "firebase_authenticated";
+        const storedToken = getAccessToken();
         
         // Save back to localStorage so subsequent checks succeed
         setSessionData(storedToken, storedUser);

@@ -8,26 +8,36 @@ const { id: SHEET_ID, dailyTab: DAILY_TAB, printerTab: PRINTER_TAB, dailyRange: 
 // ── Core fetch wrapper with auth ──────────────────────────
 async function sheetsRequest(endpoint, options = {}) {
   const token = getAccessToken();
-  if (!token) { handleTokenExpiry(); return null; }
-
-  const res = await fetch(`${SHEETS_API_BASE}/${endpoint}`, {
-    ...options,
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...(options.headers || {})
-    }
-  });
-
-  if (res.status === 401 || res.status === 403) {
-    handleTokenExpiry();
+  // If no token or synthetic token, return empty response instead of forcing logout
+  if (!token || token === "firebase_authenticated") {
+    console.warn("[Sheets API] OAuth token missing or synthetic. Skipping sheets API call.");
     return null;
   }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `HTTP ${res.status}`);
+
+  try {
+    const res = await fetch(`${SHEETS_API_BASE}/${endpoint}`, {
+      ...options,
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      }
+    });
+
+    if (res.status === 401 || res.status === 403) {
+      console.warn(`[Sheets API] Auth Error HTTP ${res.status}. Token may need refresh.`);
+      // Do NOT immediately trigger handleTokenExpiry() redirect loop!
+      return null;
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `HTTP ${res.status}`);
+    }
+    return res.json();
+  } catch (e) {
+    console.warn("[Sheets API] Request failed:", e.message);
+    return null;
   }
-  return res.json();
 }
 
 // ── Fetch printerdetails for dropdowns ────────────────────
