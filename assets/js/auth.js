@@ -12,30 +12,6 @@ if (!firebase.apps.length) {
 const KEY_TOKEN = "pt_gtoken";
 const KEY_USER  = "pt_user";
 
-// ── Google Sign-In (with Popup fallback to Redirect for Android WebView/APK) ──
-async function signInWithGoogle() {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  provider.addScope(SHEETS_SCOPE);
-  provider.setCustomParameters({ prompt: "select_account" });
-
-  // Timeout guard: If popup hangs (common in WebView/PWA APK), fallback to redirect
-  const popupPromise = firebase.auth().signInWithPopup(provider);
-  const timeoutPromise = new Promise((_, reject) => 
-    setTimeout(() => reject(new Error("POPUP_TIMEOUT")), 15000)
-  );
-
-  let result;
-  try {
-    result = await Promise.race([popupPromise, timeoutPromise]);
-  } catch (err) {
-    if (err.message === "POPUP_TIMEOUT" || err.code === "auth/popup-blocked" || err.code === "auth/operation-not-supported-in-this-environment") {
-      console.warn("Popup blocked/timed out in environment, switching to redirect...");
-      await firebase.auth().signInWithRedirect(provider);
-      return;
-    }
-    throw err;
-  }
-
 // ── Storage Helpers (localStorage for PWA & WebView persistence) ──
 function getStoredUser() {
   try { return JSON.parse(localStorage.getItem(KEY_USER)); }
@@ -150,6 +126,6 @@ function redirectToLogin(reason = "") {
 }
 
 function handleTokenExpiry() {
-  sessionStorage.removeItem(KEY_TOKEN);
+  localStorage.removeItem(KEY_TOKEN);
   redirectToLogin("token_expired");
 }
