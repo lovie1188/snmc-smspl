@@ -51,21 +51,16 @@ async function requireAuth() {
 
   if (token && user) return { token, user };
 
-  // No session — check Firebase state
+  // No token/user in session — redirect to login without triggering automatic popup
   return new Promise((resolve, reject) => {
-    firebase.auth().onAuthStateChanged(async (fbUser) => {
+    firebase.auth().onAuthStateChanged((fbUser) => {
       if (!fbUser) {
         redirectToLogin("not_signed_in");
         reject("unauthenticated");
-        return;
-      }
-      // Firebase user exists but OAuth token expired → silent re-auth
-      try {
-        const result = await signInWithGoogle();
-        resolve(result);
-      } catch (err) {
+      } else {
+        // Firebase user exists but OAuth access token missing from session
         redirectToLogin("token_expired");
-        reject(err);
+        reject("token_expired");
       }
     });
   });

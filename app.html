@@ -368,9 +368,11 @@
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
         <script>
-             try {
-               (adsbygoogle = window.adsbygoogle || []).push({});
-             } catch (e) { console.log("AdSense load skipped:", e.message); }
+             window.addEventListener('load', function() {
+               setTimeout(function() {
+                 try { (adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+               }, 300);
+             });
         </script>
       </div>
 
@@ -474,9 +476,11 @@
                data-ad-format="auto"
                data-full-width-responsive="true"></ins>
           <script>
-               try {
-                 (adsbygoogle = window.adsbygoogle || []).push({});
-               } catch (e) { console.log("AdSense load skipped:", e.message); }
+               window.addEventListener('load', function() {
+                 setTimeout(function() {
+                   try { (adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+                 }, 400);
+               });
           </script>
         </div>
 
@@ -515,9 +519,11 @@
                data-ad-format="auto"
                data-full-width-responsive="true"></ins>
           <script>
-               try {
-                 (adsbygoogle = window.adsbygoogle || []).push({});
-               } catch (e) { console.log("AdSense load skipped:", e.message); }
+               window.addEventListener('load', function() {
+                 setTimeout(function() {
+                   try { (adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+                 }, 500);
+               });
           </script>
         </div>
 
