@@ -173,24 +173,24 @@ function handleCounterSelectChange() {
     return;
   }
 
-  // Extract base Counter ID (e.g., "Counter9" or "Counter8") to match Google Sheets rows accurately
+  // Extract base Counter ID (e.g., "Counter1", "Counter9")
   const cleanCounter = selectedCounter.split(" ")[0].trim();
 
   if (titleEl) titleEl.textContent = `History — ${selectedCounter}`;
 
-  // 1. Filter history for selected counter flexibly
+  // 1. Filter history for selected counter flexibly across all columns
   const counterRows = allDailyRows.filter(r => {
     const rawVal = Object.values(r).join(" ");
     return rawVal.includes(cleanCounter) || rawVal.includes(selectedCounter);
   });
 
-  // 2. Auto-set Opening Reading from latest entry of selected counter (Column K / Closing Reading)
+  // 2. Auto-set Opening Reading from latest entry of selected counter
   const openingEl = document.getElementById("opening-reading");
   if (openingEl) {
     let foundPrevClosing = "";
     if (counterRows.length > 0) {
-      // Find latest entry with non-empty Closing Reading
       for (const entry of counterRows) {
+        // Form responses 1 has 'Closing Reading' in Column K / index
         const val = entry["Closing Reading"] || entry["Closing"] || entry["closing"] || "";
         if (val !== "" && !isNaN(val)) {
           foundPrevClosing = String(val).trim();
@@ -200,6 +200,7 @@ function handleCounterSelectChange() {
     }
     openingEl.value = foundPrevClosing !== "" ? foundPrevClosing : "0";
     calcBalance();
+    validateReadings();
   }
 
   // 3. Render Counter History Table below form
