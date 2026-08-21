@@ -2,24 +2,299 @@
 // app.js — PrintTrack Main Application Logic (Dashboard Landing)
 // ============================================================
 
-let printerData = { headers: [], rows: [] };
-let currentUser = null;
-let currentSerialNo = 1;
+let allDailyRows = [];
 
 const EXPECTED_HEADERS = [
-  "Serial No.", 
-  "Date", 
-  "counter Number", 
-  "Opening reading", 
-  "Closing Reading", 
-  "ISSUE / RECEIVE", 
-  "Rim recieved", 
-  "Issued", 
-  "balance", 
-  "Remark", 
-  "ReceivedBy", 
-  "Issued BY"
+  "Timestamp",        // Col A
+  "Email address",    // Col B
+  "Date",             // Col C
+  "counter Number",   // Col D
+  "Paper Recieved",   // Col E
+  "Paper Issued",     // Col F
+  "ISSUE / RECEIVE",  // Col G
+  "BALANCE",          // Col H
+  "REMARK",           // Col I
+  "Opening reading",  // Col J
+  "Closing Reading"   // Col K
 ];
+
+// ── Smart Conditional Logic for ISSUE / RECEIVE / None ──
+function toggleIssueReceiveFields() {
+  const typeVal       = document.getElementById("issue-receive-select")?.value || "ISSUE";
+  const groupRecieved = document.getElementById("group-paper-recieved");
+  const groupIssued   = document.getElementById("group-paper-issued");
+
+  if (typeVal === "ISSUE") {
+    if (groupRecieved) groupRecieved.style.display = "none";
+    if (groupIssued)   groupIssued.style.display   = "block";
+    document.getElementById("paper-recieved").value = "0";
+  } else if (typeVal === "RECEIVE") {
+    if (groupRecieved) groupRecieved.style.display = "block";
+    if (groupIssued)   groupIssued.style.display   = "none";
+    document.getElementById("paper-issued").value = "0";
+  } else {
+    // None
+    if (groupRecieved) groupRecieved.style.display = "none";
+    if (groupIssued)   groupIssued.style.display   = "none";
+    document.getElementById("paper-recieved").value = "0";
+    document.getElementById("paper-issued").value = "0";
+  }
+  
+  calcBalance();
+}
+
+// ── Calculate BALANCE (Column J - Column K) ─────────────────
+function calcBalance() {
+  const opening = parseFloat(document.getElementById("opening-reading")?.value || 0);
+  const closing = parseFloat(document.getElementById("closing-reading")?.value || 0);
+  
+  const balEl = document.getElementById("paper-balance");
+  if (balEl) {
+    const diff = opening - closing;
+    balEl.value = isNaN(diff) ? 0 : diff;
+    balEl.style.color = diff < 0 ? "#ef4444" : "#0f172a";
+  }
+}
+
+// ── Handle Counter Selection (Auto Opening Reading + Render History) ──
+function handleCounterSelectChange() {
+  const selectedCounter = document.getElementById("counter-select")?.value?.trim();
+  const titleEl = document.getElementById("counter-history-title");
+  const tbody = document.getElementById("counter-history-body");
+  const noHist = document.getElementById("no-counter-history");
+
+  if (!selectedCounter) {
+    if (titleEl) titleEl.textContent = "Counter History";
+    if (tbody) tbody.innerHTML = "";
+    if (noHist) {
+      noHist.style.display = "block";
+      noHist.textContent = "Please select a Counter Number above to view its history.";
+    }
+    return;
+  }
+
+  if (titleEl) titleEl.textContent = `History — Counter ${selectedCounter}`;
+
+  // 1. Filter history for selected counter
+  const counterRows = allDailyRows.filter(r => {
+    const c = r["counter Number"] || r["Counter Number"] || r["Counter"] || r["Counter No."] || "";
+    return String(c).trim() === selectedCounter;
+  });
+
+  // 2. Auto-set Opening Reading from latest entry of selected counter (Column K / Closing Reading)
+  const openingEl = document.getElementById("opening-reading");
+  if (openingEl) {
+    if (counterRows.length > 0) {
+      const latestEntry = counterRows[0]; // rows are reversed (latest first)
+      const prevClosing = latestEntry["Closing Reading"] || latestEntry["Closing"] || "";
+      if (prevClosing !== "") {
+        openingEl.value = prevClosing;
+      }
+    } else {
+      openingEl.value = "0";
+    }
+    calcBalance();
+  }
+
+  // 3. Render Counter History Table below form
+  if (!counterRows.length) {
+    if (tbody) tbody.innerHTML = "";
+    if (noHist) {
+      noHist.style.display = "block";
+      noHist.textContent = `No previous records found for Counter ${selectedCounter}.`;
+    }
+    return;
+  }
+
+  if (noHist) noHist.style.display = "none";
+  if (tbody) {
+    tbody.innerHTML = counterRows.map(r => {
+      const date    = r["Date"] || "";
+      const counter = r["counter Number"] || r["Counter Number"] || selectedCounter;
+      const opening = r["Opening reading"] || "";
+      const closing = r["Closing Reading"] || "";
+      const balance = r["BALANCE"] || r["balance"] || "";
+      const issued  = r["Paper Issued"] || r["Issued"] || "0";
+      const recieved= r["Paper Recieved"] || r["Rim recieved"] || "0";
+      const type    = r["ISSUE / RECEIVE"] || "ISSUE";
+      const remark  = r["REMARK"] || r["Remark"] || "";
+
+      const typeClass = type === "RECEIVE" ? "badge-receive" : "badge-issue";
+
+      return `<tr>
+        <td>${date}</td>
+        <td><strong>${counter}</strong></td>
+        <td>${opening}</td>
+        <td>${closing}</td>
+        <td><strong>${balance}</strong></td>
+        <td>${issued}</td>
+        <td>${recieved}</td>
+        <td><span class="badge ${typeClass}">${type}</span></td>
+        <td>${remark}</td>
+      </tr>`;
+    }).join("");
+  }
+}
+
+// ── Load printerdetails → dropdowns ──────────────────────
+async function loadPrinterDropdowns() {
+  try {
+    printerData = await fetchPrinterDetails();
+    if (!printerData.rows.length) {
+      showToast("printerdetails sheet is empty or unreachable.", "warn");
+      return;
+    }
+
+    const selectEl = document.getElementById("counter-select");
+    if (!selectEl) return;
+
+    selectEl.innerHTML = `<option value="">— Select Counter No. —</option>`;
+    
+    printerData.rows.forEach(r => {
+      const counterNo   = r["Counter No."] || r["Counter No"] || r["Counter"] || Object.values(r)[0] || "";
+      const hospital    = r["Hospital"] || "";
+      const counterName = r["Counter_name"] || r["Counter Name"] || "";
+      
+      if (counterNo) {
+        const label = `${counterNo} ${counterName ? '— ' + counterName : ''} ${hospital ? '[' + hospital + ']' : ''}`.trim();
+        const opt = document.createElement("option");
+        opt.value = counterNo;
+        opt.textContent = label;
+        selectEl.appendChild(opt);
+      }
+    });
+  } catch (err) {
+    showToast("Dropdown load failed: " + err.message, "error");
+  }
+}
+
+// ── Load History & Calculate Next Serial No ──────────────
+async function loadHistory() {
+  const tbody    = document.getElementById("history-body");
+  const noData   = document.getElementById("no-history");
+  const loading  = document.getElementById("history-loading");
+
+  if (loading) loading.style.display = "flex";
+  if (tbody)   tbody.innerHTML = "";
+
+  try {
+    const { headers, rows } = await fetchDailyEntries();
+    allDailyRows = rows || [];
+
+    if (loading) loading.style.display = "none";
+
+    currentSerialNo = rows.length + 1;
+
+    if (!rows.length) {
+      if (noData) noData.style.display = "block";
+      return;
+    }
+    if (noData) noData.style.display = "none";
+
+    const displayHeaders = [
+      "Date", "counter Number", "Opening reading", "Closing Reading",
+      "BALANCE", "Paper Issued", "Paper Recieved", "ISSUE / RECEIVE", "REMARK"
+    ];
+
+    const thead = document.getElementById("history-head");
+    if (thead) {
+      thead.innerHTML = `<tr>${displayHeaders.map(h => `<th>${h}</th>`).join("")}</tr>`;
+    }
+
+    rows.forEach(row => {
+      const tr = document.createElement("tr");
+      
+      const cellsHtml = displayHeaders.map(h => {
+        let val = row[h] !== undefined ? row[h] : "";
+        if (h.toLowerCase().includes("issue / receive") || h.toLowerCase() === "type") {
+          const typeClass = val === "RECEIVE" ? "badge-receive" : "badge-issue";
+          return `<td><span class="badge ${typeClass}">${val || "ISSUE"}</span></td>`;
+        }
+        return `<td>${val}</td>`;
+      }).join("");
+
+      tr.innerHTML = cellsHtml;
+      tbody.appendChild(tr);
+    });
+
+    // Refresh counter selection if counter selected
+    handleCounterSelectChange();
+
+  } catch (err) {
+    if (loading) loading.style.display = "none";
+    showToast("History load failed: " + err.message, "error");
+  }
+}
+
+function setDefaultDate() {
+  // Date is auto handled on backend submission (Column C)
+}
+
+// ── Submit Daily Entry (Columns A to K) ──────────────────
+async function submitEntry(event) {
+  event.preventDefault();
+  const btn = document.getElementById("submit-btn");
+
+  const counter      = document.getElementById("counter-select")?.value?.trim();
+  const issueReceive = document.getElementById("issue-receive-select")?.value || "ISSUE";
+  const paperRecieved= document.getElementById("paper-recieved")?.value?.trim() || "0";
+  const paperIssued  = document.getElementById("paper-issued")?.value?.trim() || "0";
+  const opening      = document.getElementById("opening-reading")?.value?.trim() || "0";
+  const closing      = document.getElementById("closing-reading")?.value?.trim() || "0";
+  const balance      = document.getElementById("paper-balance")?.value?.trim() || "0";
+  const remark       = document.getElementById("remark")?.value?.trim() || "";
+
+  if (!counter) {
+    showToast("Please select Counter Number.", "warn");
+    return;
+  }
+  if (!closing) {
+    showToast("Please enter Closing Reading.", "warn");
+    return;
+  }
+
+  // Automatic Backend Fields
+  const now = new Date();
+  const timestamp = now.toLocaleString("en-IN");
+  const email = currentUser?.email || "";
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const currentDate = `${yyyy}-${mm}-${dd}`;
+
+  // Column Mapping A to K:
+  // A: Timestamp, B: Email, C: Date, D: counter Number, E: Paper Recieved,
+  // F: Paper Issued, G: ISSUE / RECEIVE, H: BALANCE, I: REMARK, J: Opening reading, K: Closing Reading
+  const row = [
+    timestamp,
+    email,
+    currentDate,
+    counter,
+    paperRecieved,
+    paperIssued,
+    issueReceive,
+    balance,
+    remark,
+    opening,
+    closing
+  ];
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> Saving...`;
+
+  try {
+    await appendDailyEntry(row);
+    showToast("✅ Entry saved to Google Sheets!", "success");
+    document.getElementById("entry-form").reset();
+    toggleIssueReceiveFields();
+    await loadHistory();
+  } catch (err) {
+    showToast("❌ Failed: " + err.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg> Save Entry`;
+  }
+}
 
 // ── Boot ──────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {

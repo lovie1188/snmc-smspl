@@ -1,0 +1,11 @@
+{
+  "name": "snmc-printtrack",
+  "version": "1.0.0",
+  "description": "SNMC Daily Printer Reading & Paper Entry System",
+  "scripts": {
+    "build": "echo 'No build step required'"
+  },
+  "dependencies": {
+    "google-auth-library": "^9.0.0"
+  }
+}

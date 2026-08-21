@@ -386,82 +386,64 @@
     <section id="tab-entry" class="tab-panel">
       <div class="skynex-card">
         <div class="skynex-card-title">
-          <div style="font-size: 1rem; font-weight: 800;">Daily Reading & Rim Entry</div>
+          <div style="font-size: 1rem; font-weight: 800;">Daily Reading &amp; Paper Entry</div>
         </div>
 
         <form id="entry-form" onsubmit="submitEntry(event)">
           
-          <div class="form-row">
-            <div class="form-group">
-              <label>Serial No.</label>
-              <input type="text" class="native-input" id="serial-no" readonly placeholder="Auto">
-            </div>
-
-            <div class="form-group">
-              <label>Date <span class="req">*</span></label>
-              <input type="date" class="native-input" id="entry-date" required>
-            </div>
-          </div>
-
+          <!-- Column D: Counter Number Dropdown -->
           <div class="form-group">
             <label>Counter Number <span class="req">*</span></label>
-            <select class="native-select" id="counter-select" required>
+            <select class="native-select" id="counter-select" required onchange="handleCounterSelectChange()">
               <option value="">Loading counters...</option>
             </select>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Opening Reading</label>
-              <input type="number" class="native-input" id="opening-reading" placeholder="0" min="0">
-            </div>
-
-            <div class="form-group">
-              <label>Closing Reading</label>
-              <input type="number" class="native-input" id="closing-reading" placeholder="0" min="0">
-            </div>
-          </div>
-
+          <!-- Column G: ISSUE / RECEIVE (Default: ISSUE) -->
           <div class="form-group">
             <label>ISSUE / RECEIVE Type <span class="req">*</span></label>
             <select class="native-select" id="issue-receive-select" required onchange="toggleIssueReceiveFields()">
-              <option value="ISSUE">ISSUE</option>
+              <option value="ISSUE" selected>ISSUE</option>
               <option value="RECEIVE">RECEIVE</option>
-              <option value="BOTH">BOTH (Issue & Receive)</option>
+              <option value="None">None</option>
             </select>
           </div>
 
+          <!-- Column E & F: Paper Recieved & Paper Issued -->
           <div class="form-row">
-            <div class="form-group" id="group-rim-recieved">
-              <label>Rim Recieved</label>
-              <input type="number" class="native-input" id="rim-recieved" placeholder="0" min="0" step="1" oninput="calcBalance()">
+            <div class="form-group" id="group-paper-recieved" style="display:none;">
+              <label>Paper Recieved (Column E)</label>
+              <input type="number" class="native-input" id="paper-recieved" placeholder="0" min="0" step="1" oninput="calcBalance()">
             </div>
 
-            <div class="form-group" id="group-rim-issued">
-              <label>Rim Issued</label>
-              <input type="number" class="native-input" id="rim-issued" placeholder="0" min="0" step="1" oninput="calcBalance()">
+            <div class="form-group" id="group-paper-issued">
+              <label>Paper Issued (Column F)</label>
+              <input type="number" class="native-input" id="paper-issued" placeholder="0" min="0" step="1" oninput="calcBalance()">
             </div>
           </div>
 
-          <div class="form-group">
-            <label>Balance</label>
-            <input type="number" class="native-input" id="rim-balance" readonly placeholder="0">
-          </div>
-
+          <!-- Column J & K: Opening & Closing Reading -->
           <div class="form-row">
             <div class="form-group">
-              <label>Received By</label>
-              <input type="text" class="native-input" id="received-by" placeholder="Receiver Name">
+              <label>Opening Reading (Column J)</label>
+              <input type="number" class="native-input" id="opening-reading" placeholder="Auto / Previous Closing" min="0" oninput="calcBalance()">
             </div>
 
             <div class="form-group">
-              <label>Issued By</label>
-              <input type="text" class="native-input" id="issued-by" placeholder="Issuer Name">
+              <label>Closing Reading (Column K) <span class="req">*</span></label>
+              <input type="number" class="native-input" id="closing-reading" placeholder="Current Reading" min="0" required oninput="calcBalance()">
             </div>
           </div>
 
+          <!-- Column H: BALANCE (Column J - Column K) -->
           <div class="form-group">
-            <label>Remark</label>
+            <label>BALANCE (Column H — Opening - Closing)</label>
+            <input type="number" class="native-input" id="paper-balance" readonly placeholder="Auto Calculated (J - K)">
+          </div>
+
+          <!-- Column I: REMARK -->
+          <div class="form-group">
+            <label>Remark (Column I)</label>
             <textarea class="native-textarea" id="remark" rows="2" placeholder="Add any notes/remarks..."></textarea>
           </div>
 
@@ -471,13 +453,42 @@
 
         </form>
 
-        <!-- Google AdSense Banner Placement (Disabled) -->
-        <!-- <div class="ad-container" style="margin-top:16px; text-align:center; min-height:80px; background:rgba(255,255,255,0.4); border-radius:16px; display:flex; align-items:center; justify-content:center;">
-          <ins class="adsbygoogle"
-               style="display:block; width:100%;"
-               data-ad-client="ca-pub-6055348642277254"
-               data-ad-slot="1234567890"
-               data-ad-format="auto"
+      </div>
+
+      <!-- Dedicated Counter History Card (Below Form) -->
+      <div class="skynex-card" style="margin-top: 16px;">
+        <div class="skynex-card-title">
+          <div style="font-size: 0.95rem; font-weight: 800;" id="counter-history-title">Counter History</div>
+        </div>
+
+        <div class="table-container">
+          <div id="counter-history-loading" style="display:none; align-items:center; justify-content:center; gap:10px; padding:20px; color:var(--text-muted); font-size:0.85rem;">
+            <span class="spinner"></span> Filtering history...
+          </div>
+
+          <table class="native-table">
+            <thead id="counter-history-head">
+              <tr>
+                <th>Date</th>
+                <th>Counter</th>
+                <th>Opening (J)</th>
+                <th>Closing (K)</th>
+                <th>Balance (H)</th>
+                <th>Issued (F)</th>
+                <th>Recieved (E)</th>
+                <th>Type (G)</th>
+                <th>Remark (I)</th>
+              </tr>
+            </thead>
+            <tbody id="counter-history-body"></tbody>
+          </table>
+
+          <div id="no-counter-history" style="text-align:center; padding:24px; color:var(--text-muted); font-size:0.85rem;">
+            Please select a Counter Number above to view its history.
+          </div>
+        </div>
+      </div>
+    </section>
                data-full-width-responsive="true"></ins>
           <script>
                window.addEventListener('load', function() {
