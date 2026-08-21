@@ -4,29 +4,6 @@
 // SuperAdmins: softtech.lovejeet@gmail.com, softtech2009@gmail.com
 // ============================================================
 
-// ── Alert Sound Generator (Web Audio API — no file needed) ──
-function playAlertSound() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const times = [0, 0.18, 0.36];
-    times.forEach((t) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime + t);
-      osc.frequency.setValueAtTime(1200, ctx.currentTime + t + 0.06);
-      gain.gain.setValueAtTime(0.6, ctx.currentTime + t);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.16);
-      osc.start(ctx.currentTime + t);
-      osc.stop(ctx.currentTime + t + 0.16);
-    });
-  } catch (e) {
-    console.warn('[Notifications] Audio playback failed:', e.message);
-  }
-}
-
 // ── Request Notification Permission & Get FCM Token ──
 async function requestNotificationPermission() {
   if (!('Notification' in window)) {
@@ -206,29 +183,10 @@ function speakText(text) {
 }
 
 // ── Allowed Senders Management (Read & Save Allowed Users) ──
-async function fetchAllowedSenders() {
-  const sheetId = APP_CONFIG.sheets.id;
-  const tab = APP_CONFIG.sheets.allowedSendersTab || 'allowed_senders';
-  const apiKey = APP_CONFIG.firebase.apiKey;
-
-  try {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent("'" + tab + "'!A:B")}?key=${apiKey}`;
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = await res.json();
-      const rows = (data.values || []).slice(1);
-      cachedAllowedSenders = rows.map(r => String(r[0] || '').trim()).filter(Boolean);
-    } else {
-      const errData = await res.json().catch(() => ({}));
-      console.error(`[Google Sheets API Error ${res.status}] ${errData?.error?.message || res.statusText}`);
-      console.info(`📌 Action Required: Please create a sheet tab named '${tab}' in Google Sheet ID ${sheetId} to store approved notification senders.`);
-      cachedAllowedSenders = [];
-    }
-  } catch (e) {
-    console.error("[Notifications] Allowed senders fetch exception:", e.message);
-    cachedAllowedSenders = [];
-  }
-}
+// NOTE: Reading the approved-sender list is now server-side via the
+// /checkSender Netlify action (see fetchSenderPermission). The previous
+// direct apiKey fetch is removed because Firebase web keys are not Cloud API
+// keys and cannot read a PRIVATE sheet.
 
 async function addAllowedSender(email) {
   const user = firebase.auth().currentUser;
@@ -268,7 +226,7 @@ async function sendPushNotification(type, title, message, imageUrl = "", soundDu
   const user = firebase.auth().currentUser;
   const userEmail = user?.email || "";
 
-  if (!isAllowedSender(userEmail)) {
+  if (!canSendNotification()) {
     showToast('⛔ Permission Denied: You are not authorized to send push notifications.', 'error');
     return;
   }
@@ -380,20 +338,7 @@ function showInAppNotification(type, title, body, imageUrl = "", soundDuration =
   setTimeout(() => { if (banner.parentElement) banner.remove(); }, 8000);
 }
 
-// ── Show simple toast (uses app's existing toast or creates one) ──
-function showToast(msg, type = 'info') {
-  // Use app's existing showNotification if available
-  if (typeof showNotification === 'function') {
-    showNotification(msg, type);
-    return;
-  }
-  // Fallback inline toast
-  const t = document.createElement('div');
-  t.className = `toast-msg toast-${type}`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3500);
-}
+// NOTE: showToast is defined once in app.js and is global; do not redefine here.
 
 // ── Update Bell Icon State in Header ──
 function updateNotifBellState(state) {
@@ -466,6 +411,35 @@ async function handleApproveSenderClick() {
   if (emailInput) emailInput.value = "";
 }
 
+// ── Server-authoritative sender permission (from /checkSender) ──
+// The browser may still hide UI optimistically, but the broadcast path must
+// confirm this server decision. Falls back to the client-only gate only when
+// the server check is unreachable (offline).
+let senderPermission = { checked: false, allowed: false, isSuperAdmin: false, email: "" };
+
+async function fetchSenderPermission() {
+  const user = firebase.auth().currentUser;
+  if (!user) return senderPermission;
+  try {
+    const res = await sheetsRequest("checkSender");
+    senderPermission = {
+      checked: true,
+      allowed: !!res.allowed,
+      isSuperAdmin: !!res.isSuperAdmin,
+      email: res.email || user.email || ""
+    };
+  } catch (e) {
+    senderPermission.checked = false; // offline: rely on client gate below
+  }
+  return senderPermission;
+}
+
+function canSendNotification() {
+  if (senderPermission.checked) return senderPermission.allowed;
+  const email = (firebase.auth().currentUser && firebase.auth().currentUser.email) || "";
+  return isAllowedSender(email);
+}
+
 // ── Init: Subscribe user on app load & check sender permissions ──
 async function initNotifications() {
   const user = firebase.auth().currentUser;
@@ -476,11 +450,12 @@ async function initNotifications() {
     await getFCMToken();
   }
 
-  // Fetch approved senders list from Google Sheets
-  await fetchAllowedSenders();
+  // Server-authoritative sender approval (replaces broken client-only fetch).
+  await fetchSenderPermission();
 
   const userEmail = user.email || '';
-  const isAllowed = isAllowedSender(userEmail);
+  const isAllowed = canSendNotification();
+  const isAdmin = senderPermission.checked ? senderPermission.isSuperAdmin : isSuperAdmin(userEmail);
 
   // Show dropdown menu item and Push Broadcast tab only if user is SuperAdmin or Approved Sender
   const notifDropdownItem = document.getElementById('nav-notif-dropdown');
@@ -490,12 +465,12 @@ async function initNotifications() {
 
   const superadminBadge = document.getElementById('superadmin-badge');
   if (superadminBadge) {
-    superadminBadge.style.display = isSuperAdmin(userEmail) ? 'inline-flex' : 'none';
+    superadminBadge.style.display = isAdmin ? 'inline-flex' : 'none';
   }
 
   const approvalCard = document.getElementById('superadmin-sender-approval-card');
   if (approvalCard) {
-    approvalCard.style.display = isSuperAdmin(userEmail) ? 'block' : 'none';
+    approvalCard.style.display = isAdmin ? 'block' : 'none';
   }
 }
 
@@ -511,7 +486,4 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
-// ── Utility: Escape HTML for safe injection ──
-function escapeHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+// NOTE: escapeHtml is defined once in app.js (escapes & < > " ') and is global.

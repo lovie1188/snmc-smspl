@@ -5,21 +5,15 @@
 let allDailyRows = [];
 let printerData = { headers: [], rows: [] };
 let currentUser = null;
-let currentSerialNo = 1;
 
-const EXPECTED_HEADERS = [
-  "Timestamp",        // Col A
-  "Email address",    // Col B
-  "Date",             // Col C
-  "counter Number",   // Col D
-  "Paper Recieved",   // Col E
-  "Paper Issued",     // Col F
-  "ISSUE / RECEIVE",  // Col G
-  "BALANCE",          // Col H
-  "REMARK",           // Col I
-  "Opening reading",  // Col J
-  "Closing Reading"   // Col K
-];
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 // ── Real-Time Form Validation Constraints ──────────────────
 function validateReadings() {
@@ -116,19 +110,16 @@ function filterHistoryTable() {
   }
 
   if (noData) noData.style.display = "none";
-  const displayHeaders = [
-    "Date", "counter Number", "Opening reading", "Closing Reading",
-    "BALANCE", "Paper Issued", "Paper Recieved", "ISSUE / RECEIVE", "REMARK"
-  ];
+  const displayHeaders = DAILY_DISPLAY_HEADERS;
 
   tbody.innerHTML = filteredRows.map(row => {
     const cellsHtml = displayHeaders.map(h => {
       let val = row[h] !== undefined ? row[h] : "";
       if (h.toLowerCase().includes("issue / receive") || h.toLowerCase() === "type") {
         const typeClass = val === "RECEIVE" ? "badge-receive" : "badge-issue";
-        return `<td><span class="badge ${typeClass}">${val || "ISSUE"}</span></td>`;
+        return `<td><span class="badge ${typeClass}">${escapeHtml(val || "ISSUE")}</span></td>`;
       }
-      return `<td>${val}</td>`;
+      return `<td>${escapeHtml(val)}</td>`;
     }).join("");
     return `<tr>${cellsHtml}</tr>`;
   }).join("");
@@ -273,15 +264,15 @@ function handleCounterSelectChange() {
       const typeClass = String(type).trim() === "RECEIVE" ? "badge-receive" : "badge-issue";
 
       return `<tr>
-        <td>${date}</td>
-        <td><strong>${counter}</strong></td>
-        <td>${opening}</td>
-        <td>${closing}</td>
-        <td><strong>${balance}</strong></td>
-        <td>${issued}</td>
-        <td>${recieved}</td>
-        <td><span class="badge ${typeClass}">${type}</span></td>
-        <td>${remark}</td>
+        <td>${escapeHtml(date)}</td>
+        <td><strong>${escapeHtml(counter)}</strong></td>
+        <td>${escapeHtml(opening)}</td>
+        <td>${escapeHtml(closing)}</td>
+        <td><strong>${escapeHtml(balance)}</strong></td>
+        <td>${escapeHtml(issued)}</td>
+        <td>${escapeHtml(recieved)}</td>
+        <td><span class="badge ${typeClass}">${escapeHtml(type)}</span></td>
+        <td>${escapeHtml(remark)}</td>
       </tr>`;
     }).join("");
   }
@@ -334,8 +325,6 @@ async function loadHistory() {
 
     if (loading) loading.style.display = "none";
 
-    currentSerialNo = rows.length + 1;
-
     // Calculate Hospital Metrics on Dashboard
     calculateHospitalMetrics();
 
@@ -345,10 +334,7 @@ async function loadHistory() {
     }
     if (noData) noData.style.display = "none";
 
-    const displayHeaders = [
-      "Date", "counter Number", "Opening reading", "Closing Reading",
-      "BALANCE", "Paper Issued", "Paper Recieved", "ISSUE / RECEIVE", "REMARK"
-    ];
+    const displayHeaders = DAILY_DISPLAY_HEADERS;
 
     const thead = document.getElementById("history-head");
     if (thead) {
@@ -362,7 +348,7 @@ async function loadHistory() {
         let val = row[h] !== undefined ? row[h] : "";
         if (h.toLowerCase().includes("issue / receive") || h.toLowerCase() === "type") {
           const typeClass = val === "RECEIVE" ? "badge-receive" : "badge-issue";
-          return `<td><span class="badge ${typeClass}">${val || "ISSUE"}</span></td>`;
+          return `<td><span class="badge ${typeClass}">${escapeHtml(val || "ISSUE")}</span></td>`;
         }
         return `<td>${escapeHtml(String(val))}</td>`;
       }).join("");
@@ -414,6 +400,21 @@ async function submitEntry(event) {
     return;
   }
 
+  // ── Hardened numeric input validation ──
+  const num = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : NaN;
+  };
+  const openingNum  = num(opening);
+  const closingNum  = num(closing);
+  const receivedNum = num(paperRecieved);
+  const issuedNum   = num(paperIssued);
+
+  if ([openingNum, closingNum, receivedNum, issuedNum].some((n) => Number.isNaN(n))) {
+    showToast("⚠️ Readings must be valid, non-negative numbers.", "warn");
+    return;
+  }
+
   // Automatic Backend Fields
   const now = new Date();
   const timestamp = now.toLocaleString("en-IN");
@@ -423,20 +424,20 @@ async function submitEntry(event) {
   const dd = String(now.getDate()).padStart(2, "0");
   const currentDate = `${yyyy}-${mm}-${dd}`;
 
-  // Column Mapping A to K:
-  const row = [
+  // Column Mapping A to K (single source of truth: SHEET_SCHEMA.daily)
+  const row = buildDailyRow({
     timestamp,
     email,
-    currentDate,
+    date: currentDate,
     counter,
-    paperRecieved,
-    paperIssued,
-    issueReceive,
+    received: paperRecieved,
+    issued: paperIssued,
+    type: issueReceive,
     balance,
     remark,
     opening,
     closing
-  ];
+  });
 
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner"></span> Saving...`;
