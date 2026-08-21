@@ -2,7 +2,7 @@
 // PrintTrack — Service Worker with FCM Push Support
 // ============================================================
 
-const CACHE_NAME = 'printtrack-v3';
+const CACHE_NAME = 'printtrack-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -12,18 +12,17 @@ const ASSETS_TO_CACHE = [
   '/assets/js/config.js',
   '/assets/js/auth.js',
   '/assets/js/sheets.js',
+  '/assets/js/db.js',
   '/assets/js/app.js',
   '/assets/js/notifications.js'
 ];
 
 // ── Install ──
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
-  // DO NOT call self.skipWaiting() here.
-  // skipWaiting causes immediate SW activation + clients.claim() which
-  // triggers page reload loops in PWABuilder APK WebView environments.
 });
 
 // ── Activate ──
@@ -33,28 +32,32 @@ self.addEventListener('activate', (event) => {
       Promise.all(keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : null))
     )
   );
-  // DO NOT call self.clients.claim() here.
-  // clients.claim() causes the SW to immediately control all open clients
-  // which triggers reload loops in PWABuilder APK WebView environments.
 });
 
-// ── Fetch (Cache-First) ──
+// ── Fetch (Network-First for HTML/JS to ensure instant updates) ──
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   if (event.request.url.includes('googleapis.com')) return;
   if (event.request.url.includes('fcm.googleapis.com')) return;
 
+  // Network-First for HTML and JS files
+  if (event.request.url.endsWith('.html') || event.request.url.endsWith('.js') || event.request.url.includes('/api/')) {
+    event.respondWith(
+      fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return networkResponse;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-First for static assets (images, fonts, css)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-          }
-        }).catch(() => {});
-        return cachedResponse;
-      }
-      return fetch(event.request);
+      return cachedResponse || fetch(event.request);
     })
   );
 });
