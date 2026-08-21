@@ -219,9 +219,13 @@ async function fetchAllowedSenders() {
       const rows = (data.values || []).slice(1);
       cachedAllowedSenders = rows.map(r => String(r[0] || '').trim()).filter(Boolean);
     } else {
+      const errData = await res.json().catch(() => ({}));
+      console.error(`[Google Sheets API Error ${res.status}] ${errData?.error?.message || res.statusText}`);
+      console.info(`📌 Action Required: Please create a sheet tab named '${tab}' in Google Sheet ID ${sheetId} to store approved notification senders.`);
       cachedAllowedSenders = [];
     }
   } catch (e) {
+    console.error("[Notifications] Allowed senders fetch exception:", e.message);
     cachedAllowedSenders = [];
   }
 }
