@@ -307,8 +307,15 @@
       msgEl.style.display = 'block';
     }
 
-    // Auto-redirect if already logged in
-    if (getAccessToken() && getStoredUser()) {
+    // Clear old expired session data if directed here with token_expired or not_signed_in
+    if (msg === 'token_expired' || msg === 'not_signed_in') {
+      localStorage.removeItem('pt_gtoken');
+      localStorage.removeItem('pt_user');
+      sessionStorage.clear();
+    }
+
+    // Auto-redirect if already logged in (ONLY if not explicitly redirected due to expired token)
+    if (!msg && getAccessToken() && getStoredUser()) {
       window.location.replace('app.html');
     }
 
