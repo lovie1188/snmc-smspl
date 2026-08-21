@@ -118,7 +118,15 @@ async function requireAuth() {
           photo: fbUser.photoURL || "",
           uid: fbUser.uid
         };
-        const storedToken = getAccessToken();
+        let storedToken = getAccessToken();
+
+        if (!storedToken) {
+          // Firebase user exists but OAuth Sheets token missing from localStorage
+          console.warn("[Auth] Firebase user logged in, but Google Sheets OAuth token missing. Triggering OAuth sign-in...");
+          redirectToLogin("token_expired");
+          reject("token_expired");
+          return;
+        }
         
         // Save back to localStorage so subsequent checks succeed
         setSessionData(storedToken, storedUser);
