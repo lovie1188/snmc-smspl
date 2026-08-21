@@ -360,6 +360,46 @@ body {
 .btn-google-native:active { transform: scale(0.97); }
 .btn-google-native img { width: 20px; height: 20px; }
 
+/* ── Skeleton Shimmer Loaders ──────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, rgba(226, 232, 240, 0.6) 25%, rgba(241, 245, 249, 0.9) 50%, rgba(226, 232, 240, 0.6) 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s infinite;
+  border-radius: 8px;
+}
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-text { height: 14px; margin-bottom: 6px; width: 100%; }
+.skeleton-card { height: 70px; width: 100%; margin-bottom: 10px; border-radius: 16px; }
+
+/* ── Offline Badge & Input Error States ────────────────────── */
+.badge-offline {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.input-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+  background: #fef2f2 !important;
+}
+.validation-message {
+  color: #ef4444;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-top: 4px;
+  display: none;
+}
+
 .toast {
   position: fixed; bottom: calc(var(--nav-h) + 12px); left: 50%;
   transform: translateX(-50%) translateY(16px);

@@ -250,7 +250,9 @@
           <span>Install App</span>
         </button>
 
-        <button class="dropdown-item danger" onclick="signOut()">
+        <div style="height: 1px; background: var(--border-subtle); margin: 4px 0;"></div>
+
+        <button class="dropdown-item danger" onclick="handleLogout()">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           <span>Sign Out</span>
         </button>
@@ -258,59 +260,45 @@
     </div>
   </header>
 
-  <!-- Floating Quick Action Button (Skynex Scan Style) -->
-  <div class="skynex-fab" onclick="showTab('entry')" title="Quick Entry">
-    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-  </div>
-
-  <!-- App Main Content -->
+  <!-- Main View Container -->
   <main class="app-main">
 
-    <!-- TAB 0: LANDING DASHBOARD PAGE (Skynex UI) -->
+    <!-- TAB 0: DASHBOARD -->
     <section id="tab-dashboard" class="tab-panel active">
       
-      <!-- Skynex Hero Greeting -->
-      <div style="margin-bottom: 20px;">
-        <div class="hero-greeting">Hello <span class="hero-greeting-name" id="dash-greeting-name">Admin</span> 👋</div>
-        <h1 class="hero-title-skynex">
-          Printer <em>Log</em><br>Starts
-        </h1>
-      </div>
-
-      <!-- Main Overview Widget Card -->
+      <!-- Hospital-Wise Summary Analytics Section -->
       <div class="skynex-card">
         <div class="skynex-card-title">
           <div>
-            <div style="font-size: 0.95rem; font-weight: 800;">Daily System Health</div>
-            <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">Google Sheets API Live Sync</div>
+            <div style="font-size: 0.95rem; font-weight: 800;">Hospital-Wise Summary</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">Live MDM, MGH &amp; UMAID Metrics</div>
           </div>
           <div class="arrow-btn" onclick="loadHistory(); showTab('history');">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
           </div>
         </div>
 
-        <div style="font-size: 2.2rem; font-weight: 800; color: var(--text); margin-bottom: 6px;">
-          100% <span style="font-size: 0.8rem; font-weight: 700; color: #10b981; margin-left: 6px;">Operational</span>
-        </div>
-
-        <!-- Custom Progress Bar -->
-        <div style="width: 100%; height: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 20px; overflow: hidden; margin-bottom: 18px;">
-          <div style="width: 100%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--purple)); border-radius: 20px;"></div>
-        </div>
-
-        <!-- Metric Pill Widgets Row -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-          <div style="background: rgba(255,255,255,0.7); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 12px;">
-            <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted);">Sheet Status</div>
-            <div style="font-size: 1.1rem; font-weight: 800; color: var(--primary);">Connected</div>
-            <div style="font-size: 0.65rem; color: #10b981; font-weight: 600;">A:L Range Sync</div>
+        <!-- Hospital Wise Cards Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 10px;" id="hospital-cards-grid">
+          
+          <div style="background: rgba(59, 130, 246, 0.08); border: 1.5px solid rgba(59, 130, 246, 0.2); border-radius: 16px; padding: 12px; text-align: center;">
+            <div style="font-size: 0.7rem; font-weight: 800; color: #1d4ed8;">MDM Hospital</div>
+            <div style="font-size: 1.3rem; font-weight: 800; color: #0f172a;" id="mdm-issued-count">0</div>
+            <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600;">Paper Issued</div>
           </div>
 
-          <div style="background: rgba(255,255,255,0.7); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 12px;">
-            <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted);">Dropdown Data</div>
-            <div style="font-size: 1.1rem; font-weight: 800; color: var(--purple);">printerdetails</div>
-            <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600;">Live Options</div>
+          <div style="background: rgba(168, 85, 247, 0.08); border: 1.5px solid rgba(168, 85, 247, 0.2); border-radius: 16px; padding: 12px; text-align: center;">
+            <div style="font-size: 0.7rem; font-weight: 800; color: #7e22ce;">MGH Hospital</div>
+            <div style="font-size: 1.3rem; font-weight: 800; color: #0f172a;" id="mgh-issued-count">0</div>
+            <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600;">Paper Issued</div>
           </div>
+
+          <div style="background: rgba(236, 72, 153, 0.08); border: 1.5px solid rgba(236, 72, 153, 0.2); border-radius: 16px; padding: 12px; text-align: center;">
+            <div style="font-size: 0.7rem; font-weight: 800; color: #be185d;">UMAID Hospital</div>
+            <div style="font-size: 1.3rem; font-weight: 800; color: #0f172a;" id="umaid-issued-count">0</div>
+            <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600;">Paper Issued</div>
+          </div>
+
         </div>
       </div>
 
@@ -321,7 +309,7 @@
           <div class="w-icon">📝</div>
           <div>
             <div class="w-title">New Entry</div>
-            <div class="w-sub">Log daily reading & rims</div>
+            <div class="w-sub">Log daily reading &amp; rims</div>
           </div>
         </div>
 
@@ -411,17 +399,22 @@
           <div class="form-row">
             <div class="form-group">
               <label>Opening Reading</label>
-              <input type="number" class="native-input" id="opening-reading" placeholder="Auto Calculated" min="0" oninput="calcBalance()">
+              <input type="number" class="native-input" id="opening-reading" placeholder="Auto Calculated" min="0" oninput="calcBalance(); validateReadings();">
             </div>
 
             <div class="form-group">
               <label>Closing Reading <span class="req">*</span></label>
-              <input type="number" class="native-input" id="closing-reading" placeholder="Enter Current Reading" min="0" required oninput="calcBalance()">
+              <input type="number" class="native-input" id="closing-reading" placeholder="Enter Current Reading" min="0" required oninput="calcBalance(); validateReadings();">
             </div>
           </div>
 
+          <!-- Real-Time Validation Alert Message -->
+          <div id="reading-validation-error" class="validation-message">
+            ⚠️ Closing Reading cannot be less than Opening Reading!
+          </div>
+
           <!-- Column H: BALANCE -->
-          <div class="form-group">
+          <div class="form-group" style="margin-top: 10px;">
             <label>Paper Balance (Opening - Closing)</label>
             <input type="number" class="native-input" id="paper-balance" readonly placeholder="Auto Calculated">
           </div>
@@ -476,11 +469,30 @@
       </div>
     </section>
 
-    <!-- TAB 2: HISTORY TABLE -->
+    <!-- TAB 2: HISTORY TABLE WITH SEARCH, FILTER & EXPORT -->
     <section id="tab-history" class="tab-panel">
       <div class="skynex-card">
-        <div class="skynex-card-title">
-          <div style="font-size: 1rem; font-weight: 800;">Recent Daily Entries</div>
+        <div class="skynex-card-title" style="flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div style="font-size: 1rem; font-weight: 800;">Recent Daily Entries</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Search, Filter &amp; Export Sheet Records</div>
+          </div>
+          
+          <!-- Export Buttons -->
+          <div style="display: flex; gap: 8px; margin-left: auto;">
+            <button class="arrow-btn" style="width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #15803d; background: rgba(22, 163, 74, 0.1);" onclick="exportHistoryToExcel()">
+              📊 Excel
+            </button>
+            <button class="arrow-btn" style="width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #b91c1c; background: rgba(220, 38, 38, 0.1);" onclick="exportHistoryToPDF()">
+              📄 PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Search & Date Filter Bar -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+          <input type="text" id="history-search-input" class="native-input" placeholder="🔍 Search Counter / Hospital..." oninput="filterHistoryTable()" style="font-size: 0.8rem; padding: 8px 12px;">
+          <input type="date" id="history-date-filter" class="native-input" onchange="filterHistoryTable()" style="font-size: 0.8rem; padding: 8px 12px;">
         </div>
 
         <div class="table-container">
@@ -495,11 +507,9 @@
 
           <div id="no-history" style="display:none; text-align:center; padding:36px; color:var(--text-muted);">
             <div style="font-size:2rem; margin-bottom:8px;">📝</div>
-            <p>No entries found yet.</p>
+            <p>No entries found matching filters.</p>
           </div>
         </div>
-
-
 
       </div>
     </section>
@@ -524,6 +534,9 @@
     </button>
   </nav>
 
+  <!-- SheetJS & jsPDF for Excel & PDF Export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <!-- Scripts -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -531,6 +544,7 @@
   <script src="assets/js/config.js"></script>
   <script src="assets/js/auth.js"></script>
   <script src="assets/js/sheets.js"></script>
+  <script src="assets/js/db.js"></script>
   <script src="assets/js/notifications.js"></script>
   <script src="assets/js/app.js"></script>
 

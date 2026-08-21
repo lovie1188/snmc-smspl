@@ -1,22 +1,121 @@
-// ============================================================
-// app.js — PrintTrack Main Application Logic (Dashboard Landing)
-// ============================================================
+// ── Real-Time Form Validation Constraints ──────────────────
+function validateReadings() {
+  const openingInput = document.getElementById("opening-reading");
+  const closingInput = document.getElementById("closing-reading");
+  const errorMsgEl = document.getElementById("reading-validation-error");
+  const submitBtn = document.getElementById("submit-btn");
 
-let allDailyRows = [];
+  const opening = parseFloat(openingInput?.value || 0);
+  const closing = parseFloat(closingInput?.value || 0);
 
-const EXPECTED_HEADERS = [
-  "Timestamp",        // Col A
-  "Email address",    // Col B
-  "Date",             // Col C
-  "counter Number",   // Col D
-  "Paper Recieved",   // Col E
-  "Paper Issued",     // Col F
-  "ISSUE / RECEIVE",  // Col G
-  "BALANCE",          // Col H
-  "REMARK",           // Col I
-  "Opening reading",  // Col J
-  "Closing Reading"   // Col K
-];
+  if (closingInput && closingInput.value !== "" && closing < opening) {
+    closingInput.classList.add("input-error");
+    if (errorMsgEl) errorMsgEl.style.display = "block";
+    if (submitBtn) submitBtn.disabled = true;
+    return false;
+  } else {
+    if (closingInput) closingInput.classList.remove("input-error");
+    if (errorMsgEl) errorMsgEl.style.display = "none";
+    if (submitBtn) submitBtn.disabled = false;
+    return true;
+  }
+}
+
+// ── Hospital-Wise Analytics Calculator ─────────────────────
+function calculateHospitalMetrics() {
+  let mdmTotal = 0;
+  let mghTotal = 0;
+  let umaidTotal = 0;
+
+  allDailyRows.forEach(r => {
+    const rawStr = Object.values(r).join(" ").toUpperCase();
+    const issued = parseFloat(r["Paper Issued"] || r["Issued"] || 0) || 0;
+
+    if (rawStr.includes("MDM")) {
+      mdmTotal += issued;
+    } else if (rawStr.includes("MGH")) {
+      mghTotal += issued;
+    } else if (rawStr.includes("UMAID") || rawStr.includes("GYN") || rawStr.includes("PEDIA")) {
+      umaidTotal += issued;
+    }
+  });
+
+  const mdmEl = document.getElementById("mdm-issued-count");
+  const mghEl = document.getElementById("mgh-issued-count");
+  const umaidEl = document.getElementById("umaid-issued-count");
+
+  if (mdmEl) mdmEl.textContent = mdmTotal;
+  if (mghEl) mghEl.textContent = mghTotal;
+  if (umaidEl) umaidEl.textContent = umaidTotal;
+}
+
+// ── Search & Filter History Table ──────────────────────────
+function filterHistoryTable() {
+  const searchVal = document.getElementById("history-search-input")?.value?.toLowerCase().trim() || "";
+  const dateVal = document.getElementById("history-date-filter")?.value || "";
+
+  const tbody = document.getElementById("history-body");
+  const noData = document.getElementById("no-history");
+
+  if (!tbody) return;
+
+  const filteredRows = allDailyRows.filter(r => {
+    const rowStr = Object.values(r).join(" ").toLowerCase();
+    const matchesSearch = !searchVal || rowStr.includes(searchVal);
+    const matchesDate = !dateVal || (r["Date"] && r["Date"].includes(dateVal));
+    return matchesSearch && matchesDate;
+  });
+
+  if (!filteredRows.length) {
+    tbody.innerHTML = "";
+    if (noData) noData.style.display = "block";
+    return;
+  }
+
+  if (noData) noData.style.display = "none";
+  const displayHeaders = [
+    "Date", "counter Number", "Opening reading", "Closing Reading",
+    "BALANCE", "Paper Issued", "Paper Recieved", "ISSUE / RECEIVE", "REMARK"
+  ];
+
+  tbody.innerHTML = filteredRows.map(row => {
+    const cellsHtml = displayHeaders.map(h => {
+      let val = row[h] !== undefined ? row[h] : "";
+      if (h.toLowerCase().includes("issue / receive") || h.toLowerCase() === "type") {
+        const typeClass = val === "RECEIVE" ? "badge-receive" : "badge-issue";
+        return `<td><span class="badge ${typeClass}">${val || "ISSUE"}</span></td>`;
+      }
+      return `<td>${val}</td>`;
+    }).join("");
+    return `<tr>${cellsHtml}</tr>`;
+  }).join("");
+}
+
+// ── Export History to Excel (.xlsx) ───────────────────────
+function exportHistoryToExcel() {
+  if (!allDailyRows.length) {
+    showToast("No history data to export.", "warn");
+    return;
+  }
+  try {
+    const worksheet = XLSX.utils.json_to_sheet(allDailyRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "PrintTrack_Daily_Entries");
+    XLSX.writeFile(workbook, `PrintTrack_Daily_Entries_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    showToast("📊 Exported to Excel successfully!", "success");
+  } catch (err) {
+    showToast("Export failed: " + err.message, "error");
+  }
+}
+
+// ── Export History to PDF / Printable View ──────────────────
+function exportHistoryToPDF() {
+  if (!allDailyRows.length) {
+    showToast("No history data to print.", "warn");
+    return;
+  }
+  window.print();
+}
 
 // ── Smart Conditional Logic for ISSUE / RECEIVE / None ──
 function toggleIssueReceiveFields() {
@@ -192,6 +291,9 @@ async function loadHistory() {
 
     currentSerialNo = rows.length + 1;
 
+    // Calculate Hospital Metrics on Dashboard
+    calculateHospitalMetrics();
+
     if (!rows.length) {
       if (noData) noData.style.display = "block";
       return;
@@ -237,9 +339,16 @@ function setDefaultDate() {
   // Date is auto handled on backend submission (Column C)
 }
 
-// ── Submit Daily Entry (Columns A to K) ──────────────────
+// ── Submit Daily Entry (Supports Offline IndexedDB & Online Sync) ──
 async function submitEntry(event) {
   event.preventDefault();
+
+  // 1. Check Real-Time Validation Constraints
+  if (!validateReadings()) {
+    showToast("⚠️ Closing Reading cannot be less than Opening Reading!", "warn");
+    return;
+  }
+
   const btn = document.getElementById("submit-btn");
 
   const counter      = document.getElementById("counter-select")?.value?.trim();
@@ -270,8 +379,6 @@ async function submitEntry(event) {
   const currentDate = `${yyyy}-${mm}-${dd}`;
 
   // Column Mapping A to K:
-  // A: Timestamp, B: Email, C: Date, D: counter Number, E: Paper Recieved,
-  // F: Paper Issued, G: ISSUE / RECEIVE, H: BALANCE, I: REMARK, J: Opening reading, K: Closing Reading
   const row = [
     timestamp,
     email,
@@ -290,13 +397,28 @@ async function submitEntry(event) {
   btn.innerHTML = `<span class="spinner"></span> Saving...`;
 
   try {
-    await appendDailyEntry(row);
-    showToast("✅ Entry saved to Google Sheets!", "success");
+    if (!navigator.onLine && typeof saveOfflineEntry === "function") {
+      // Offline Save Mode via IndexedDB
+      await saveOfflineEntry(row);
+      showToast("📴 Saved offline! Will sync automatically when connected.", "warn");
+    } else {
+      // Online Push Mode
+      await appendDailyEntry(row);
+      showToast("✅ Entry saved to Google Sheets!", "success");
+    }
+
     document.getElementById("entry-form").reset();
     toggleIssueReceiveFields();
     await loadHistory();
+
   } catch (err) {
-    showToast("❌ Failed: " + err.message, "error");
+    // If online push fails, fallback to IndexedDB
+    if (typeof saveOfflineEntry === "function") {
+      await saveOfflineEntry(row);
+      showToast("📴 Network error. Entry saved locally in IndexedDB.", "warn");
+    } else {
+      showToast("❌ Failed: " + err.message, "error");
+    }
   } finally {
     btn.disabled = false;
     btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg> Save Entry`;
