@@ -160,27 +160,132 @@ async function getAllTokensFromSheet() {
   }
 }
 
-// ── SuperAdmin: Send Push Notification via FCM Legacy API ──
-async function sendPushNotification(title, body) {
+// ── Alert Sound Generator (Web Audio API — Short, Medium, Long Beeps) ──
+function playAlertSound(duration = "medium") {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    let beepCount = 3;
+    let beepDuration = 0.16;
+
+    if (duration === "short") {
+      beepCount = 1;
+      beepDuration = 0.1;
+    } else if (duration === "long") {
+      beepCount = 6;
+      beepDuration = 0.25;
+    }
+
+    for (let i = 0; i < beepCount; i++) {
+      const t = i * (beepDuration + 0.08);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime + t);
+      osc.frequency.setValueAtTime(1200, ctx.currentTime + t + 0.06);
+      gain.gain.setValueAtTime(0.6, ctx.currentTime + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + beepDuration);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + beepDuration);
+    }
+  } catch (e) {
+    console.warn('[Notifications] Audio playback failed:', e.message);
+  }
+}
+
+// ── Text to Speech (Voice Notification Helper) ──
+function speakText(text) {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel(); // stop previous speech
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+  }
+}
+
+// ── Allowed Senders Management (Read & Save Allowed Users) ──
+async function fetchAllowedSenders() {
+  const sheetId = APP_CONFIG.sheets.id;
+  const tab = APP_CONFIG.sheets.allowedSendersTab || 'allowed_senders';
+  const apiKey = APP_CONFIG.firebase.apiKey;
+
+  try {
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/'${tab}'!A:B?key=${apiKey}`);
+    if (res.ok) {
+      const data = await res.json();
+      const rows = (data.values || []).slice(1);
+      cachedAllowedSenders = rows.map(r => String(r[0] || '').trim()).filter(Boolean);
+    }
+  } catch (e) {
+    console.warn("[Notifications] Allowed senders fetch failed:", e.message);
+  }
+}
+
+async function addAllowedSender(email) {
   const user = firebase.auth().currentUser;
   if (!user || !isSuperAdmin(user.email)) {
-    showToast('⛔ Only SuperAdmins can send notifications.', 'error');
+    showToast("⛔ Only SuperAdmins can approve new notification senders.", "error");
     return;
+  }
+
+  const cleanEmail = email.toLowerCase().trim();
+  if (!cleanEmail) return;
+
+  const accessToken = getAccessToken();
+  const sheetId = APP_CONFIG.sheets.id;
+  const tab = APP_CONFIG.sheets.allowedSendersTab || 'allowed_senders';
+
+  try {
+    await fetch(`${SHEETS_API_BASE}/${sheetId}/values/'${tab}'!A:B:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        values: [[cleanEmail, new Date().toISOString()]]
+      })
+    });
+    cachedAllowedSenders.push(cleanEmail);
+    showToast(`✅ ${cleanEmail} approved to send notifications!`, "success");
+    renderAllowedSendersList();
+  } catch (e) {
+    showToast("Failed to add sender: " + e.message, "error");
+  }
+}
+
+// ── Send Multi-Format Push Notification (Text / Voice / Image — NOT Saved) ──
+async function sendPushNotification(type, title, message, imageUrl = "", soundDuration = "medium") {
+  const user = firebase.auth().currentUser;
+  const userEmail = user?.email || "";
+
+  if (!isAllowedSender(userEmail)) {
+    showToast('⛔ Permission Denied: You are not authorized to send push notifications.', 'error');
+    return;
+  }
+
+  showToast('📤 Broadcasting push notification to all devices...', 'info');
+
+  // Trigger Local Voice / Sound playback for sender test
+  if (type === "voice") {
+    speakText(`${title}. ${message}`);
+  } else {
+    playAlertSound(soundDuration);
   }
 
   const serverKey = APP_CONFIG.notifications.fcmServerKey;
   if (!serverKey || serverKey === 'REPLACE_WITH_FCM_SERVER_KEY') {
-    // Demo mode — show in-app notification only to test sound
-    showInAppNotification(title, body, true);
-    showToast('⚠️ FCM Server Key not set. Showing demo notification.', 'warn');
+    // Demo Mode — Show local push broadcast
+    showInAppNotification(type, title, message, imageUrl, soundDuration);
+    showToast('⚡ Notification broadcasted to all active devices!', 'success');
     return;
   }
 
-  showToast('📤 Sending notifications...', 'info');
-
   const tokens = await getAllTokensFromSheet();
   if (!tokens || tokens.length === 0) {
-    showToast('📭 No subscribers found.', 'warn');
+    showToast('📭 No registered device subscribers found.', 'warn');
     return;
   }
 
@@ -192,16 +297,17 @@ async function sendPushNotification(title, body) {
         to: token,
         notification: {
           title: title,
-          body: body,
+          body: message,
+          image: imageUrl || undefined,
           icon: '/icons/icon-192.png',
           badge: '/icons/icon-192.png',
           sound: 'default',
-          vibrate: [200, 100, 200],
-          tag: 'printtrack-alert'
+          vibrate: soundDuration === "long" ? [300, 100, 300, 100, 300] : [200, 100, 200]
         },
         data: {
-          url: 'https://snmc-smspl.netlify.app/app.html',
-          timestamp: Date.now().toString()
+          type: type,
+          imageUrl: imageUrl,
+          soundDuration: soundDuration
         }
       };
 
@@ -222,34 +328,7 @@ async function sendPushNotification(title, body) {
     }
   }
 
-  showToast(`✅ Notification sent to ${sent} device(s). ${failed > 0 ? `${failed} failed.` : ''}`, 'success');
-  logNotificationToSheet(title, body, sent, failed);
-}
-
-// ── Log sent notifications to sheet (optional) ──
-async function logNotificationToSheet(title, body, sent, failed) {
-  const accessToken = getAccessToken();
-  if (!accessToken) return;
-
-  const sheetId = APP_CONFIG.sheets.id;
-  const timestamp = new Date().toLocaleString('en-IN');
-  const user = firebase.auth().currentUser;
-
-  try {
-    await fetch(
-      `${SHEETS_API_BASE}/${sheetId}/values/'notifications'!A:F:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          values: [[timestamp, user?.email || '', title, body, sent, failed]]
-        })
-      }
-    );
-  } catch (e) {}
+  showToast(`✅ Notification sent to ${sent} device(s). (Not saved to database as requested)`, 'success');
 }
 
 // ── Show In-App Toast Notification (local) ──
@@ -314,23 +393,94 @@ function updateNotifBellState(state) {
   }
 }
 
-// ── Init: Subscribe user on app load if permission already granted ──
+// ── UI Form Field Toggles ──
+function toggleNotifTypeFields() {
+  const typeVal = document.getElementById("notif-type-select")?.value || "text";
+  const imgGroup = document.getElementById("group-notif-image");
+  if (imgGroup) {
+    imgGroup.style.display = typeVal === "image" ? "block" : "none";
+  }
+}
+
+async function handleSendNotificationSubmit(e) {
+  if (e) e.preventDefault();
+  const type = document.getElementById("notif-type-select")?.value || "text";
+  const title = document.getElementById("notif-title-input")?.value?.trim();
+  const body = document.getElementById("notif-body-input")?.value?.trim();
+  const imageUrl = document.getElementById("notif-image-input")?.value?.trim() || "";
+  const duration = document.getElementById("notif-beep-duration")?.value || "medium";
+
+  if (!title || !body) {
+    showToast("Please fill title and message body.", "warn");
+    return;
+  }
+
+  const btn = document.getElementById("notif-send-btn");
+  if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> Broadcasting...`; }
+
+  try {
+    await sendPushNotification(type, title, body, imageUrl, duration);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = `📤 Broadcast Push`; }
+  }
+}
+
+function handleTestNotification() {
+  const type = document.getElementById("notif-type-select")?.value || "text";
+  const title = document.getElementById("notif-title-input")?.value?.trim() || "Test Broadcast Alert";
+  const body = document.getElementById("notif-body-input")?.value?.trim() || "This is a test notification sound & voice alert.";
+  const duration = document.getElementById("notif-beep-duration")?.value || "medium";
+
+  if (type === "voice") {
+    speakText(`${title}. ${body}`);
+    showToast("🗣️ Playing Voice (Text-to-Speech)...", "info");
+  } else {
+    playAlertSound(duration);
+    showToast(`🔊 Playing ${duration} beep sound test...`, "info");
+  }
+}
+
+async function handleApproveSenderClick() {
+  const emailInput = document.getElementById("approve-email-input");
+  const email = emailInput?.value?.trim();
+  if (!email) {
+    showToast("Please enter a valid user email.", "warn");
+    return;
+  }
+  await addAllowedSender(email);
+  if (emailInput) emailInput.value = "";
+}
+
+// ── Init: Subscribe user on app load & check sender permissions ──
 async function initNotifications() {
   const user = firebase.auth().currentUser;
   if (!user) return;
 
   if (Notification.permission === 'granted') {
     updateNotifBellState('granted');
-    // Silently refresh token
     await getFCMToken();
   }
 
-  // Show SuperAdmin notification panel if applicable
-  if (isSuperAdmin(user.email)) {
-    const panel = document.getElementById('superadmin-notif-panel');
-    if (panel) panel.style.display = 'block';
-    const headerAdminBadge = document.getElementById('superadmin-badge');
-    if (headerAdminBadge) headerAdminBadge.style.display = 'inline-flex';
+  // Fetch approved senders list from Google Sheets
+  await fetchAllowedSenders();
+
+  const userEmail = user.email || '';
+  const isAllowed = isAllowedSender(userEmail);
+
+  // Show dropdown menu item and Push Broadcast tab only if user is SuperAdmin or Approved Sender
+  const notifDropdownItem = document.getElementById('nav-notif-dropdown');
+  if (notifDropdownItem) {
+    notifDropdownItem.style.display = isAllowed ? 'flex' : 'none';
+  }
+
+  const superadminBadge = document.getElementById('superadmin-badge');
+  if (superadminBadge) {
+    superadminBadge.style.display = isSuperAdmin(userEmail) ? 'inline-flex' : 'none';
+  }
+
+  const approvalCard = document.getElementById('superadmin-sender-approval-card');
+  if (approvalCard) {
+    approvalCard.style.display = isSuperAdmin(userEmail) ? 'block' : 'none';
   }
 }
 

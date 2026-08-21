@@ -18,19 +18,16 @@ const APP_CONFIG = {
     dailyTab: "Form responses 1",
     printerTab: "printerdetails",
     dailyRange: "A:L",
-    tokensTab: "fcmtokens"  // FCM token storage tab
+    tokensTab: "fcmtokens",       // FCM token storage tab
+    allowedSendersTab: "allowed_senders" // Approved Notification Senders tab
   },
   adsense: {
     client: "ca-pub-6055348642277254", // Official AdSense Publisher ID
     slotBanner: "1234567890"            // Replace with your Ad Unit Slot ID
   },
   notifications: {
-    // FCM Server Key — Get from Firebase Console → Project Settings → Cloud Messaging → Server Key
-    // IMPORTANT: Replace this with your actual FCM Server Key from Firebase Console
     fcmServerKey: "REPLACE_WITH_FCM_SERVER_KEY",
-    // VAPID Public Key — Get from Firebase Console → Project Settings → Cloud Messaging → Web Push certificates
     vapidKey: "REPLACE_WITH_VAPID_PUBLIC_KEY",
-    // SuperAdmin emails — only these can send push notifications
     superAdmins: [
       "softtech.lovejeet@gmail.com",
       "softtech2009@gmail.com"
@@ -42,7 +39,17 @@ const APP_CONFIG = {
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const SHEETS_API_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
 
+let cachedAllowedSenders = [];
+
 // Helper: Check if current user is SuperAdmin
 function isSuperAdmin(email) {
   return APP_CONFIG.notifications.superAdmins.includes((email || '').toLowerCase());
+}
+
+// Helper: Check if user is SuperAdmin or explicitly Approved by SuperAdmin
+function isAllowedSender(email) {
+  if (!email) return false;
+  const cleanEmail = email.toLowerCase().trim();
+  if (isSuperAdmin(cleanEmail)) return true;
+  return cachedAllowedSenders.map(e => e.toLowerCase().trim()).includes(cleanEmail);
 }

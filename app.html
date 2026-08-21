@@ -323,33 +323,10 @@
 
       </div>
 
-      <!-- ── SuperAdmin: Send Notification Panel ── -->
-      <div id="superadmin-notif-panel">
-        <div class="superadmin-panel-title">
-          <span>📣</span>
+        <button class="dropdown-item" id="nav-notif-dropdown" style="display:none;" onclick="showTab('notifications'); closeDropdown();">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           <span>Send Push Notification</span>
-          <span style="font-size:0.65rem; color:#ec4899; font-weight:600; margin-left:auto;">SUPERADMIN</span>
-        </div>
-        <input
-          type="text"
-          id="notif-title-input"
-          class="notif-input"
-          placeholder="Notification Title e.g. Attention Staff"
-          maxlength="80"
-        >
-        <textarea
-          id="notif-body-input"
-          class="notif-input notif-textarea"
-          placeholder="Message body — e.g. Please submit today's entry by 5 PM."
-          maxlength="200"
-        ></textarea>
-        <button class="btn-send-notif" onclick="handleSendNotification()">
-          📤 Send to All Devices
         </button>
-        <button class="btn-test-notif" onclick="handleTestNotification()">
-          🔕 Test Sound &amp; In-App Alert
-        </button>
-      </div>
 
 
 
@@ -511,6 +488,88 @@
           </div>
         </div>
 
+      </div>
+    </section>
+
+    <!-- TAB 3: DEDICATED PUSH NOTIFICATION BROADCAST CENTER -->
+    <section id="tab-notifications" class="tab-panel">
+      <div class="skynex-card">
+        <div class="skynex-card-title">
+          <div>
+            <div style="font-size: 1rem; font-weight: 800;">Push Broadcast Center</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Text, Voice &amp; Image Multi-Format Push Engine</div>
+          </div>
+        </div>
+
+        <form id="notif-form" onsubmit="handleSendNotificationSubmit(event)">
+          <!-- Notification Format Selector -->
+          <div class="form-group">
+            <label>Notification Format</label>
+            <select class="native-select" id="notif-type-select" onchange="toggleNotifTypeFields()">
+              <option value="text" selected>💬 Text Alert</option>
+              <option value="voice">🗣️ Voice Alert (Text-to-Speech)</option>
+              <option value="image">🖼️ Image + Text Alert</option>
+            </select>
+          </div>
+
+          <!-- Title & Message Input -->
+          <div class="form-group">
+            <label>Notification Title <span class="req">*</span></label>
+            <input type="text" class="native-input" id="notif-title-input" placeholder="e.g. Attention Counter Staff" required maxlength="80">
+          </div>
+
+          <div class="form-group">
+            <label>Message Body <span class="req">*</span></label>
+            <textarea class="native-textarea" id="notif-body-input" rows="3" placeholder="Enter message text to broadcast..." required maxlength="250"></textarea>
+          </div>
+
+          <!-- Conditional Image URL Input -->
+          <div class="form-group" id="group-notif-image" style="display:none;">
+            <label>Image URL</label>
+            <input type="url" class="native-input" id="notif-image-input" placeholder="https://example.com/alert-image.jpg">
+          </div>
+
+          <!-- Sound Duration Selector (Short / Medium / Long Beep) -->
+          <div class="form-group">
+            <label>Alert Sound Beep Duration</label>
+            <select class="native-select" id="notif-beep-duration">
+              <option value="short">🔊 Short Beep (1 Beep)</option>
+              <option value="medium" selected>🔉 Medium Beep (3 Beeps)</option>
+              <option value="long">🔊 Long Beep (6 Beeps)</option>
+            </select>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+            <button type="button" class="btn-native-submit" style="background: var(--purple);" onclick="handleTestNotification()">
+              🔕 Test Sound &amp; Voice
+            </button>
+            <button type="submit" class="btn-native-submit" id="notif-send-btn">
+              📤 Broadcast Push
+            </button>
+          </div>
+          
+          <div style="font-size: 0.7rem; color: var(--text-muted); text-align: center; margin-top: 8px;">
+            🔒 Broadcasts are ephemeral and NOT saved to any database tab.
+          </div>
+        </form>
+      </div>
+
+      <!-- SuperAdmin: Approve Allowed Senders Card -->
+      <div class="skynex-card" style="margin-top: 16px;" id="superadmin-sender-approval-card">
+        <div class="skynex-card-title">
+          <div style="font-size: 0.95rem; font-weight: 800;">Approve Sender Permissions</div>
+          <span style="font-size:0.65rem; color:#ec4899; font-weight:600;">SUPERADMIN</span>
+        </div>
+
+        <div class="form-group" style="margin-top: 8px;">
+          <label>Add Approved User Email</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="email" class="native-input" id="approve-email-input" placeholder="user@gmail.com">
+            <button type="button" class="btn-native-submit" style="width: auto; padding: 0 16px; white-space: nowrap;" onclick="handleApproveSenderClick()">
+              ➕ Approve
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 
