@@ -339,16 +339,20 @@ async function sendPushNotification(type, title, message, imageUrl = "", soundDu
 }
 
 // ── Show In-App Toast Notification (local) ──
-function showInAppNotification(title, body, withSound = true) {
-  if (withSound) playAlertSound();
+function showInAppNotification(type, title, body, imageUrl = "", soundDuration = "medium") {
+  if (type === "voice") {
+    speakText(`${title}. ${body}`);
+  } else {
+    playAlertSound(soundDuration);
+  }
 
   // Also show native notification if granted
   if (Notification.permission === 'granted') {
     try {
       new Notification(title, {
         body: body,
-        icon: '/icons/icon-192.png',
-        badge: '/icons/icon-192.png',
+        icon: '/assets/icons/icon-192.png',
+        badge: '/assets/icons/icon-192.png',
         tag: 'printtrack-alert',
         renotify: true,
         vibrate: [200, 100, 200],
@@ -360,16 +364,20 @@ function showInAppNotification(title, body, withSound = true) {
   // Show styled in-app banner
   const banner = document.createElement('div');
   banner.className = 'notif-banner';
+  const imageHtml = (imageUrl && type === "image")
+    ? `<img src="${escapeHtml(imageUrl)}" alt="notification image" style="max-width:100%; border-radius:6px; margin-top:6px;">`
+    : '';
   banner.innerHTML = `
     <div class="notif-banner-icon">🔔</div>
     <div class="notif-banner-content">
       <div class="notif-banner-title">${escapeHtml(title)}</div>
       <div class="notif-banner-body">${escapeHtml(body)}</div>
+      ${imageHtml}
     </div>
     <button class="notif-banner-close" onclick="this.parentElement.remove()">✕</button>
   `;
   document.body.appendChild(banner);
-  setTimeout(() => { if (banner.parentElement) banner.remove(); }, 6000);
+  setTimeout(() => { if (banner.parentElement) banner.remove(); }, 8000);
 }
 
 // ── Show simple toast (uses app's existing toast or creates one) ──
@@ -501,14 +509,6 @@ function urlBase64ToUint8Array(base64String) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
-}
-
-// ── Utility: Get stored OAuth access token ──
-function getAccessToken() {
-  try {
-    return sessionStorage.getItem('gapi_access_token') ||
-           localStorage.getItem('gapi_access_token') || null;
-  } catch (e) { return null; }
 }
 
 // ── Utility: Escape HTML for safe injection ──

@@ -668,28 +668,9 @@
       });
     }
 
-
     // ── Bell click: request notification permission ──
     async function handleBellClick() {
       await requestNotificationPermission();
-    }
-
-    // ── SuperAdmin: Send Notification ──
-    async function handleSendNotification() {
-      const title = document.getElementById('notif-title-input').value.trim();
-      const body  = document.getElementById('notif-body-input').value.trim();
-      if (!title) { showToast('⚠️ Please enter a notification title.', 'warn'); return; }
-      if (!body)  { showToast('⚠️ Please enter a message body.', 'warn'); return; }
-      await sendPushNotification(title, body);
-    }
-
-    // ── SuperAdmin: Test sound & in-app alert ──
-    function handleTestNotification() {
-      showInAppNotification(
-        '🔔 Test Alert — PrintTrack',
-        'This is a test notification with sound. Real push will reach all devices!',
-        true
-      );
     }
   </script>
 

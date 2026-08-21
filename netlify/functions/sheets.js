@@ -9,11 +9,11 @@ const DAILY_TAB = "Form responses 1";
 const PRINTER_TAB = "printerdetails";
 const DAILY_RANGE = "A:L";
 
-// Fetch sheet data using server environment variable
+// Fetch sheet data using server environment variable (GOOGLE_SHEETS_API_KEY only — no hardcoded fallback)
 async function fetchSheetDataPublic(range) {
-  const apiKey = process.env.GOOGLE_SHEETS_API_KEY || process.env.FIREBASE_API_KEY;
+  const apiKey = process.env.GOOGLE_SHEETS_API_KEY;
   if (!apiKey) {
-    throw new Error("SERVER_CONFIG_ERROR: GOOGLE_SHEETS_API_KEY environment variable is not configured in server settings.");
+    throw new Error("SERVER_CONFIG_ERROR: GOOGLE_SHEETS_API_KEY environment variable is not configured in Netlify Dashboard.");
   }
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?key=${apiKey}`;
 
@@ -25,10 +25,21 @@ async function fetchSheetDataPublic(range) {
   return res.json();
 }
 
+// Allowed origins — local dev + Netlify production
+const ALLOWED_ORIGINS = [
+  "https://snmc-smspl.netlify.app",
+  "http://localhost:8080",
+  "http://127.0.0.1:8080"
+];
+
 exports.handler = async function (event, context) {
-  // CORS Headers
+  const origin = event.headers.origin || "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+
+  // CORS Headers — restricted to known origins only
   const headers = {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Vary": "Origin",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Content-Type": "application/json"

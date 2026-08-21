@@ -80,8 +80,8 @@ self.addEventListener('push', (event) => {
   const notifTitle = data.title || 'PrintTrack';
   const notifOptions = {
     body: data.body || 'New alert from PrintTrack.',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    icon: '/assets/icons/icon-192.png',
+    badge: '/assets/icons/icon-192.png',
     tag: 'printtrack-alert',
     renotify: true,
     vibrate: [200, 100, 200, 100, 200],
