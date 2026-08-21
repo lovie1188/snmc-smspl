@@ -9,11 +9,12 @@ const DAILY_TAB = "Form responses 1";
 const PRINTER_TAB = "printerdetails";
 const DAILY_RANGE = "A:L";
 
-const FIREBASE_API_KEY = "AIzaSyC7gOHZrXz8cIdXBW3_GtkHrrAo5_CdX00";
-
-// Fetch sheet data using Firebase Google API Key
+// Fetch sheet data using server environment variable
 async function fetchSheetDataPublic(range) {
-  const apiKey = process.env.GOOGLE_SHEETS_API_KEY || FIREBASE_API_KEY;
+  const apiKey = process.env.GOOGLE_SHEETS_API_KEY || process.env.FIREBASE_API_KEY;
+  if (!apiKey) {
+    throw new Error("SERVER_CONFIG_ERROR: GOOGLE_SHEETS_API_KEY environment variable is not configured in server settings.");
+  }
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?key=${apiKey}`;
 
   const res = await fetch(url);
