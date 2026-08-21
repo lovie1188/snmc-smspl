@@ -15,9 +15,9 @@ const APP_CONFIG = {
   },
   sheets: {
     id: "1Zbx8wOV3FTTxEH0k4i_F2v7SA2_pSp3R6VACroY19H0",
-    dailyTab: "dailyentry",
+    dailyTab: "Form responses 1",
     printerTab: "printerdetails",
-    dailyRange: "A:K",
+    dailyRange: "A:L",
     tokensTab: "fcmtokens"  // FCM token storage tab
   },
   adsense: {

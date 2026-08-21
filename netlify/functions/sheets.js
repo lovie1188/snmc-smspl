@@ -5,7 +5,7 @@
 // ============================================================
 
 const SHEET_ID = "1Zbx8wOV3FTTxEH0k4i_F2v7SA2_pSp3R6VACroY19H0";
-const DAILY_TAB = "dailyentry";
+const DAILY_TAB = "Form responses 1";
 const PRINTER_TAB = "printerdetails";
 const DAILY_RANGE = "A:L";
 
