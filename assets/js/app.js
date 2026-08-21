@@ -671,73 +671,7 @@ function setDefaultDate() {
   }
 }
 
-function calcBalance() {
-  const recieved = parseFloat(document.getElementById("rim-recieved")?.value || 0);
-  const issued   = parseFloat(document.getElementById("rim-issued")?.value || 0);
-  
-  const balEl    = document.getElementById("rim-balance");
-  if (balEl) {
-    const diff = (recieved - issued);
-    balEl.value = diff;
-    balEl.style.color = diff < 0 ? "#ef4444" : "";
-  }
-}
 
-async function submitEntry(event) {
-  event.preventDefault();
-  const btn = document.getElementById("submit-btn");
-
-  const serialNo     = document.getElementById("serial-no")?.value || currentSerialNo;
-  const date         = document.getElementById("entry-date")?.value?.trim();
-  const counter      = document.getElementById("counter-select")?.value?.trim();
-  const opening      = document.getElementById("opening-reading")?.value?.trim() || "";
-  const closing      = document.getElementById("closing-reading")?.value?.trim() || "";
-  const issueReceive = document.getElementById("issue-receive-select")?.value || "ISSUE";
-  const recieved     = document.getElementById("rim-recieved")?.value?.trim() || "0";
-  const issued       = document.getElementById("rim-issued")?.value?.trim() || "0";
-  const balance      = document.getElementById("rim-balance")?.value?.trim() || "0";
-  const remark       = document.getElementById("remark")?.value?.trim() || "";
-  const receivedBy   = document.getElementById("received-by")?.value?.trim() || "";
-  const issuedBy     = document.getElementById("issued-by")?.value?.trim() || "";
-
-  if (!date || !counter) {
-    showToast("Please select Date and Counter Number.", "warn");
-    return;
-  }
-
-  const row = [
-    serialNo,
-    date,
-    counter,
-    opening,
-    closing,
-    issueReceive,
-    recieved,
-    issued,
-    balance,
-    remark,
-    receivedBy,
-    issuedBy
-  ];
-
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span> Saving...`;
-
-  try {
-    await appendDailyEntry(row);
-    showToast("✅ Entry saved to Google Sheets!", "success");
-    document.getElementById("entry-form").reset();
-    setDefaultDate();
-    toggleIssueReceiveFields();
-    await loadHistory();
-    showTab("history");
-  } catch (err) {
-    showToast("❌ Failed: " + err.message, "error");
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg> Save Entry`;
-  }
-}
 
 function showTab(tab) {
   document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
