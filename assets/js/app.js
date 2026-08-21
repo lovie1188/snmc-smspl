@@ -1,3 +1,26 @@
+// ============================================================
+// app.js — PrintTrack Main Application Logic
+// ============================================================
+
+let allDailyRows = [];
+let printerData = { headers: [], rows: [] };
+let currentUser = null;
+let currentSerialNo = 1;
+
+const EXPECTED_HEADERS = [
+  "Timestamp",        // Col A
+  "Email address",    // Col B
+  "Date",             // Col C
+  "counter Number",   // Col D
+  "Paper Recieved",   // Col E
+  "Paper Issued",     // Col F
+  "ISSUE / RECEIVE",  // Col G
+  "BALANCE",          // Col H
+  "REMARK",           // Col I
+  "Opening reading",  // Col J
+  "Closing Reading"   // Col K
+];
+
 // ── Real-Time Form Validation Constraints ──────────────────
 function validateReadings() {
   const openingInput = document.getElementById("opening-reading");
