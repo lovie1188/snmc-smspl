@@ -5,8 +5,52 @@
 
 const { id: SHEET_ID, dailyTab: DAILY_TAB, printerTab: PRINTER_TAB, dailyRange: DAILY_RANGE } = APP_CONFIG.sheets;
 
-// ── Core API request wrapper ─────────────────────────────
+const FIREBASE_API_KEY = "AIzaSyC7gOHZrXz8cIdXBW3_GtkHrrAo5_CdX00";
+
+// ── Core API request wrapper (Supports Local Server & Netlify Live) ──
 async function sheetsRequest(action, options = {}) {
+  // If running on Localhost/XAMPP, fetch directly from Google Sheets API using Firebase API Key
+  const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  
+  if (isLocal) {
+    const range = action === "printerdetails" ? `'${PRINTER_TAB}'!A:Z` : `'${DAILY_TAB}'!${DAILY_RANGE}`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?key=${FIREBASE_API_KEY}`;
+    
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      
+      if (action === "printerdetails") {
+        if (!data || !data.values || data.values.length < 2) return { headers: [], rows: [] };
+        const rawHeaders = data.values[0].map(h => String(h).trim());
+        const rows = data.values.slice(1).filter(r => r.some(c => String(c).trim() !== "")).map(r => {
+          const obj = {};
+          rawHeaders.forEach((h, i) => { obj[h] = String(r[i] || "").trim(); });
+          return obj;
+        });
+        return { headers: rawHeaders, rows };
+      } else {
+        if (!data || !data.values || data.values.length === 0) return { headers: [], rows: [] };
+        const expectedHeaders = ["Timestamp", "Email address", "Date", "counter Number", "Paper Recieved", "Paper Issued", "ISSUE / RECEIVE", "BALANCE", "REMARK", "Opening reading", "Closing Reading"];
+        const rawHeaders = data.values[0].map(h => String(h).trim());
+        const rows = data.values.slice(1).filter(r => r.some(c => String(c).trim() !== "")).map(r => {
+          const obj = {};
+          expectedHeaders.forEach((h, i) => {
+            const rawIdx = rawHeaders.indexOf(h);
+            obj[h] = rawIdx !== -1 ? String(r[rawIdx] || "").trim() : (r[i] ? String(r[i]).trim() : "");
+          });
+          return obj;
+        });
+        return { headers: expectedHeaders, rows };
+      }
+    } catch (e) {
+      console.error(`[Local Sheets Fetch Error]:`, e.message);
+      throw e;
+    }
+  }
+
+  // Live Netlify Environment: Call Netlify Function
   try {
     const res = await fetch(`/.netlify/functions/sheets?action=${action}`, options);
     if (!res.ok) {
