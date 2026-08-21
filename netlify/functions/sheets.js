@@ -17,12 +17,17 @@ async function fetchSheetDataPublic(range) {
     url += `?key=${apiKey}`;
   }
 
-  const res = await fetch(url);
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(`Google Sheets API Error ${res.status}: ${errText || res.statusText}`);
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[Serverless Sheets] HTTP ${res.status} fetching range ${range}`);
+      return { values: [] };
+    }
+    return res.json();
+  } catch (e) {
+    console.warn(`[Serverless Sheets] Exception: ${e.message}`);
+    return { values: [] };
   }
-  return res.json();
 }
 
 exports.handler = async function (event, context) {
