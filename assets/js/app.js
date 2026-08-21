@@ -58,7 +58,8 @@ function calcBalance() {
 
 // ── Handle Counter Selection (Auto Opening Reading + Render History) ──
 function handleCounterSelectChange() {
-  const selectedCounter = document.getElementById("counter-select")?.value?.trim();
+  const selectEl = document.getElementById("counter-select");
+  const selectedCounter = selectEl?.value?.trim();
   const titleEl = document.getElementById("counter-history-title");
   const tbody = document.getElementById("counter-history-body");
   const noHist = document.getElementById("no-counter-history");
@@ -73,26 +74,32 @@ function handleCounterSelectChange() {
     return;
   }
 
-  if (titleEl) titleEl.textContent = `History — Counter ${selectedCounter}`;
+  // Extract base Counter ID (e.g., "Counter9" or "Counter8") to match Google Sheets rows accurately
+  const cleanCounter = selectedCounter.split(" ")[0].trim();
 
-  // 1. Filter history for selected counter
+  if (titleEl) titleEl.textContent = `History — ${selectedCounter}`;
+
+  // 1. Filter history for selected counter flexibly
   const counterRows = allDailyRows.filter(r => {
-    const c = r["counter Number"] || r["Counter Number"] || r["Counter"] || r["Counter No."] || "";
-    return String(c).trim() === selectedCounter;
+    const rawVal = Object.values(r).join(" ");
+    return rawVal.includes(cleanCounter) || rawVal.includes(selectedCounter);
   });
 
   // 2. Auto-set Opening Reading from latest entry of selected counter (Column K / Closing Reading)
   const openingEl = document.getElementById("opening-reading");
   if (openingEl) {
+    let foundPrevClosing = "";
     if (counterRows.length > 0) {
-      const latestEntry = counterRows[0]; // rows are reversed (latest first)
-      const prevClosing = latestEntry["Closing Reading"] || latestEntry["Closing"] || "";
-      if (prevClosing !== "") {
-        openingEl.value = prevClosing;
+      // Find latest entry with non-empty Closing Reading
+      for (const entry of counterRows) {
+        const val = entry["Closing Reading"] || entry["Closing"] || entry["closing"] || "";
+        if (val !== "" && !isNaN(val)) {
+          foundPrevClosing = String(val).trim();
+          break;
+        }
       }
-    } else {
-      openingEl.value = "0";
     }
+    openingEl.value = foundPrevClosing !== "" ? foundPrevClosing : "0";
     calcBalance();
   }
 

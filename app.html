@@ -397,12 +397,12 @@
           <!-- Column E & F: Paper Recieved & Paper Issued -->
           <div class="form-row">
             <div class="form-group" id="group-paper-recieved" style="display:none;">
-              <label>Paper Recieved (Column E)</label>
+              <label>Paper Recieved</label>
               <input type="number" class="native-input" id="paper-recieved" placeholder="0" min="0" step="1" oninput="calcBalance()">
             </div>
 
             <div class="form-group" id="group-paper-issued">
-              <label>Paper Issued (Column F)</label>
+              <label>Paper Issued</label>
               <input type="number" class="native-input" id="paper-issued" placeholder="0" min="0" step="1" oninput="calcBalance()">
             </div>
           </div>
@@ -410,25 +410,25 @@
           <!-- Column J & K: Opening & Closing Reading -->
           <div class="form-row">
             <div class="form-group">
-              <label>Opening Reading (Column J)</label>
-              <input type="number" class="native-input" id="opening-reading" placeholder="Auto / Previous Closing" min="0" oninput="calcBalance()">
+              <label>Opening Reading</label>
+              <input type="number" class="native-input" id="opening-reading" placeholder="Auto Calculated" min="0" oninput="calcBalance()">
             </div>
 
             <div class="form-group">
-              <label>Closing Reading (Column K) <span class="req">*</span></label>
-              <input type="number" class="native-input" id="closing-reading" placeholder="Current Reading" min="0" required oninput="calcBalance()">
+              <label>Closing Reading <span class="req">*</span></label>
+              <input type="number" class="native-input" id="closing-reading" placeholder="Enter Current Reading" min="0" required oninput="calcBalance()">
             </div>
           </div>
 
-          <!-- Column H: BALANCE (Column J - Column K) -->
+          <!-- Column H: BALANCE -->
           <div class="form-group">
-            <label>BALANCE (Column H — Opening - Closing)</label>
-            <input type="number" class="native-input" id="paper-balance" readonly placeholder="Auto Calculated (J - K)">
+            <label>Paper Balance (Opening - Closing)</label>
+            <input type="number" class="native-input" id="paper-balance" readonly placeholder="Auto Calculated">
           </div>
 
           <!-- Column I: REMARK -->
           <div class="form-group">
-            <label>Remark (Column I)</label>
+            <label>Remark</label>
             <textarea class="native-textarea" id="remark" rows="2" placeholder="Add any notes/remarks..."></textarea>
           </div>
 
@@ -456,13 +456,13 @@
               <tr>
                 <th>Date</th>
                 <th>Counter</th>
-                <th>Opening (J)</th>
-                <th>Closing (K)</th>
-                <th>Balance (H)</th>
-                <th>Issued (F)</th>
-                <th>Recieved (E)</th>
-                <th>Type (G)</th>
-                <th>Remark (I)</th>
+                <th>Opening</th>
+                <th>Closing</th>
+                <th>Balance</th>
+                <th>Issued</th>
+                <th>Recieved</th>
+                <th>Type</th>
+                <th>Remark</th>
               </tr>
             </thead>
             <tbody id="counter-history-body"></tbody>
