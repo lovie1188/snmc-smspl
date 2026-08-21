@@ -70,20 +70,13 @@ exports.handler = async function (event, context) {
         return { statusCode: 200, headers, body: JSON.stringify({ headers: [], rows: [] }) };
       }
 
-      const expectedHeaders = [
-        "Timestamp", "Email address", "Date", "counter Number",
-        "Paper Recieved", "Paper Issued", "ISSUE / RECEIVE", "BALANCE",
-        "REMARK", "Opening reading", "Closing Reading"
-      ];
-
       const rawHeaders = data.values[0].map(h => String(h).trim());
       const rows = data.values.slice(1)
         .filter(row => row.some(cell => String(cell).trim() !== ""))
         .map(row => {
           const obj = {};
-          expectedHeaders.forEach((h, i) => {
-            const rawIdx = rawHeaders.indexOf(h);
-            obj[h] = rawIdx !== -1 ? String(row[rawIdx] || "").trim() : (row[i] ? String(row[i]).trim() : "");
+          rawHeaders.forEach((h, i) => {
+            obj[h] = String(row[i] !== undefined && row[i] !== null ? row[i] : "").trim();
           });
           return obj;
         });
@@ -91,7 +84,7 @@ exports.handler = async function (event, context) {
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ headers: expectedHeaders, rows })
+        body: JSON.stringify({ headers: rawHeaders, rows })
       };
     }
 

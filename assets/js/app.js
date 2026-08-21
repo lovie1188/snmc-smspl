@@ -27,26 +27,46 @@ function calculateHospitalMetrics() {
   let mghTotal = 0;
   let umaidTotal = 0;
 
+  // Build counter-to-hospital map from printerData if available
+  const counterHospitalMap = {};
+  if (printerData && printerData.rows) {
+    printerData.rows.forEach(p => {
+      const cNo = p["Counter No."] || p["Counter No"] || p["Counter"] || Object.values(p)[0] || "";
+      const hosp = p["Hospital"] || "";
+      if (cNo) {
+        counterHospitalMap[cNo.trim()] = hosp.trim().toUpperCase();
+        const cleanC = cNo.split(" ")[0].trim();
+        counterHospitalMap[cleanC] = hosp.trim().toUpperCase();
+      }
+    });
+  }
+
   allDailyRows.forEach(r => {
-    const rawStr = Object.values(r).join(" ").toUpperCase();
+    const cVal = r["counter Number"] || r["Counter Number"] || r["Counter"] || "";
+    const hospCol = (r["Hospital Name"] || r["Hospital Name "] || r["Hospital"] || "").toUpperCase();
     const issued = parseFloat(r["Paper Issued"] || r["Issued"] || 0) || 0;
 
-    if (rawStr.includes("MDM")) {
-      mdmTotal += issued;
-    } else if (rawStr.includes("MGH")) {
-      mghTotal += issued;
-    } else if (rawStr.includes("UMAID") || rawStr.includes("GYN") || rawStr.includes("PEDIA")) {
-      umaidTotal += issued;
+    let hospital = hospCol || counterHospitalMap[cVal.trim()] || counterHospitalMap[cVal.split(" ")[0].trim()] || "";
+
+    if (!hospital) {
+      const rawStr = Object.values(r).join(" ").toUpperCase();
+      if (rawStr.includes("MDM")) hospital = "MDM";
+      else if (rawStr.includes("MGH")) hospital = "MGH";
+      else if (rawStr.includes("UMAID") || rawStr.includes("GYN") || rawStr.includes("PEDIA")) hospital = "UMAID";
     }
+
+    if (hospital.includes("MDM")) mdmTotal += issued;
+    else if (hospital.includes("MGH")) mghTotal += issued;
+    else if (hospital.includes("UMAID") || hospital.includes("GYN") || hospital.includes("PEDIA")) umaidTotal += issued;
   });
 
   const mdmEl = document.getElementById("mdm-issued-count");
   const mghEl = document.getElementById("mgh-issued-count");
   const umaidEl = document.getElementById("umaid-issued-count");
 
-  if (mdmEl) mdmEl.textContent = mdmTotal;
-  if (mghEl) mghEl.textContent = mghTotal;
-  if (umaidEl) umaidEl.textContent = umaidTotal;
+  if (mdmEl) mdmEl.textContent = mdmTotal.toLocaleString("en-IN");
+  if (mghEl) mghEl.textContent = mghTotal.toLocaleString("en-IN");
+  if (umaidEl) umaidEl.textContent = umaidTotal.toLocaleString("en-IN");
 }
 
 // ── Search & Filter History Table ──────────────────────────
@@ -178,23 +198,24 @@ function handleCounterSelectChange() {
 
   if (titleEl) titleEl.textContent = `History — ${selectedCounter}`;
 
-  // 1. Filter history for selected counter flexibly across all columns
+  // 1. Filter history for selected counter: Match Counter ID strictly or full string
   const counterRows = allDailyRows.filter(r => {
+    const c = r["counter Number"] || r["Counter Number"] || r["Counter"] || "";
     const rawVal = Object.values(r).join(" ");
-    return rawVal.includes(cleanCounter) || rawVal.includes(selectedCounter);
+    return String(c).trim().startsWith(cleanCounter) || String(c).trim() === selectedCounter || rawVal.includes(selectedCounter);
   });
 
-  // 2. Auto-set Opening Reading from latest entry of selected counter
+  // 2. Auto-set Opening Reading from LATEST entry of selected counter (Column K / Closing Reading)
   const openingEl = document.getElementById("opening-reading");
   if (openingEl) {
     let foundPrevClosing = "";
     if (counterRows.length > 0) {
+      // counterRows are ordered latest first (from loadHistory reverse)
       for (const entry of counterRows) {
-        // Form responses 1 has 'Closing Reading' in Column K / index
         const val = entry["Closing Reading"] || entry["Closing"] || entry["closing"] || "";
         if (val !== "" && !isNaN(val)) {
           foundPrevClosing = String(val).trim();
-          break;
+          break; // latest entry found
         }
       }
     }
@@ -208,7 +229,7 @@ function handleCounterSelectChange() {
     if (tbody) tbody.innerHTML = "";
     if (noHist) {
       noHist.style.display = "block";
-      noHist.textContent = `No previous records found for Counter ${selectedCounter}.`;
+      noHist.textContent = `No previous records found for ${selectedCounter}.`;
     }
     return;
   }
@@ -223,10 +244,10 @@ function handleCounterSelectChange() {
       const balance = r["BALANCE"] || r["balance"] || "";
       const issued  = r["Paper Issued"] || r["Issued"] || "0";
       const recieved= r["Paper Recieved"] || r["Rim recieved"] || "0";
-      const type    = r["ISSUE / RECEIVE"] || "ISSUE";
+      const type    = r["ISSUE / RECEIVE "] || r["ISSUE / RECEIVE"] || "ISSUE";
       const remark  = r["REMARK"] || r["Remark"] || "";
 
-      const typeClass = type === "RECEIVE" ? "badge-receive" : "badge-issue";
+      const typeClass = String(type).trim() === "RECEIVE" ? "badge-receive" : "badge-issue";
 
       return `<tr>
         <td>${date}</td>

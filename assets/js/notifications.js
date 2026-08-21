@@ -212,14 +212,17 @@ async function fetchAllowedSenders() {
   const apiKey = APP_CONFIG.firebase.apiKey;
 
   try {
-    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/'${tab}'!A:B?key=${apiKey}`);
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent("'" + tab + "'!A:B")}?key=${apiKey}`;
+    const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
       const rows = (data.values || []).slice(1);
       cachedAllowedSenders = rows.map(r => String(r[0] || '').trim()).filter(Boolean);
+    } else {
+      cachedAllowedSenders = [];
     }
   } catch (e) {
-    console.warn("[Notifications] Allowed senders fetch failed:", e.message);
+    cachedAllowedSenders = [];
   }
 }
 

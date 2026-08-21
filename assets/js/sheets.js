@@ -32,17 +32,15 @@ async function sheetsRequest(action, options = {}) {
         return { headers: rawHeaders, rows };
       } else {
         if (!data || !data.values || data.values.length === 0) return { headers: [], rows: [] };
-        const expectedHeaders = ["Timestamp", "Email address", "Date", "counter Number", "Paper Recieved", "Paper Issued", "ISSUE / RECEIVE", "BALANCE", "REMARK", "Opening reading", "Closing Reading"];
         const rawHeaders = data.values[0].map(h => String(h).trim());
         const rows = data.values.slice(1).filter(r => r.some(c => String(c).trim() !== "")).map(r => {
           const obj = {};
-          expectedHeaders.forEach((h, i) => {
-            const rawIdx = rawHeaders.indexOf(h);
-            obj[h] = rawIdx !== -1 ? String(r[rawIdx] || "").trim() : (r[i] ? String(r[i]).trim() : "");
+          rawHeaders.forEach((h, i) => {
+            obj[h] = String(r[i] !== undefined && r[i] !== null ? r[i] : "").trim();
           });
           return obj;
         });
-        return { headers: expectedHeaders, rows };
+        return { headers: rawHeaders, rows };
       }
     } catch (e) {
       console.error(`[Local Sheets Fetch Error]:`, e.message);
