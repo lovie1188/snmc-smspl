@@ -9,25 +9,19 @@ const DAILY_TAB = "dailyentry";
 const PRINTER_TAB = "printerdetails";
 const DAILY_RANGE = "A:L";
 
-// Fallback public API fetch helper using Google Sheets v4 API
-async function fetchSheetDataPublic(range) {
-  const apiKey = process.env.GOOGLE_SHEETS_API_KEY;
-  let url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}`;
-  if (apiKey) {
-    url += `?key=${apiKey}`;
-  }
+const FIREBASE_API_KEY = "AIzaSyC7gOHZrXz8cIdXBW3_GtkHrrAo5_CdX00";
 
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.warn(`[Serverless Sheets] HTTP ${res.status} fetching range ${range}`);
-      return { values: [] };
-    }
-    return res.json();
-  } catch (e) {
-    console.warn(`[Serverless Sheets] Exception: ${e.message}`);
-    return { values: [] };
+// Fetch sheet data using Firebase Google API Key
+async function fetchSheetDataPublic(range) {
+  const apiKey = process.env.GOOGLE_SHEETS_API_KEY || FIREBASE_API_KEY;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?key=${apiKey}`;
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Google Sheets API HTTP ${res.status}: ${errText || res.statusText}`);
   }
+  return res.json();
 }
 
 exports.handler = async function (event, context) {
