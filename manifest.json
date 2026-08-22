@@ -1,31 +1,43 @@
 {
   "id": "com.softtech.printtrack.pwa",
-  "name": "PrintTrack",
+  "name": "PrintTrack — Hospital Paper & Printer System",
   "short_name": "PrintTrack",
-  "description": "Daily Printer Reading & Paper Entry System — SNMC",
-  "start_url": "/index.html",
+  "description": "Daily Printer Reading & Hospital Paper Stock Entry Management System — SNMC",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
-  "orientation": "portrait",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#070a12",
   "theme_color": "#3b82f6",
   "lang": "en",
   "dir": "ltr",
   "prefer_related_applications": false,
-  "categories": ["productivity", "utilities", "business"],
+  "categories": ["productivity", "utilities", "business", "medical"],
   "icons": [
     {
       "src": "/assets/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/assets/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
@@ -37,12 +49,18 @@
       "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }]
     },
     {
+      "name": "Printers Directory",
+      "short_name": "Printers",
+      "description": "View master printer catalog and status",
+      "url": "/app.html#printers",
+      "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }]
+    },
+    {
       "name": "View History",
       "short_name": "History",
       "description": "View recent printer reading history",
       "url": "/app.html#history",
       "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }]
     }
-  ],
-  "screenshots": []
+  ]
 }
