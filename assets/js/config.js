@@ -26,8 +26,6 @@ const APP_CONFIG = {
     slotBanner: "1234567890"            // Replace with your Ad Unit Slot ID
   },
   notifications: {
-    fcmServerKey: "REPLACE_WITH_FCM_SERVER_KEY",
-    vapidKey: "REPLACE_WITH_VAPID_PUBLIC_KEY",
     superAdmins: [
       "softtech.lovejeet@gmail.com",
       "softtech2009@gmail.com"
