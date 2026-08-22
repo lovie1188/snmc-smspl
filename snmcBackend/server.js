@@ -96,10 +96,24 @@ async function requireFirebaseAuth(req, res, next) {
   }
 }
 
+function formatPrivateKey(key) {
+  if (!key) return "";
+  let clean = key.trim();
+  // Remove wrapping quotes if present
+  if ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) {
+    clean = clean.slice(1, -1);
+  }
+  // Replace escaped \n with actual newlines
+  clean = clean.replace(/\\n/g, "\n");
+  // Normalize Windows line endings
+  clean = clean.replace(/\r\n/g, "\n");
+  return clean;
+}
+
 // ── Google Sheets Service Account Client ──
 function getSheetsJwtClient() {
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = (process.env.GOOGLE_PRIVATE_KEY || "").replace(/\\n/g, "\n");
+  const privateKey = formatPrivateKey(process.env.GOOGLE_PRIVATE_KEY);
   if (!clientEmail || !privateKey) return null;
 
   if (!sheetsJwtClient) {
@@ -406,6 +420,34 @@ async function handleActionRequest(req, res) {
       });
       const filteredRows = perms.isAll ? allRows : allRows.filter(r => isHospitalAllowed(r["HOSPITAL"], perms.hospitals, false));
       return res.json({ headers: rawHeaders, rows: filteredRows, userHospital: perms.isAll ? "ALL" : perms.hospitals.join(", "), isSuperAdmin: perms.isSuperAdmin });
+    }
+
+    if (action === "checkSender") {
+      const email = req.user.email;
+      const isSuper = perms.isSuperAdmin;
+      let isAllowed = isSuper;
+      try {
+        const sendersData = await fetchSheetData(`'${ALLOWED_SENDERS_TAB}'!A:B`);
+        if (sendersData && sendersData.values) {
+          const allowedList = sendersData.values.slice(1).map(r => String(r[0] || "").trim().toLowerCase());
+          if (allowedList.includes(email)) isAllowed = true;
+        }
+      } catch (_) {}
+      return res.json({ isAllowedSender: isAllowed, isSuperAdmin: isSuper, email });
+    }
+
+    if (action === "approveSender" && method === "POST") {
+      if (!perms.isSuperAdmin) return res.status(403).json({ error: "Forbidden: SuperAdmin access required." });
+      const targetEmail = (req.body.email || "").toLowerCase().trim();
+      if (!targetEmail || !targetEmail.includes("@")) return res.status(400).json({ error: "Invalid email address." });
+      const authHeaders = await getSheetsAuthHeaders();
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(`'${ALLOWED_SENDERS_TAB}'!A:B`)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+      await fetch(url, {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [[targetEmail, new Date().toISOString()]] })
+      });
+      return res.json({ ok: true, email: targetEmail });
     }
 
     return res.status(400).json({ error: `Unsupported action: ${action}` });
