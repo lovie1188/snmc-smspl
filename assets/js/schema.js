@@ -14,23 +14,24 @@
 
 const SHEET_SCHEMA = {
   // ── Main daily-entry tab (Google Form "Form responses 1") ──
-  // 11 columns, A:K. Written by submitEntry(); read by loadHistory().
+  // 12 columns, A:L. Written by submitEntry(); read by loadHistory().
   daily: {
     tab: "Form responses 1",
     range: "A:L",
     // Ordered column contract (index 0 => column A).
     columns: [
-      { key: "timestamp", header: "Timestamp",       type: "datetime" },
-      { key: "email",     header: "Email address",   type: "string"   },
-      { key: "date",      header: "Date",            type: "date"     },
-      { key: "counter",   header: "counter Number",  type: "string"   },
-      { key: "received",  header: "Paper Recieved",  type: "number"   },
-      { key: "issued",    header: "Paper Issued",    type: "number"   },
-      { key: "type",      header: "ISSUE / RECEIVE", type: "enum", enum: ["ISSUE", "RECEIVE", "None"] },
-      { key: "balance",   header: "BALANCE",         type: "number"   },
-      { key: "remark",    header: "REMARK",          type: "string"   },
-      { key: "opening",   header: "Opening reading", type: "number"   },
-      { key: "closing",   header: "Closing Reading", type: "number"   }
+      { key: "timestamp", header: "Timestamp",       type: "datetime" }, // Col A
+      { key: "email",     header: "Email address",   type: "string"   }, // Col B
+      { key: "date",      header: "Date",            type: "date"     }, // Col C
+      { key: "counter",   header: "counter Number",  type: "string"   }, // Col D
+      { key: "received",  header: "Paper Recieved",  type: "number"   }, // Col E
+      { key: "issued",    header: "Paper Issued",    type: "number"   }, // Col F
+      { key: "type",      header: "ISSUE / RECEIVE ",type: "enum", enum: ["ISSUE", "RECEIVE", "None"] }, // Col G
+      { key: "balance",   header: "BALANCE",         type: "number"   }, // Col H
+      { key: "remark",    header: "REMARK",          type: "string"   }, // Col I
+      { key: "opening",   header: "Opening reading", type: "number"   }, // Col J
+      { key: "closing",   header: "Closing Reading", type: "number"   }, // Col K
+      { key: "hospital",  header: "Hospital Name",   type: "string"   }  // Col L
     ]
   },
 
@@ -64,6 +65,38 @@ const SHEET_SCHEMA = {
     columns: [
       { key: "email",    header: "Email",    type: "string" },
       { key: "approvedAt", header: "Approved At", type: "datetime" }
+    ]
+  },
+
+  // ── Stock / Paper Received tab (stock tab) ──
+  stock: {
+    tab: "stock",
+    range: "A:M",
+    columns: [
+      { key: "date",        header: "Date",            type: "date"   }, // Col A
+      { key: "invoiceNo",   header: "Invoice No.",     type: "string" }, // Col B
+      { key: "description", header: "Description Of Goods", type: "string" },
+      { key: "hsn",         header: "HSN/SAC",         type: "string" },
+      { key: "rimQuantity", header: "Qualtity",        type: "number" }, // Col E (Rim Count)
+      { key: "unit",        header: "UNIT",            type: "string" },
+      { key: "rateTax",     header: "Rate Inc of TAX", type: "number" },
+      { key: "rate",        header: "Rate",            type: "number" },
+      { key: "per",         header: "per",             type: "string" },
+      { key: "amount",      header: "Amount",          type: "number" },
+      { key: "total",       header: "TOTAL",           type: "number" },
+      { key: "hospital",    header: "HOSPITAL",        type: "string" }, // Col L
+      { key: "paperCount",  header: "PAPER Quantity",   type: "number" }  // Col M (Sheets Count = Rims * 500)
+    ]
+  },
+
+  // ── User-to-Hospital dynamic permission mapping tab ──
+  userHospitals: {
+    tab: "user_hospitals",
+    range: "A:C",
+    columns: [
+      { key: "email",     header: "Email",     type: "string" },
+      { key: "hospitals", header: "Hospitals", type: "string" }, // Comma-separated (e.g. "MDM, MGH" or "ALL")
+      { key: "role",      header: "Role",      type: "string" }  // "SuperAdmin", "Supervisor", "Operator"
     ]
   }
 };

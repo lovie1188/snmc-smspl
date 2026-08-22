@@ -21,8 +21,8 @@
   --text:        #0f172a;
   --text-muted:  #64748b;
   --text-dim:    #94a3b8;
-  --nav-h:       68px;
-  --header-h:    60px;
+  --nav-h:       56px;
+  --header-h:    50px;
 }
 
 body {
@@ -135,116 +135,116 @@ body {
 .dropdown-item.danger { color: #ef4444; }
 .dropdown-item.danger svg { color: #ef4444; }
 
-/* ── Main Layout ──────────────────────────────────────────── */
+/* ── Main Layout (Tight & Premium Screen Space Utilization) ── */
 .app-main {
-  padding-top: calc(var(--header-h) + 16px);
-  padding-bottom: calc(var(--nav-h) + 20px);
-  padding-left: 16px; padding-right: 16px;
-  max-width: 480px; margin: 0 auto;
+  padding-top: calc(var(--header-h) + 8px);
+  padding-bottom: calc(var(--nav-h) + 12px);
+  padding-left: 5px; padding-right: 5px;
+  max-width: 520px; margin: 0 auto;
 }
 
 .tab-panel { display: none; }
-.tab-panel.active { display: block; animation: nativeSlide 0.25s ease; }
+.tab-panel.active { display: block; animation: nativeSlide 0.2s ease; }
 
 @keyframes nativeSlide {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Skynex Typography Hero Style ─────────────────────────── */
 .hero-greeting {
-  font-size: 0.95rem; font-weight: 600; color: var(--text-muted); margin-bottom: 2px;
+  font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 1px;
 }
 .hero-greeting-name {
-  font-size: 0.95rem; font-weight: 700; color: var(--text);
+  font-size: 0.88rem; font-weight: 700; color: var(--text);
 }
 .hero-title-skynex {
-  font-size: 2.1rem; font-weight: 800; line-height: 1.15;
-  letter-spacing: -0.6px; color: #0f172a; margin-bottom: 20px;
+  font-size: 1.6rem; font-weight: 800; line-height: 1.15;
+  letter-spacing: -0.4px; color: #0f172a; margin-bottom: 10px;
 }
 .hero-title-skynex em {
   font-family: 'Instrument Serif', serif;
-  font-style: italic; font-weight: 400; font-size: 2.4rem;
-  color: var(--purple); margin-left: 4px;
+  font-style: italic; font-weight: 400; font-size: 1.8rem;
+  color: var(--purple); margin-left: 3px;
 }
 
 /* ── Glassmorphism Skynex Cards ───────────────────────────── */
 .skynex-card {
-  background: var(--surface-card);
+  /*background: var(--surface-card);*/
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
-  border-radius: 26px; padding: 20px;
-  box-shadow: 0 12px 32px rgba(31, 38, 135, 0.06);
-  margin-bottom: 16px; position: relative; overflow: hidden;
+  border-radius: 18px; padding: 6px 5px;
+  box-shadow: 0 6px 20px rgba(31, 38, 135, 0.04);
+  margin-bottom: 10px; position: relative; overflow: hidden;
 }
 
 .skynex-card-title {
-  font-size: 0.9rem; font-weight: 800; color: var(--text);
+  font-size: 0.86rem; font-weight: 800; color: var(--text);
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 .skynex-card-title .arrow-btn {
-  width: 32px; height: 32px; border-radius: 50%;
+  width: 28px; height: 28px; border-radius: 50%;
   background: rgba(255,255,255,0.9);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06); color: var(--text);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05); color: var(--text);
 }
 
 /* ── Action Grid Cards (Skynex Widget Style) ─────────────── */
 .skynex-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  margin-bottom: 16px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  margin-bottom: 10px;
 }
 
 .skynex-widget {
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--border);
-  border-radius: 22px; padding: 16px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.04);
+  border-radius: 16px; padding: 10px 12px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.03);
   cursor: pointer; transition: all 0.15s ease;
   display: flex; flex-direction: column; justify-content: space-between;
-  min-height: 120px;
+  min-height: 90px;
 }
-.skynex-widget:active { transform: scale(0.97); }
+.skynex-widget:active { transform: scale(0.98); }
 
 .skynex-widget .w-icon {
-  width: 40px; height: 40px; border-radius: 14px;
+  width: 32px; height: 32px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.3rem; margin-bottom: 12px;
+  font-size: 1.1rem; margin-bottom: 6px;
 }
 .skynex-widget.w-blue .w-icon { background: rgba(59, 130, 246, 0.12); color: var(--primary); }
 .skynex-widget.w-purple .w-icon { background: rgba(168, 85, 247, 0.12); color: var(--purple); }
 
-.skynex-widget .w-title { font-size: 0.95rem; font-weight: 800; color: var(--text); margin-bottom: 2px; }
-.skynex-widget .w-sub { font-size: 0.7rem; font-weight: 500; color: var(--text-muted); }
+.skynex-widget .w-title { font-size: 0.85rem; font-weight: 800; color: var(--text); margin-bottom: 1px; }
+.skynex-widget .w-sub { font-size: 0.65rem; font-weight: 500; color: var(--text-muted); }
 
 /* ── Floating Action Button (FAB Skynex Scan Style) ───────── */
 .skynex-fab {
-  position: fixed; bottom: 84px; right: 20px; z-index: 600;
-  width: 54px; height: 54px; border-radius: 50%;
+  position: fixed; bottom: 74px; right: 16px; z-index: 600;
+  width: 48px; height: 48px; border-radius: 50%;
   background: linear-gradient(135deg, var(--purple), var(--pink));
-  color: #fff; border: 3px solid #ffffff;
+  color: #fff; border: 2.5px solid #ffffff;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 10px 25px rgba(168, 85, 247, 0.4);
+  box-shadow: 0 8px 20px rgba(168, 85, 247, 0.35);
   cursor: pointer; transition: all 0.2s ease;
 }
 .skynex-fab:active { transform: scale(0.9); }
 
 /* ── Form Inputs (Light Modern Glass) ─────────────────────── */
-.form-group { margin-bottom: 12px; }
+.form-group { margin-bottom: 8px; }
 .form-group label {
-  display: block; font-size: 0.72rem; font-weight: 700;
-  color: var(--text-muted); margin-bottom: 4px; letter-spacing: 0.2px;
+  display: block; font-size: 0.68rem; font-weight: 700;
+  color: var(--text-muted); margin-bottom: 3px; letter-spacing: 0.2px;
 }
 .form-group label .req { color: var(--pink); }
 
 .native-input, .native-select, .native-textarea {
-  width: 100%; background: rgba(255, 255, 255, 0.9);
-  border: 1px solid var(--border-subtle); border-radius: 14px;
-  padding: 10px 14px; font-size: 0.9rem; font-weight: 600;
+  width: 100%; background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border-subtle); border-radius: 12px;
+  padding: 8px 12px; font-size: 0.85rem; font-weight: 600;
   color: var(--text); font-family: inherit; transition: all 0.15s ease;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.02);
   -webkit-appearance: none;
 }
 
@@ -306,26 +306,111 @@ body {
   background: #0f172a; color: #fff; border-radius: 12px; padding: 4px 12px;
 }
 
-/* ── History Table Clean Skynex Styling ──────────────────── */
+/* ── History Table & Mobile Card View ────────────────── */
+.history-controls {
+  display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;
+}
+.history-search-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+@media (max-width: 480px) {
+  .history-search-row { grid-template-columns: 1fr; }
+}
+
+.history-summary-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px; background: rgba(241, 245, 249, 0.7);
+  border-radius: 10px; font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
+}
+.history-view-toggles {
+  display: flex; gap: 3px; background: #e2e8f0; padding: 2px; border-radius: 6px;
+}
+.view-toggle-btn {
+  border: none; background: transparent; padding: 3px 6px; border-radius: 5px;
+  font-size: 0.72rem; font-weight: 700; color: var(--text-muted); cursor: pointer;
+  transition: all 0.15s ease;
+}
+.view-toggle-btn.active {
+  background: #ffffff; color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
 .table-container {
-  overflow-x: auto; border-radius: 16px;
+  overflow-x: auto; border-radius: 12px;
   border: 1px solid var(--border-subtle); background: #ffffff;
   max-width: 100%;
 }
-.native-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; white-space: nowrap; }
+.native-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; white-space: nowrap; }
 .native-table th {
-  background: #f8fafc; padding: 10px 12px; text-align: left;
-  font-weight: 700; color: var(--text-muted); font-size: 0.7rem; border-bottom: 1px solid var(--border-subtle);
+  background: #f8fafc; padding: 6px 8px; text-align: left;
+  font-weight: 700; color: var(--text-muted); font-size: 0.68rem; border-bottom: 1px solid var(--border-subtle);
   position: sticky; top: 0; z-index: 10;
 }
-.native-table td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; color: var(--text); }
+.native-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; color: var(--text); }
+.native-table tr:hover { background: #f8fafc; }
+
+/* ── Mobile History Cards (Rendered automatically on small screens) ── */
+.history-cards-container {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.history-card-item {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 8px 10px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.02);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.history-card-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.04);
+}
+.history-card-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 6px; margin-bottom: 4px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 4px;
+}
+.history-card-title {
+  font-size: 0.82rem; font-weight: 800; color: var(--text); line-height: 1.2;
+}
+.history-card-date {
+  font-size: 0.68rem; color: var(--text-muted); font-weight: 600; margin-top: 1px;
+}
+.history-card-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 8px; margin-bottom: 4px;
+}
+.history-card-stat {
+  display: flex; flex-direction: column;
+}
+.history-card-stat .stat-label {
+  font-size: 0.58rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.2px;
+}
+.history-card-stat .stat-val {
+  font-size: 0.78rem; font-weight: 800; color: var(--text);
+}
+.history-card-stat .stat-val.highlight {
+  color: var(--primary);
+}
+.history-card-stat .stat-val.balance {
+  color: #0f172a;
+}
+.history-card-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.68rem; color: var(--text-muted); padding-top: 4px; border-top: 1px solid #f8fafc;
+}
+.history-card-remark {
+  font-size: 0.68rem; color: #475569; font-style: italic;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%;
+}
 
 .badge {
-  padding: 3px 8px; border-radius: 20px; font-size: 0.65rem; font-weight: 700;
-  display: inline-block; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 12px; font-size: 0.64rem; font-weight: 800;
+  display: inline-block; text-transform: uppercase; letter-spacing: 0.3px;
 }
-.badge-issue   { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
-.badge-receive { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+/* Red Pill for ISSUE */
+.badge-issue   { background: rgba(239, 68, 68, 0.12); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.25); }
+/* Green Pill for RECEIVE */
+.badge-receive { background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.25); }
+/* BW / Neutral Slate Pill for NONE */
+.badge-none    { background: rgba(100, 116, 139, 0.12); color: #475569; border: 1px solid rgba(100, 116, 139, 0.25); }
 
 /* ── Login Page Skynex Theme ──────────────────────────────── */
 .login-page {
@@ -413,3 +498,201 @@ body {
 .toast-error   { background: #ef4444; color: #ffffff; }
 .toast-warn    { background: #f59e0b; color: #ffffff; }
 .toast-info    { background: #3b82f6; color: #ffffff; }
+
+/* ── Active Hospital Switcher Header Badge ────────────────── */
+.hospital-active-badge {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  border: 1.5px solid rgba(59, 130, 246, 0.25);
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+.hospital-active-badge:hover { background: rgba(59, 130, 246, 0.2); }
+
+/* ── 2-Row Counter Picker Trigger ─────────────────────────── */
+.counter-picker-trigger {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+  transition: all 0.15s ease;
+}
+.counter-picker-trigger:hover { border-color: var(--primary); }
+.picker-selected-item {
+  display: flex; flex-direction: column; text-align: left;
+}
+.picker-selected-item .p-row1 {
+  font-size: 0.9rem; font-weight: 800; color: var(--text);
+}
+.picker-selected-item .p-row2 {
+  font-size: 0.72rem; font-weight: 600; color: var(--primary-dark); margin-top: 1px;
+}
+
+/* ── Modal Dialogs (Glassmorphic Bottom Sheets / Drawers) ──── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 9990;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-card {
+  width: 100%; max-width: 520px;
+  max-height: 85vh;
+  background: #ffffff;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: slideUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* ── Expanded Full Screen Modal ── */
+.modal-card.expanded {
+  max-width: 100%;
+  max-height: 98vh;
+  height: 98vh;
+  border-radius: 20px 20px 0 0;
+}
+.modal-card.expanded #pmodal-history-list {
+  max-height: calc(98vh - 180px) !important;
+  flex: 1;
+}
+
+.modal-header {
+  padding: 16px 20px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.modal-title { font-size: 1rem; font-weight: 800; color: var(--text); }
+.modal-subtitle { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; }
+.modal-close-btn {
+  background: #f1f5f9; border: none; border-radius: 50%;
+  width: 32px; height: 32px; font-size: 0.9rem; font-weight: 800;
+  color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+
+.picker-options-list {
+  padding: 8px 16px 24px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.picker-option-card {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex; flex-direction: column;
+}
+.picker-option-card:hover {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.05);
+}
+.picker-option-card.selected {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.08);
+}
+.picker-option-card .opt-row1 {
+  font-size: 0.82rem; font-weight: 800; color: var(--text);
+}
+.picker-option-card .opt-row2 {
+  font-size: 0.7rem; font-weight: 600; color: #475569; margin-top: 1px;
+}
+
+/* ── Hospital Pill Filters ────────────────────────────────── */
+.hospital-filter-pills {
+  display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px;
+}
+.pill-btn {
+  border: 1px solid var(--border-subtle);
+  background: #ffffff;
+  color: var(--text-muted);
+  font-size: 0.68rem; font-weight: 700;
+  padding: 4px 9px; border-radius: 14px;
+  cursor: pointer; white-space: nowrap; transition: all 0.15s ease;
+}
+.pill-btn.active {
+  background: #0f172a; color: #ffffff; border-color: #0f172a;
+}
+
+/* ── Printers Directory Grid ──────────────────────────────── */
+.printers-grid-container {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; margin-top: 6px;
+}
+.printer-card-item {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.printer-card-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  border-color: var(--primary);
+}
+.printer-card-header {
+  display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 3px;
+}
+.printer-card-counter { font-size: 0.8rem; font-weight: 800; color: var(--text); }
+.printer-card-serial { font-size: 0.68rem; font-family: monospace; color: var(--primary-dark); font-weight: 700; }
+.printer-card-name { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
+.printer-card-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  border-top: 1px dashed #e2e8f0; padding-top: 4px; font-size: 0.64rem; color: var(--text-muted); font-weight: 700;
+}
+
+/* ── Stock Page KPI Cards ─────────────────────────────────── */
+.stock-kpi-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0 8px;
+}
+.stock-kpi-card {
+  background: rgba(241, 245, 249, 0.8);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 14px; padding: 8px 10px; text-align: center;
+}
+.stock-kpi-card.highlight {
+  background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.25);
+}
+.stock-kpi-card .kpi-label {
+  font-size: 0.62rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;
+}
+.stock-kpi-card .kpi-val {
+  font-size: 1.15rem; font-weight: 900; color: var(--text); margin: 1px 0;
+}
+.stock-kpi-card .kpi-val.highlight { color: #059669; }
+.stock-kpi-card .kpi-sub { font-size: 0.6rem; color: var(--text-muted); font-weight: 600; }
+
+.printer-stats-overview {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  padding: 8px 12px; background: #f8fafc; border-bottom: 1px solid var(--border-subtle);
+}
+.pstat-box {
+  background: #ffffff; border: 1px solid var(--border-subtle); border-radius: 10px;
+  padding: 6px; text-align: center;
+}
+.pstat-box .lbl { font-size: 0.58rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+.pstat-box .val { font-size: 0.88rem; font-weight: 800; color: var(--text); margin-top: 1px; }
+

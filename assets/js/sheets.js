@@ -60,7 +60,7 @@ async function fetchPrinterDetails() {
 async function fetchDailyEntries() {
   const data = await sheetsRequest("dailyentries");
   const headers = data?.headers || [];
-  const rows = (data?.rows || []).reverse().slice(0, 100);
+  const rows = (data?.rows || []).reverse();
   return { headers, rows };
 }
 
@@ -74,6 +74,12 @@ async function appendDailyEntry(rowArray) {
     }
   );
   return data;
+}
+
+// ── Fetch stock entries (Paper Received to Hospital) ───────
+async function fetchStockEntries() {
+  const data = await sheetsRequest("stock");
+  return { headers: data?.headers || [], rows: data?.rows || [] };
 }
 
 // ── Utility: rows → unique column values ─────────────────

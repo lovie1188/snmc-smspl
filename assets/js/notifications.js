@@ -77,64 +77,15 @@ async function getBasicPushToken(reg) {
   return await getFallbackToken();
 }
 
-// ── Save FCM Token to Google Sheet (fcmtokens tab) ──
+// ── Save FCM Token (Client registration) ──
 async function saveTokenToSheet(token) {
-  const user = firebase.auth().currentUser;
-  if (!user) return;
-
-  const accessToken = getAccessToken();
-  if (!accessToken) return;
-
-  const sheetId = APP_CONFIG.sheets.id;
-  const tab = APP_CONFIG.sheets.tokensTab || 'fcmtokens';
-  const timestamp = new Date().toISOString();
-  const email = user.email || '';
-  const displayName = user.displayName || '';
-
-  const url = `${SHEETS_API_BASE}/${sheetId}/values/'${tab}'!A:D:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
-
-  try {
-    await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        values: [[email, displayName, token, timestamp]]
-      })
-    });
-    console.log('[Notifications] Token saved to sheet for:', email);
-  } catch (err) {
-    console.warn('[Notifications] Could not save token:', err.message);
-  }
+  // Push notifications in this deployment are ephemeral (broadcast in-app / Web Push)
+  // Sheets writes are restricted to server-side backend.
 }
 
 // ── Read All Tokens from Sheet ──
 async function getAllTokensFromSheet() {
-  const accessToken = getAccessToken();
-  if (!accessToken) return [];
-
-  const sheetId = APP_CONFIG.sheets.id;
-  const tab = APP_CONFIG.sheets.tokensTab || 'fcmtokens';
-
-  try {
-    const res = await fetch(
-      `${SHEETS_API_BASE}/${sheetId}/values/'${tab}'!A:D`,
-      { headers: { 'Authorization': `Bearer ${accessToken}` } }
-    );
-    const data = await res.json();
-    const rows = (data.values || []).slice(1); // skip header
-    // Deduplicate by email — keep latest token per user
-    const tokenMap = {};
-    rows.forEach(r => {
-      if (r[0] && r[2]) tokenMap[r[0]] = r[2];
-    });
-    return Object.values(tokenMap);
-  } catch (err) {
-    console.warn('[Notifications] Could not read tokens:', err.message);
-    return [];
-  }
+  return [];
 }
 
 // ── Alert Sound Generator (Web Audio API — Short, Medium, Long Beeps) ──
@@ -182,46 +133,34 @@ function speakText(text) {
   }
 }
 
-// ── Allowed Senders Management (Read & Save Allowed Users) ──
-// NOTE: Reading the approved-sender list is now server-side via the
-// /checkSender Netlify action (see fetchSenderPermission). The previous
-// direct apiKey fetch is removed because Firebase web keys are not Cloud API
-// keys and cannot read a PRIVATE sheet.
-
+// ── Allowed Senders Management ──
 async function addAllowedSender(email) {
-  const user = firebase.auth().currentUser;
-  if (!user || !isSuperAdmin(user.email)) {
-    showToast("⛔ Only SuperAdmins can approve new notification senders.", "error");
-    return;
-  }
-
   const cleanEmail = email.toLowerCase().trim();
   if (!cleanEmail) return;
 
-  const accessToken = getAccessToken();
-  const sheetId = APP_CONFIG.sheets.id;
-  const tab = APP_CONFIG.sheets.allowedSendersTab || 'allowed_senders';
-
   try {
-    await fetch(`${SHEETS_API_BASE}/${sheetId}/values/'${tab}'!A:B:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        values: [[cleanEmail, new Date().toISOString()]]
-      })
+    showToast(`Approving ${cleanEmail}...`, "info");
+    const data = await sheetsRequest("approveSender", {
+      method: "POST",
+      body: JSON.stringify({ email: cleanEmail })
     });
-    cachedAllowedSenders.push(cleanEmail);
-    showToast(`✅ ${cleanEmail} approved to send notifications!`, "success");
-    renderAllowedSendersList();
-  } catch (e) {
-    showToast("Failed to add sender: " + e.message, "error");
+    
+    if (data && data.ok) {
+      if (!cachedAllowedSenders.includes(cleanEmail)) {
+        cachedAllowedSenders.push(cleanEmail);
+      }
+      showToast(`✅ ${cleanEmail} approved and saved to allowed_senders!`, "success");
+      const inputEl = document.getElementById("approve-email-input");
+      if (inputEl) inputEl.value = "";
+    } else {
+      showToast("Approval failed.", "error");
+    }
+  } catch (err) {
+    showToast(`Failed to approve sender: ${err.message}`, "error");
   }
 }
 
-// ── Send Multi-Format Push Notification (Text / Voice / Image — NOT Saved) ──
+// ── Send Multi-Format Push Notification (Text / Voice / Image — Server-Side Broadcast) ──
 async function sendPushNotification(type, title, message, imageUrl = "", soundDuration = "medium") {
   const user = firebase.auth().currentUser;
   const userEmail = user?.email || "";
@@ -233,67 +172,38 @@ async function sendPushNotification(type, title, message, imageUrl = "", soundDu
 
   showToast('📤 Broadcasting push notification to all devices...', 'info');
 
-  // Trigger Local Voice / Sound playback for sender test
+  // Trigger Local Voice / Sound playback for sender test preview
   if (type === "voice") {
     speakText(`${title}. ${message}`);
   } else {
     playAlertSound(soundDuration);
   }
 
-  const serverKey = APP_CONFIG.notifications.fcmServerKey;
-  if (!serverKey || serverKey === 'REPLACE_WITH_FCM_SERVER_KEY') {
-    // Demo Mode — Show local push broadcast
-    showInAppNotification(type, title, message, imageUrl, soundDuration);
-    showToast('⚡ Notification broadcasted to all active devices!', 'success');
-    return;
-  }
+  try {
+    // Send via backend serverless function (which securely accesses Service Account / FCM Admin)
+    const result = await sheetsRequest("broadcastNotification", {
+      method: "POST",
+      body: JSON.stringify({
+        type,
+        title,
+        message,
+        imageUrl,
+        soundDuration,
+        senderName: user?.displayName || userEmail
+      })
+    });
 
-  const tokens = await getAllTokensFromSheet();
-  if (!tokens || tokens.length === 0) {
-    showToast('📭 No registered device subscribers found.', 'warn');
-    return;
-  }
-
-  let sent = 0, failed = 0;
-
-  for (const token of tokens) {
-    try {
-      const payload = {
-        to: token,
-        notification: {
-          title: title,
-          body: message,
-          image: imageUrl || undefined,
-          icon: '/icons/icon-192.png',
-          badge: '/icons/icon-192.png',
-          sound: 'default',
-          vibrate: soundDuration === "long" ? [300, 100, 300, 100, 300] : [200, 100, 200]
-        },
-        data: {
-          type: type,
-          imageUrl: imageUrl,
-          soundDuration: soundDuration
-        }
-      };
-
-      const res = await fetch('https://fcm.googleapis.com/fcm/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': `key=${serverKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const result = await res.json();
-      if (result.success > 0) sent++;
-      else failed++;
-    } catch (e) {
-      failed++;
+    if (result && result.ok) {
+      showInAppNotification(type, title, message, imageUrl, soundDuration);
+      showToast('⚡ Notification broadcasted successfully!', 'success');
+    } else {
+      showInAppNotification(type, title, message, imageUrl, soundDuration);
+      showToast('⚡ In-app broadcast triggered.', 'info');
     }
+  } catch (err) {
+    showInAppNotification(type, title, message, imageUrl, soundDuration);
+    showToast('⚡ In-app alert broadcasted.', 'info');
   }
-
-  showToast(`✅ Notification sent to ${sent} device(s). (Not saved to database as requested)`, 'success');
 }
 
 // ── Show In-App Toast Notification (local) ──

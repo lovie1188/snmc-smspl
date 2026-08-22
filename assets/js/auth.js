@@ -19,12 +19,28 @@ function getStoredUser() {
 }
 
 function getAccessToken() {
-  return localStorage.getItem(KEY_TOKEN);
+  return sessionStorage.getItem(KEY_TOKEN) || localStorage.getItem(KEY_TOKEN);
 }
 
 function setSessionData(token, user) {
-  if (token) localStorage.setItem(KEY_TOKEN, token);
+  if (token) {
+    sessionStorage.setItem(KEY_TOKEN, token);
+    localStorage.removeItem(KEY_TOKEN);
+  }
   if (user)  localStorage.setItem(KEY_USER, JSON.stringify(user));
+}
+
+async function getAuthToken(forceRefresh = false) {
+  const user = firebase.auth().currentUser;
+  if (!user) return null;
+  const token = await user.getIdToken(forceRefresh);
+  setSessionData(token, {
+    name: user.displayName || "User",
+    email: user.email || "",
+    photo: user.photoURL || "",
+    uid: user.uid
+  });
+  return token;
 }
 
 // Detect iOS / Safari browser
@@ -35,9 +51,9 @@ function isIOS() {
 }
 
 // ── Google Sign-In (Smart fallback: Native Redirect on iOS/Safari, Popup on Desktop) ──
+// Authentication only — Sheets I/O is handled server-side via Netlify Function + Service Account
 async function signInWithGoogle() {
   const provider = new firebase.auth.GoogleAuthProvider();
-  provider.addScope(SHEETS_SCOPE);
   provider.setCustomParameters({ prompt: "select_account" });
 
   // iOS Safari blocks cross-domain popup windows aggressively — use redirect directly on iOS
@@ -70,7 +86,7 @@ async function signInWithGoogle() {
     throw err;
   }
 
-  const token = (result && result.credential && result.credential.accessToken) ? result.credential.accessToken : "authenticated_session";
+  const token = result && result.user ? await result.user.getIdToken() : "";
 
   // Persist token & user info in localStorage
   setSessionData(token, {
@@ -84,9 +100,9 @@ async function signInWithGoogle() {
 }
 
 // Check redirect result on load (for mobile APK/WebView fallback)
-firebase.auth().getRedirectResult().then((result) => {
+firebase.auth().getRedirectResult().then(async (result) => {
   if (result && result.user) {
-    const token = (result.credential && result.credential.accessToken) ? result.credential.accessToken : "authenticated_session";
+    const token = await result.user.getIdToken();
     setSessionData(token, {
       name:  result.user.displayName  || "User",
       email: result.user.email        || "",
@@ -101,32 +117,30 @@ firebase.auth().getRedirectResult().then((result) => {
 
 // ── Auth Guard (call on protected pages) ──────────────────
 async function requireAuth() {
-  const token = getAccessToken();
-  const user  = getStoredUser();
-
-  // 1. If we have both token and user stored, return immediately
-  if (token && user) return { token, user };
-
-  // 2. Otherwise wait for Firebase Auth state to settle
-  return new Promise((resolve, reject) => {
-    const unsubscribe = firebase.auth().onAuthStateChanged((fbUser) => {
+  return new Promise((resolve) => {
+    const unsubscribe = firebase.auth().onAuthStateChanged(async (fbUser) => {
       unsubscribe(); // Prevent duplicate triggers
       if (fbUser) {
-        const storedUser = getStoredUser() || {
+        const storedUser = {
           name: fbUser.displayName || "User",
           email: fbUser.email || "",
           photo: fbUser.photoURL || "",
           uid: fbUser.uid
         };
-        let storedToken = getAccessToken() || "authenticated_session";
+        const storedToken = await fbUser.getIdToken();
 
-        // Save back to localStorage so subsequent checks succeed
+        // Save back to storage so subsequent requests have token
         setSessionData(storedToken, storedUser);
         resolve({ token: storedToken, user: storedUser });
       } else {
+        // Explicit redirect to login page when no authenticated session exists
         redirectToLogin("not_signed_in");
-        reject("unauthenticated");
+        resolve(null);
       }
+    }, (authError) => {
+      console.error("[Auth Guard] Authentication state check failed:", authError);
+      redirectToLogin("auth_error");
+      resolve(null);
     });
   });
 }
@@ -135,6 +149,7 @@ async function requireAuth() {
 async function signOut() {
   localStorage.removeItem(KEY_TOKEN);
   localStorage.removeItem(KEY_USER);
+  sessionStorage.removeItem(KEY_TOKEN);
   sessionStorage.clear();
   try { await firebase.auth().signOut(); } catch (_) {}
   window.location.href = "index.html";
@@ -147,5 +162,6 @@ function redirectToLogin(reason = "") {
 
 function handleTokenExpiry() {
   localStorage.removeItem(KEY_TOKEN);
+  sessionStorage.removeItem(KEY_TOKEN);
   redirectToLogin("token_expired");
 }

@@ -41,9 +41,26 @@ const SHEETS_API_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
 
 let cachedAllowedSenders = [];
 
+// User-to-Hospital Mappings (Customizable / Configurable)
+// SuperAdmins always have 'ALL' access with interactive switcher.
+const USER_HOSPITAL_MAP = {
+  "softtech.lovejeet@gmail.com": "ALL",
+  "softtech2009@gmail.com": "ALL"
+};
+
 // Helper: Check if current user is SuperAdmin
 function isSuperAdmin(email) {
   return APP_CONFIG.notifications.superAdmins.includes((email || '').toLowerCase());
+}
+
+// Helper: Get mapped hospital for a user (MDM, MGH, UMMED, or ALL)
+function getUserHospital(email) {
+  if (!email) return "ALL";
+  const cleanEmail = email.toLowerCase().trim();
+  if (isSuperAdmin(cleanEmail)) return "ALL";
+  
+  // Check local mapping or return assigned
+  return USER_HOSPITAL_MAP[cleanEmail] || "ALL";
 }
 
 // Helper: Check if user is SuperAdmin or explicitly Approved by SuperAdmin

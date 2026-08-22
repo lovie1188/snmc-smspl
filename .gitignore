@@ -6,6 +6,8 @@
 *.pem
 *.key
 google-services.json
+gen-lang-client-*.json
+*-*.json
 
 # Dependencies & Build Artifacts
 node_modules/
