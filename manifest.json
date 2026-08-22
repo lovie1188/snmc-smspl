@@ -62,5 +62,21 @@
       "url": "/app.html#history",
       "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }]
     }
+  ],
+  "screenshots": [
+    {
+      "src": "/assets/screenshots/mobile-preview.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "PrintTrack Mobile Dashboard"
+    },
+    {
+      "src": "/assets/screenshots/desktop-preview.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "PrintTrack Desktop Analytics"
+    }
   ]
 }
