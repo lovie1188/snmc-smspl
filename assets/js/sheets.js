@@ -34,7 +34,10 @@ async function sheetsRequest(action, options = {}) {
       headers["Content-Type"] = "application/json";
     }
 
-    const res = await fetch(`/.netlify/functions/sheets?action=${encodeURIComponent(action)}`, {
+    const baseUrl = (APP_CONFIG && APP_CONFIG.apiBaseUrl) ? APP_CONFIG.apiBaseUrl : "";
+    const endpoint = `${baseUrl}/api/sheets?action=${encodeURIComponent(action)}`;
+
+    const res = await fetch(endpoint, {
       ...options,
       headers
     });
