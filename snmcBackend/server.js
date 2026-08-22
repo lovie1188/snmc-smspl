@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // snmcBackend — Standalone Express REST API Service
 // SNMC Daily Printer Reading & Hospital Stock Management
 // ============================================================
@@ -33,18 +33,9 @@ const FIREBASE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/se
 let firebaseCertCache = { expiresAt: 0, certs: null };
 let sheetsJwtClient = null;
 
-// CORS setup
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || "https://snmc-smspl.netlify.app,http://localhost:8080,http://localhost:3000,http://localhost")
-  .split(",").map(o => o.trim());
-
+// CORS setup - Allow all origins for the API service
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || /^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(origin)) {
-      return callback(null, true);
-    }
-    return callback(null, true); // Permissive for mobile LAN clients
-  },
+  origin: true,
   credentials: true
 }));
 
@@ -311,6 +302,122 @@ app.get("/api/stock", requireFirebaseAuth, async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 });
+
+// ── Universal Unified Action Endpoint (Supports both REST and Action Query Formats) ──
+async function handleActionRequest(req, res) {
+  const action = (req.query && req.query.action) || (req.path.replace(/^\/api\//, ""));
+  const method = req.method.toUpperCase();
+
+  try {
+    const perms = await getUserHospitalPermissions(req.user.email);
+
+    if (action === "printerdetails" || action === "printers") {
+      const data = await fetchSheetData(`'${PRINTER_TAB}'!A:Z`);
+      if (!data || !data.values || data.values.length < 2) return res.json({ headers: [], rows: [] });
+      const rawHeaders = data.values[0].map(h => String(h).trim());
+      const allRows = data.values.slice(1).filter(row => row.some(c => String(c).trim() !== "")).map(row => {
+        const obj = {}; rawHeaders.forEach((h, i) => { obj[h] = String(row[i] || "").trim(); }); return obj;
+      });
+      const filteredRows = perms.isAll ? allRows : allRows.filter(r => isHospitalAllowed(r["Hospital"], perms.hospitals, false));
+      return res.json({ headers: rawHeaders, rows: filteredRows, userHospital: perms.isAll ? "ALL" : perms.hospitals.join(", "), isSuperAdmin: perms.isSuperAdmin });
+    }
+
+    if (action === "dailyentries") {
+      const [dailyData, printerSheetData] = await Promise.all([
+        fetchSheetData(`'${DAILY_TAB}'!${DAILY_RANGE}`),
+        fetchSheetData(`'${PRINTER_TAB}'!A:Z`)
+      ]);
+      if (!dailyData || !dailyData.values || dailyData.values.length === 0) return res.json({ headers: [], rows: [] });
+
+      const counterHospitalLookup = {};
+      if (printerSheetData && printerSheetData.values && printerSheetData.values.length > 1) {
+        const pHeaders = printerSheetData.values[0].map(h => String(h).trim());
+        const cNoIdx = pHeaders.findIndex(h => h.toLowerCase().includes("counter no"));
+        const hospIdx = pHeaders.findIndex(h => h.toLowerCase().includes("hospital"));
+        const cFullIdx = pHeaders.findIndex(h => h.toLowerCase() === "counter");
+        printerSheetData.values.slice(1).forEach(pRow => {
+          const hosp = String(pRow[hospIdx] || "").trim().toUpperCase();
+          if (cNoIdx !== -1 && pRow[cNoIdx]) counterHospitalLookup[String(pRow[cNoIdx]).trim().toUpperCase()] = hosp;
+          if (cFullIdx !== -1 && pRow[cFullIdx]) counterHospitalLookup[String(pRow[cFullIdx]).trim().toUpperCase()] = hosp;
+        });
+      }
+
+      const rawHeaders = dailyData.values[0].map(h => String(h).trim());
+      const allRows = dailyData.values.slice(1).filter(row => row.some(c => String(c).trim() !== "")).map(row => {
+        const obj = {}; rawHeaders.forEach((h, i) => { obj[h] = String(row[i] !== undefined && row[i] !== null ? row[i] : "").trim(); }); return obj;
+      });
+
+      const filteredRows = perms.isAll ? allRows : allRows.filter(r => {
+        const hospCol = r["Hospital Name"] || r["Hospital Name "] || r["Hospital"] || "";
+        const counterVal = (r["counter Number"] || r["Counter Number"] || r["Counter"] || "").trim().toUpperCase();
+        const cleanCounter = counterVal.split(" ")[0].trim();
+        const inferredHospital = hospCol || counterHospitalLookup[counterVal] || counterHospitalLookup[cleanCounter] || "";
+        return isHospitalAllowed(inferredHospital, perms.hospitals, false);
+      });
+
+      return res.json({ headers: rawHeaders, rows: filteredRows, userHospital: perms.isAll ? "ALL" : perms.hospitals.join(", "), isSuperAdmin: perms.isSuperAdmin });
+    }
+
+    if (action === "appendDailyEntry" && method === "POST") {
+      const { row } = req.body;
+      if (!Array.isArray(row) || row.length < 4) return res.status(400).json({ error: "Invalid daily entry payload." });
+
+      if (!perms.isAll) {
+        const submittedCounter = String(row[3] || "").trim();
+        const data = await fetchSheetData(`'${PRINTER_TAB}'!A:Z`);
+        if (data && data.values) {
+          const pHeaders = data.values[0].map(h => String(h).trim());
+          const hospIdx = pHeaders.findIndex(h => h.toLowerCase().includes("hospital"));
+          const cNoIdx = pHeaders.findIndex(h => h.toLowerCase().includes("counter no"));
+          const cFullIdx = pHeaders.findIndex(h => h.toLowerCase() === "counter");
+          const matchingPrinter = data.values.slice(1).find(pRow => {
+            const cNo = String(pRow[cNoIdx] || "").trim();
+            const cFull = String(pRow[cFullIdx] || "").trim();
+            return submittedCounter.startsWith(cNo) || submittedCounter === cFull;
+          });
+          if (matchingPrinter && hospIdx !== -1) {
+            const printerHospital = String(matchingPrinter[hospIdx] || "").trim();
+            if (!isHospitalAllowed(printerHospital, perms.hospitals, false)) {
+              return res.status(403).json({ error: `Unauthorized: You do not have permission to submit entries for ${printerHospital} Hospital.` });
+            }
+          }
+        }
+      }
+
+      const authHeaders = await getSheetsAuthHeaders();
+      const cleanRow = row.map(v => String(v ?? "").slice(0, 500));
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(`'${DAILY_TAB}'!${DAILY_RANGE}`)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+      const appendRes = await fetch(url, {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [cleanRow] })
+      });
+      if (!appendRes.ok) throw new Error("Google Sheets append failed");
+      const result = await appendRes.json();
+      return res.json({ ok: true, data: result });
+    }
+
+    if (action === "stock") {
+      const data = await fetchSheetData(`'${STOCK_TAB}'!${STOCK_RANGE}`);
+      if (!data || !data.values || data.values.length === 0) return res.json({ headers: [], rows: [] });
+      const rawHeaders = data.values[0].map(h => String(h).trim());
+      const allRows = data.values.slice(1).filter(row => row.some(c => String(c).trim() !== "")).map(row => {
+        const obj = {}; rawHeaders.forEach((h, i) => { obj[h] = String(row[i] !== undefined && row[i] !== null ? row[i] : "").trim(); }); return obj;
+      });
+      const filteredRows = perms.isAll ? allRows : allRows.filter(r => isHospitalAllowed(r["HOSPITAL"], perms.hospitals, false));
+      return res.json({ headers: rawHeaders, rows: filteredRows, userHospital: perms.isAll ? "ALL" : perms.hospitals.join(", "), isSuperAdmin: perms.isSuperAdmin });
+    }
+
+    return res.status(400).json({ error: `Unsupported action: ${action}` });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+// Attach Action Endpoint Handlers
+app.all("/api/sheets", requireFirebaseAuth, handleActionRequest);
+app.all("/.netlify/functions/sheets", requireFirebaseAuth, handleActionRequest);
+app.all("/api", requireFirebaseAuth, handleActionRequest);
 
 // Start Express Server
 app.listen(PORT, () => {
