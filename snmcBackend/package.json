@@ -1,10 +1,11 @@
-﻿{
+{
   "name": "snmc-backend",
   "version": "1.0.0",
   "description": "SNMC Dedicated Standalone Backend API Service",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "build": "echo 'Backend ready'",
     "dev": "node --watch server.js"
   },
   "dependencies": {
