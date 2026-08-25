@@ -34,7 +34,12 @@ async function sheetsRequest(action, options = {}) {
       headers["Content-Type"] = "application/json";
     }
 
-    const res = await fetch(`/.netlify/functions/sheets?action=${encodeURIComponent(action)}`, {
+    const baseUrl = APP_CONFIG.apiBaseUrl || (window.location.origin.includes("netlify.app") ? "" : "https://snmcbackend.onrender.com");
+    const apiUrl = baseUrl 
+      ? `${baseUrl}/api/sheets?action=${encodeURIComponent(action)}`
+      : `/.netlify/functions/sheets?action=${encodeURIComponent(action)}`;
+
+    const res = await fetch(apiUrl, {
       ...options,
       headers
     });

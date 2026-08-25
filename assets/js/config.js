@@ -30,7 +30,9 @@ const APP_CONFIG = {
       "softtech.lovejeet@gmail.com",
       "softtech2009@gmail.com"
     ]
-  }
+  },
+  // Dedicated Express Backend deployed on Render.com
+  apiBaseUrl: "https://snmcbackend.onrender.com"
 };
 
 // Google OAuth Scope for Sheets access
