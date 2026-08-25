@@ -1,0 +1,8 @@
+﻿# Deploy & Git Push Protocol (Mandatory Confirmation Rule)
+
+Deploying several times consumes plan credits in Netlify.
+Therefore, ALL AI coding agents (Antigravity, Cursor, Cline, Gemini, Copilot, etc.) MUST strictly observe:
+
+1. All code changes and features must first be tested and verified on the Local Server (localhost:8080).
+2. When the task is complete, summarize the changes to the user and explicitly request confirmation to push.
+3. NEVER execute `git push` or trigger remote build deployments without explicit user approval ("Yes", "Push", "Deploy").

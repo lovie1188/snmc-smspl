@@ -1,0 +1,10 @@
+﻿# OpenAI Codex & ChatGPT Project Rules
+
+## Deploy & Git Push Protocol (Mandatory Confirmation Rule)
+
+Deploying several times consumes plan credits in Netlify.
+Therefore, OpenAI Codex, ChatGPT, and all OpenAI-based tools MUST strictly follow:
+
+1. Local-First Testing: All changes must first be made and verified on the Local Server (localhost:8080).
+2. Explicit Confirmation: When work is complete, summarize the changes and explicitly request user approval before running git push.
+3. No Autonomous Push: NEVER push to remote repository without explicit user confirmation ("Yes", "Push", "Deploy").

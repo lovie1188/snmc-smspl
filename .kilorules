@@ -1,0 +1,10 @@
+﻿# Kilo AI Project Rules
+
+## Deploy & Git Push Protocol (Mandatory Confirmation Rule)
+
+Deploying several times consumes plan credits in Netlify.
+Therefore, Kilo AI MUST strictly adhere to this protocol:
+
+1. Local-First Testing: All changes must first be made and verified on the Local Server (localhost:8080).
+2. Explicit Confirmation: When work is complete, show the summary and ask the user for confirmation before pushing.
+3. No Autonomous Push: NEVER execute `git push` without the user explicitly stating "Yes", "Push", or "Deploy".

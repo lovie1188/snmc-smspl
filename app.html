@@ -623,16 +623,54 @@
         <div class="history-controls">
           <input type="text" id="printer-search-input" class="native-input" placeholder="🔍 Search Counter / Serial No / Location..." oninput="filterPrintersList()" style="font-size: 0.8rem; padding: 8px 12px;">
           
-          <div class="hospital-filter-pills" id="printer-hospital-pills">
-            <button type="button" class="pill-btn active" onclick="filterPrintersByHospital('ALL', this)">All</button>
-            <button type="button" class="pill-btn" onclick="filterPrintersByHospital('MDM', this)">MDM</button>
-            <button type="button" class="pill-btn" onclick="filterPrintersByHospital('MGH', this)">MGH</button>
-            <button type="button" class="pill-btn" onclick="filterPrintersByHospital('UMMED', this)">UMMED</button>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+            <div class="hospital-filter-pills" id="printer-hospital-pills">
+              <button type="button" class="pill-btn active" onclick="filterPrintersByHospital('ALL', this)">All</button>
+              <button type="button" class="pill-btn" onclick="filterPrintersByHospital('MDM', this)">MDM</button>
+              <button type="button" class="pill-btn" onclick="filterPrintersByHospital('MGH', this)">MGH</button>
+              <button type="button" class="pill-btn" onclick="filterPrintersByHospital('UMMED', this)">UMMED</button>
+            </div>
+
+            <!-- View Toggle & Advance Table Actions (Right Side) -->
+            <div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+              <div class="history-view-toggles">
+                <button type="button" class="view-toggle-btn active" id="btn-printers-cards" onclick="setPrintersViewMode('cards')">📱 Cards</button>
+                <button type="button" class="view-toggle-btn" id="btn-printers-table" onclick="setPrintersViewMode('table')">📊 Table</button>
+              </div>
+              <button type="button" class="arrow-btn" style="width: auto; padding: 4px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; gap: 4px; color: #1e40af; background: rgba(59, 130, 246, 0.1);" onclick="copyPrintersTableData()" title="Copy entire table data to clipboard">
+                📋 Copy
+              </button>
+              <button type="button" class="arrow-btn" style="width: auto; padding: 4px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; gap: 4px; color: #0f172a; background: rgba(15, 23, 42, 0.08);" onclick="sharePrintersData()" title="Share printers summary">
+                🔗 Share
+              </button>
+              <button type="button" class="arrow-btn" style="width: auto; padding: 4px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; gap: 4px; color: #15803d; background: rgba(22, 163, 74, 0.1);" onclick="exportPrintersToExcel()" title="Export to Excel spreadsheet">
+                📊 Excel
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- Printer Cards Grid -->
+        <!-- Printer Cards Grid View -->
         <div id="printers-cards-grid" class="printers-grid-container"></div>
+
+        <!-- Printer Advance Data-Table View -->
+        <div id="printers-table-wrapper" class="table-container" style="display:none; margin-top: 6px;">
+          <table class="native-table" id="printers-native-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Counter</th>
+                <th>Hospital</th>
+                <th>Serial Number</th>
+                <th>Location / Name</th>
+                <th>Latest Reading</th>
+                <th>Last Active</th>
+                <th style="text-align:center;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="printers-table-body"></tbody>
+          </table>
+        </div>
 
         <!-- Empty State -->
         <div id="no-printers" style="display:none; text-align:center; padding:36px; color:var(--text-muted);">
