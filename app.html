@@ -258,7 +258,12 @@
           <span>View History</span>
         </button>
 
-        <button class="dropdown-item" id="nav-notif-dropdown" style="display:none;" onclick="showTab('notifications'); closeDropdown();">
+        <button class="dropdown-item" onclick="showTab('employees'); loadEmployeesPage(); closeDropdown();">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Employee Directory &amp; ID Card</span>
+        </button>
+
+        <button class="dropdown-item" id="nav-notif-dropdown" onclick="showTab('notifications'); closeDropdown();">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           <span>Broadcast Push</span>
         </button>
@@ -731,6 +736,52 @@
       </div>
     </section>
 
+    <!-- TAB 6: EMPLOYEE / CONTACT DIRECTORY & ID CARD GENERATOR (ADMIN MODULE) -->
+    <section id="tab-employees" class="tab-panel">
+      <div class="skynex-card">
+        <div class="skynex-card-title" style="flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div style="font-size: 1rem; font-weight: 800;">Contact &amp; Employee Directory</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Operator Profiles, Hospital Access &amp; Digital ID Cards</div>
+          </div>
+          
+          <div style="display: flex; gap: 6px; margin-left: auto;">
+            <button class="arrow-btn" style="width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #1e40af; background: rgba(59, 130, 246, 0.1);" onclick="openAddEmployeeModal()">
+              ➕ Add Member
+            </button>
+            <button class="arrow-btn" style="width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #15803d; background: rgba(22, 163, 74, 0.1);" onclick="exportEmployeesToExcel()">
+              📊 Excel
+            </button>
+          </div>
+        </div>
+
+        <!-- Search & Hospital Filter Controls -->
+        <div class="history-controls">
+          <input type="text" id="employee-search-input" class="native-input" placeholder="🔍 Search Employee Name / Email / Phone / Role..." oninput="filterEmployeesList()" style="font-size: 0.8rem; padding: 8px 12px;">
+          
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+            <div class="hospital-filter-pills" id="employee-hospital-pills">
+              <button type="button" class="pill-btn active" onclick="filterEmployeesByHospital('ALL', this)">All</button>
+              <button type="button" class="pill-btn" onclick="filterEmployeesByHospital('MDM', this)">MDM</button>
+              <button type="button" class="pill-btn" onclick="filterEmployeesByHospital('MGH', this)">MGH</button>
+              <button type="button" class="pill-btn" onclick="filterEmployeesByHospital('UMMED', this)">UMMED</button>
+            </div>
+            
+            <span id="employees-count-badge" class="badge" style="background:#f1f5f9; color:var(--text); font-weight:700;">Loading team...</span>
+          </div>
+        </div>
+
+        <!-- Employee Cards Container -->
+        <div id="employees-cards-grid" class="employees-grid-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-top: 10px;"></div>
+
+        <!-- Empty State -->
+        <div id="no-employees" style="display:none; text-align:center; padding:36px; color:var(--text-muted);">
+          <div style="font-size:2rem; margin-bottom:8px;">👥</div>
+          <p>No employee records found.</p>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- Skynex Style Bottom Navigation Bar (5 Tabs) -->
@@ -803,7 +854,119 @@
       <div style="padding: 8px 12px 4px;">
         <div style="font-size:0.78rem; font-weight:800; color:var(--text);">Historical Activity Log</div>
       </div>
-      <div id="pmodal-history-list" class="picker-options-list" style="max-height: 280px;"></div>
+      <div id="pmodal-history-list" class="history-cards-container" style="padding: 10px 16px; overflow-y: auto; max-height: 45vh;"></div>
+    </div>
+  </div>
+
+  <!-- ── Digital Employee ID Card Modal (Printable / Exportable) ── -->
+  <div id="id-card-modal" class="modal-overlay" style="display:none;" onclick="closeIdCardModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width: 400px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Employee Identity Card</div>
+          <div class="modal-subtitle">Official SNMC / SMSPL Digital Badge</div>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button type="button" class="arrow-btn" style="width: auto; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; color: #1e40af; background: rgba(59, 130, 246, 0.1);" onclick="printIdCard()">
+            🖨️ Print
+          </button>
+          <button type="button" class="modal-close-btn" onclick="closeIdCardModal()">✕</button>
+        </div>
+      </div>
+
+      <div style="padding: 16px; display: flex; flex-direction: column; align-items: center;" id="id-card-print-area">
+        <!-- Physical Style Identity Card Container -->
+        <div class="digital-id-card" id="digital-id-card-el">
+          <div class="id-card-top-bar">
+            <div class="id-card-org">DR. S.N. MEDICAL COLLEGE, JODHPUR</div>
+            <div class="id-card-sub">Printer Operations &amp; Support Division (SMSPL)</div>
+          </div>
+
+          <div class="id-card-body">
+            <div class="id-card-avatar-box">
+              <div class="id-card-avatar" id="idc-avatar">OP</div>
+              <div class="id-card-role-pill" id="idc-role">OPERATOR</div>
+            </div>
+
+            <div class="id-card-info">
+              <div class="id-card-name" id="idc-name">Employee Name</div>
+              <div class="id-card-field"><span class="id-lbl">HOSPITAL:</span> <strong id="idc-hospital">MDM HOSPITAL</strong></div>
+              <div class="id-card-field"><span class="id-lbl">EMAIL:</span> <span id="idc-email">user@gmail.com</span></div>
+              <div class="id-card-field"><span class="id-lbl">PHONE:</span> <strong id="idc-phone">+91 98765 43210</strong></div>
+              <div class="id-card-field"><span class="id-lbl">EMP ID:</span> <code id="idc-id">SNMC-EMP-102</code></div>
+            </div>
+          </div>
+
+          <div class="id-card-footer">
+            <div class="id-card-qr-box">
+              <div style="font-size:0.6rem; font-family:monospace; color:#64748b; text-align:center;">VERIFIED OPERATOR</div>
+            </div>
+            <div class="id-card-auth-sign">
+              <div style="font-size:0.6rem; font-weight:800; color:#0f172a;">AUTH SIGNATORY</div>
+              <div style="font-size:0.55rem; color:#64748b;">SMSPL Operations</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Add/Edit Employee Modal ── -->
+  <div id="add-employee-modal" class="modal-overlay" style="display:none;" onclick="closeAddEmployeeModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Add Team Member</div>
+          <div class="modal-subtitle">Save to user_hospitals directory</div>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeAddEmployeeModal()">✕</button>
+      </div>
+
+      <form id="add-employee-form" onsubmit="handleSaveEmployee(event)" style="padding: 16px;">
+        <div class="form-group">
+          <label>Full Name <span class="req">*</span></label>
+          <input type="text" id="emp-name-input" class="native-input" placeholder="e.g. Ramesh Kumar" required>
+        </div>
+
+        <div class="form-group">
+          <label>Email Address (Google Account) <span class="req">*</span></label>
+          <input type="email" id="emp-email-input" class="native-input" placeholder="user@gmail.com" required>
+        </div>
+
+        <div class="form-group">
+          <label>Mobile Number</label>
+          <input type="tel" id="emp-phone-input" class="native-input" placeholder="+91 98765 43210">
+        </div>
+
+        <div class="form-group">
+          <label>Assigned Hospital <span class="req">*</span></label>
+          <select id="emp-hospital-input" class="native-select" required>
+            <option value="MDM">MDM Hospital</option>
+            <option value="MGH">MGH Hospital</option>
+            <option value="UMMED">UMMED Hospital</option>
+            <option value="ALL">ALL Hospitals (SuperAdmin/Supervisor)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Designation / Role <span class="req">*</span></label>
+          <select id="emp-role-input" class="native-select" required>
+            <option value="Operator">Operator / Data Entry</option>
+            <option value="Supervisor">Supervisor</option>
+            <option value="SuperAdmin">SuperAdmin</option>
+            <option value="Technician">Service Technician</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 14px;">
+          <button type="button" class="btn-native-submit" style="background:#e2e8f0; color:#334155;" onclick="closeAddEmployeeModal()">
+            Cancel
+          </button>
+          <button type="submit" class="btn-native-submit" id="emp-save-btn">
+            💾 Save Member
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

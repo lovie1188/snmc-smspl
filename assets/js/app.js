@@ -1362,3 +1362,192 @@ function showLoader(visible) {
   const el = document.getElementById("app-loader");
   if (el) el.style.display = visible ? "flex" : "none";
 }
+
+// ── EMPLOYEE / CONTACT DIRECTORY & DIGITAL ID CARD (ADMIN MODULE) ──
+let allEmployeeItems = [
+  { id: "SNMC-101", name: "Lovejeet (SuperAdmin)", email: "softtech.lovejeet@gmail.com", phone: "+91 94140 XXXXX", hospital: "ALL", role: "SuperAdmin" },
+  { id: "SNMC-102", name: "Softtech Admin", email: "softtech2009@gmail.com", phone: "+91 98290 XXXXX", hospital: "ALL", role: "SuperAdmin" },
+  { id: "SNMC-201", name: "Ramesh Sharma", email: "ramesh.snmc@gmail.com", phone: "+91 94141 12345", hospital: "MDM", role: "Operator" },
+  { id: "SNMC-202", name: "Suresh Gehlot", email: "suresh.mgh@gmail.com", phone: "+91 98291 54321", hospital: "MGH", role: "Operator" },
+  { id: "SNMC-203", name: "Vikram Singh", email: "vikram.ummed@gmail.com", phone: "+91 97822 67890", hospital: "UMMED", role: "Supervisor" },
+  { id: "SNMC-204", name: "Prakash Patel", email: "prakash.snmc@gmail.com", phone: "+91 96100 11223", hospital: "MDM", role: "Operator" }
+];
+
+let activeEmployeeHospitalFilter = "ALL";
+
+async function loadEmployeesPage() {
+  renderEmployeesList();
+}
+
+function filterEmployeesByHospital(hosp, btnEl) {
+  activeEmployeeHospitalFilter = hosp;
+  document.querySelectorAll("#employee-hospital-pills .pill-btn").forEach(b => b.classList.remove("active"));
+  if (btnEl) btnEl.classList.add("active");
+  renderEmployeesList();
+}
+
+function filterEmployeesList() {
+  renderEmployeesList();
+}
+
+function renderEmployeesList() {
+  const container = document.getElementById("employees-cards-grid");
+  const noEmp = document.getElementById("no-employees");
+  const countBadge = document.getElementById("employees-count-badge");
+  const searchVal = document.getElementById("employee-search-input")?.value?.toLowerCase().trim() || "";
+
+  if (!container) return;
+
+  const filtered = allEmployeeItems.filter(e => {
+    if (!isHospitalVisible(e.hospital)) return false;
+    if (activeEmployeeHospitalFilter !== "ALL" && !e.hospital.includes(activeEmployeeHospitalFilter)) return false;
+    const str = `${e.name} ${e.email} ${e.phone} ${e.hospital} ${e.role} ${e.id}`.toLowerCase();
+    return !searchVal || str.includes(searchVal);
+  });
+
+  if (countBadge) {
+    countBadge.textContent = `${filtered.length} Member${filtered.length === 1 ? '' : 's'}`;
+  }
+
+  if (!filtered.length) {
+    container.innerHTML = "";
+    if (noEmp) noEmp.style.display = "block";
+    return;
+  }
+
+  if (noEmp) noEmp.style.display = "none";
+
+  container.innerHTML = filtered.map(emp => {
+    const initials = emp.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+    return `
+      <div class="employee-card-item">
+        <div>
+          <div class="emp-card-header">
+            <div class="emp-avatar-circle">${escapeHtml(initials)}</div>
+            <div class="emp-name-block">
+              <div class="emp-full-name">${escapeHtml(emp.name)}</div>
+              <div class="emp-role-tag">${escapeHtml(emp.role)} • <span class="badge" style="background:rgba(59,130,246,0.1); color:#1d4ed8;">${escapeHtml(emp.hospital)}</span></div>
+            </div>
+          </div>
+
+          <div class="emp-details-grid">
+            <div class="emp-detail-row"><span>📧 Email:</span> <strong style="color:var(--text);">${escapeHtml(emp.email)}</strong></div>
+            <div class="emp-detail-row"><span>📞 Phone:</span> <strong style="color:var(--text);">${escapeHtml(emp.phone)}</strong></div>
+            <div class="emp-detail-row"><span>🆔 Badge ID:</span> <code>${escapeHtml(emp.id)}</code></div>
+          </div>
+        </div>
+
+        <div class="emp-card-footer">
+          <button type="button" class="arrow-btn" style="width: auto; padding: 4px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; color: #1e40af; background: rgba(59, 130, 246, 0.1);" onclick="openIdCardModal('${escapeHtml(emp.name)}', '${escapeHtml(emp.email)}', '${escapeHtml(emp.phone)}', '${escapeHtml(emp.hospital)}', '${escapeHtml(emp.role)}', '${escapeHtml(emp.id)}')">
+            🪪 View ID Card
+          </button>
+          <button type="button" class="printer-card-copy-btn" title="Copy Contact" onclick="copyContactDetails(event, '${escapeHtml(emp.name)}', '${escapeHtml(emp.phone)}', '${escapeHtml(emp.email)}', '${escapeHtml(emp.hospital)}')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// ── Open Digital ID Card Modal ──
+function openIdCardModal(name, email, phone, hospital, role, id) {
+  const modal = document.getElementById("id-card-modal");
+  const nameEl = document.getElementById("idc-name");
+  const emailEl = document.getElementById("idc-email");
+  const phoneEl = document.getElementById("idc-phone");
+  const hospEl = document.getElementById("idc-hospital");
+  const roleEl = document.getElementById("idc-role");
+  const idEl = document.getElementById("idc-id");
+  const avatarEl = document.getElementById("idc-avatar");
+
+  if (modal) modal.style.display = "flex";
+  if (nameEl) nameEl.textContent = name;
+  if (emailEl) emailEl.textContent = email;
+  if (phoneEl) phoneEl.textContent = phone;
+  if (hospEl) hospEl.textContent = `${hospital} HOSPITAL`;
+  if (roleEl) roleEl.textContent = role.toUpperCase();
+  if (idEl) idEl.textContent = id;
+  if (avatarEl) avatarEl.textContent = name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+}
+
+function closeIdCardModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  const modal = document.getElementById("id-card-modal");
+  if (modal) modal.style.display = "none";
+}
+
+function printIdCard() {
+  window.print();
+}
+
+// ── Add Employee Modal & Actions ──
+function openAddEmployeeModal() {
+  const modal = document.getElementById("add-employee-modal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeAddEmployeeModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  const modal = document.getElementById("add-employee-modal");
+  if (modal) modal.style.display = "none";
+}
+
+function handleSaveEmployee(e) {
+  e.preventDefault();
+  const name = document.getElementById("emp-name-input")?.value?.trim() || "";
+  const email = document.getElementById("emp-email-input")?.value?.trim().toLowerCase() || "";
+  const phone = document.getElementById("emp-phone-input")?.value?.trim() || "+91 94140 00000";
+  const hospital = document.getElementById("emp-hospital-input")?.value || "MDM";
+  const role = document.getElementById("emp-role-input")?.value || "Operator";
+
+  if (!name || !email) {
+    showToast("Name and email are required.", "error");
+    return;
+  }
+
+  const newId = `SNMC-${Math.floor(100 + Math.random() * 900)}`;
+  allEmployeeItems.unshift({ id: newId, name, email, phone, hospital, role });
+
+  showToast(`✅ Member ${name} added to Directory!`, "success");
+  closeAddEmployeeModal();
+  document.getElementById("add-employee-form")?.reset();
+  renderEmployeesList();
+}
+
+function copyContactDetails(event, name, phone, email, hospital) {
+  if (event) event.stopPropagation();
+  const text = `👤 ${name}\n🏥 Hospital: ${hospital}\n📞 Phone: ${phone}\n📧 Email: ${email}`;
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text);
+  }
+  showToast(`📋 Copied contact: ${name}`, "success");
+}
+
+function exportEmployeesToExcel() {
+  if (typeof XLSX === "undefined") {
+    showToast("Excel export library loading...", "error");
+    return;
+  }
+  const filtered = allEmployeeItems.filter(e => {
+    if (!isHospitalVisible(e.hospital)) return false;
+    if (activeEmployeeHospitalFilter !== "ALL" && !e.hospital.includes(activeEmployeeHospitalFilter)) return false;
+    return true;
+  });
+
+  const exportData = filtered.map((e, idx) => ({
+    "S.No": idx + 1,
+    "Employee ID": e.id,
+    "Full Name": e.name,
+    "Designation": e.role,
+    "Assigned Hospital": e.hospital,
+    "Email Address": e.email,
+    "Mobile Number": e.phone
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(exportData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Employees");
+  XLSX.writeFile(workbook, `SNMC_Employee_Directory_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  showToast(`📊 Exported ${filtered.length} members to Excel!`, "success");
+}
