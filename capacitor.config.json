@@ -1,0 +1,20 @@
+﻿{
+  "appId": "com.softtech.printtrack.app",
+  "appName": "PrintTrack",
+  "webDir": ".",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  },
+  "plugins": {
+    "AdMob": {
+      "appId": "ca-app-pub-6055348642277254~XXXXXXXXXX"
+    }
+  }
+}
