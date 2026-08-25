@@ -663,6 +663,24 @@ body {
   display: flex; align-items: center; justify-content: space-between;
   border-top: 1px dashed #e2e8f0; padding-top: 4px; font-size: 0.64rem; color: var(--text-muted); font-weight: 700;
 }
+.printer-card-actions {
+  display: flex; align-items: center; gap: 4px;
+}
+.printer-card-copy-btn {
+  background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px;
+  width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+  color: #64748b; cursor: pointer; transition: all 0.15s ease; padding: 0;
+}
+.printer-card-copy-btn:hover {
+  background: var(--primary); color: #ffffff; border-color: var(--primary);
+  transform: scale(1.08);
+}
+.printer-card-copy-btn:active {
+  transform: scale(0.92);
+}
+.printer-card-copy-btn.copied {
+  background: #10b981; color: #ffffff; border-color: #10b981;
+}
 
 /* ── Stock Page KPI Cards ─────────────────────────────────── */
 .stock-kpi-grid {

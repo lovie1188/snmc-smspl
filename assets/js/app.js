@@ -849,7 +849,12 @@ function renderPrintersList() {
         <div>
           <div class="printer-card-header">
             <span class="printer-card-counter">${escapeHtml(p.counterNo)}</span>
-            <span class="badge" style="background:rgba(59,130,246,0.1); color:#1d4ed8;">${escapeHtml(p.hospital)}</span>
+            <div class="printer-card-actions">
+              <span class="badge" style="background:rgba(59,130,246,0.1); color:#1d4ed8;">${escapeHtml(p.hospital)}</span>
+              <button type="button" class="printer-card-copy-btn" title="Copy Printer Details" onclick="copyPrinterDetails(event, '${escapeHtml(p.counterNo)}', '${escapeHtml(p.serialNo)}', '${escapeHtml(p.counterName)}', '${escapeHtml(p.hospital)}', '${escapeHtml(String(latestClosing))}')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+            </div>
           </div>
           <div class="printer-card-serial">${escapeHtml(p.serialNo || "No Serial")}</div>
           <div class="printer-card-name">${escapeHtml(p.counterName || "General Counter")}</div>
@@ -862,6 +867,50 @@ function renderPrintersList() {
       </div>
     `;
   }).join("");
+}
+
+// ── Copy Printer Details Function ──────────────────────────
+async function copyPrinterDetails(event, counterNo, serialNo, counterName, hospital, latestReading) {
+  if (event) event.stopPropagation();
+
+  const detailsText = [
+    `🏥 Hospital: ${hospital}`,
+    `📍 Counter: ${counterNo} (${counterName || 'General'})`,
+    `🔢 Serial No: ${serialNo || 'N/A'}`,
+    `📊 Latest Reading: ${latestReading || 'N/A'}`
+  ].join("\n");
+
+  const btn = event ? event.currentTarget : null;
+
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(detailsText);
+    } else {
+      // Fallback for older browsers or non-HTTPS
+      const textarea = document.createElement("textarea");
+      textarea.value = detailsText;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+
+    showToast(`📋 Copied: ${counterNo} details copied to clipboard!`, "success");
+
+    if (btn) {
+      btn.classList.add("copied");
+      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+      setTimeout(() => {
+        btn.classList.remove("copied");
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+      }, 1800);
+    }
+  } catch (err) {
+    showToast("Failed to copy printer details: " + err.message, "error");
+  }
 }
 
 function openPrinterDetailModal(counterNo, serialNo, counterName, hospital) {
