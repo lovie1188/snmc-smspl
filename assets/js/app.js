@@ -15,6 +15,33 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
+// ── Robust Date Parser for Google Sheets JSON & Custom Date Formats ──
+function parseRowDate(raw) {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  // Google Sheets JSON Date(YYYY,M,D,...)
+  const dMatch = s.match(/Date\((\d+),(\d+),(\d+)/i);
+  if (dMatch) {
+    return new Date(parseInt(dMatch[1], 10), parseInt(dMatch[2], 10), parseInt(dMatch[3], 10));
+  }
+  // DD/MM/YYYY or DD-MM-YYYY
+  if (s.includes("/") || s.includes("-")) {
+    const sep = s.includes("/") ? "/" : "-";
+    const p = s.split(sep);
+    if (p.length === 3) {
+      if (p[0].length === 4) {
+        // YYYY-MM-DD
+        return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+      } else if (p[2].length === 4) {
+        // DD-MM-YYYY
+        return new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10));
+      }
+    }
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 // ── Real-Time Form Validation Constraints ──────────────────
 function validateReadings() {
   const openingInput = document.getElementById("opening-reading");
