@@ -632,7 +632,7 @@ function initHospitalState() {
 function updateHeaderHospitalBadge() {
   const lbl = document.getElementById("current-hospital-label");
   if (lbl) {
-    lbl.textContent = activeSelectedHospital === "ALL" ? "All Hospitals" : `${activeSelectedHospital} Hospital`;
+    lbl.textContent = activeSelectedHospital === "ALL" ? "All" : activeSelectedHospital;
   }
 }
 
