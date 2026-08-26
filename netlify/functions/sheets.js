@@ -680,6 +680,62 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { ok: true, sent, failed, total: tokens.length });
     }
 
+    // ── 9. Live Fetch Employees from user_hospitals Sheet Tab ──
+    if (action === "getEmployees" && event.httpMethod === "GET") {
+      const data = await fetchSheetDataPublic(`'${USER_HOSPITALS_TAB}'!${USER_HOSPITALS_RANGE}`);
+      if (!data || !data.values || data.values.length === 0) {
+        return jsonResponse(200, headers, { employees: [] });
+      }
+
+      const rows = data.values.slice(1);
+      const employees = rows
+        .filter(r => r[0] && String(r[0]).trim() !== "")
+        .map((r, i) => {
+          const email = String(r[0] || "").trim();
+          const hospital = String(r[1] || "ALL").trim().toUpperCase();
+          const role = String(r[2] || "Operator").trim();
+          const name = email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+          const id = `EMP-${100 + (i + 1)}`;
+          return {
+            id,
+            name,
+            email,
+            phone: "+91 94140 XXXXX",
+            hospital,
+            role
+          };
+        });
+
+      const filtered = hasAllAccess 
+        ? employees 
+        : employees.filter(e => isHospitalAllowedServer(e.hospital, allowedHospitals, false));
+
+      return jsonResponse(200, headers, { employees: filtered, isSuperAdmin: userIsSuperAdmin });
+    }
+
+    // ── 10. Add New Employee / Team Member to user_hospitals Tab ──
+    if (action === "addEmployee" && event.httpMethod === "POST") {
+      if (!userIsSuperAdmin) {
+        const err = new Error("Forbidden: SuperAdmin access required to add team members.");
+        err.statusCode = 403;
+        throw err;
+      }
+
+      const payload = JSON.parse(event.body || "{}");
+      const email = String(payload.email || "").toLowerCase().trim();
+      const hospital = String(payload.hospital || "MDM").toUpperCase().trim();
+      const role = String(payload.role || "Operator").trim();
+
+      if (!email || !email.includes("@")) {
+        const err = new Error("Invalid email address.");
+        err.statusCode = 400;
+        throw err;
+      }
+
+      await appendSheetRow(USER_HOSPITALS_TAB, USER_HOSPITALS_RANGE, [email, hospital, role]);
+      return jsonResponse(200, headers, { ok: true, email, hospital, role });
+    }
+
     return {
       statusCode: 400,
       headers,

@@ -1364,19 +1364,35 @@ function showLoader(visible) {
 }
 
 // ── EMPLOYEE / CONTACT DIRECTORY & DIGITAL ID CARD (ADMIN MODULE) ──
-let allEmployeeItems = [
-  { id: "SNMC-101", name: "Lovejeet (SuperAdmin)", email: "softtech.lovejeet@gmail.com", phone: "+91 94140 XXXXX", hospital: "ALL", role: "SuperAdmin" },
-  { id: "SNMC-102", name: "Softtech Admin", email: "softtech2009@gmail.com", phone: "+91 98290 XXXXX", hospital: "ALL", role: "SuperAdmin" },
-  { id: "SNMC-201", name: "Ramesh Sharma", email: "ramesh.snmc@gmail.com", phone: "+91 94141 12345", hospital: "MDM", role: "Operator" },
-  { id: "SNMC-202", name: "Suresh Gehlot", email: "suresh.mgh@gmail.com", phone: "+91 98291 54321", hospital: "MGH", role: "Operator" },
-  { id: "SNMC-203", name: "Vikram Singh", email: "vikram.ummed@gmail.com", phone: "+91 97822 67890", hospital: "UMMED", role: "Supervisor" },
-  { id: "SNMC-204", name: "Prakash Patel", email: "prakash.snmc@gmail.com", phone: "+91 96100 11223", hospital: "MDM", role: "Operator" }
-];
-
+let allEmployeeItems = [];
 let activeEmployeeHospitalFilter = "ALL";
+let isEmployeesLoading = false;
 
 async function loadEmployeesPage() {
-  renderEmployeesList();
+  const container = document.getElementById("employees-cards-grid");
+  const countBadge = document.getElementById("employees-count-badge");
+  if (countBadge) countBadge.textContent = "Connecting to Google Sheet...";
+
+  try {
+    isEmployeesLoading = true;
+    const res = await sheetsRequest("getEmployees");
+    if (res && res.employees) {
+      allEmployeeItems = res.employees;
+    } else {
+      allEmployeeItems = [];
+    }
+  } catch (err) {
+    console.warn("[Employees] Failed to fetch user_hospitals tab:", err.message);
+    // Fallback: If sheet tab is empty or fresh, populate SuperAdmins
+    if (!allEmployeeItems.length && currentUser) {
+      allEmployeeItems = [
+        { id: "EMP-101", name: currentUser.displayName || currentUser.email.split("@")[0], email: currentUser.email, phone: "+91 94140 XXXXX", hospital: "ALL", role: "SuperAdmin" }
+      ];
+    }
+  } finally {
+    isEmployeesLoading = false;
+    renderEmployeesList();
+  }
 }
 
 function filterEmployeesByHospital(hosp, btnEl) {
@@ -1411,14 +1427,19 @@ function renderEmployeesList() {
 
   if (!filtered.length) {
     container.innerHTML = "";
-    if (noEmp) noEmp.style.display = "block";
+    if (noEmp) {
+      noEmp.style.display = "block";
+      noEmp.innerHTML = isEmployeesLoading 
+        ? `<div style="font-size:2rem; margin-bottom:8px;"><span class="spinner"></span></div><p>Loading members from Google Sheet (user_hospitals)...</p>`
+        : `<div style="font-size:2rem; margin-bottom:8px;">👥</div><p>No team members found in user_hospitals tab.</p>`;
+    }
     return;
   }
 
   if (noEmp) noEmp.style.display = "none";
 
   container.innerHTML = filtered.map(emp => {
-    const initials = emp.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+    const initials = (emp.name || emp.email).split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
     return `
       <div class="employee-card-item">
         <div>
@@ -1468,7 +1489,7 @@ function openIdCardModal(name, email, phone, hospital, role, id) {
   if (hospEl) hospEl.textContent = `${hospital} HOSPITAL`;
   if (roleEl) roleEl.textContent = role.toUpperCase();
   if (idEl) idEl.textContent = id;
-  if (avatarEl) avatarEl.textContent = name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+  if (avatarEl) avatarEl.textContent = (name || email).split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
 }
 
 function closeIdCardModal(e) {
@@ -1481,7 +1502,7 @@ function printIdCard() {
   window.print();
 }
 
-// ── Add Employee Modal & Actions ──
+// ── Add Employee Modal & Live 2-Way Google Sheet Sync ──
 function openAddEmployeeModal() {
   const modal = document.getElementById("add-employee-modal");
   if (modal) modal.style.display = "flex";
@@ -1493,26 +1514,47 @@ function closeAddEmployeeModal(e) {
   if (modal) modal.style.display = "none";
 }
 
-function handleSaveEmployee(e) {
+async function handleSaveEmployee(e) {
   e.preventDefault();
   const name = document.getElementById("emp-name-input")?.value?.trim() || "";
   const email = document.getElementById("emp-email-input")?.value?.trim().toLowerCase() || "";
-  const phone = document.getElementById("emp-phone-input")?.value?.trim() || "+91 94140 00000";
+  const phone = document.getElementById("emp-phone-input")?.value?.trim() || "+91 94140 XXXXX";
   const hospital = document.getElementById("emp-hospital-input")?.value || "MDM";
   const role = document.getElementById("emp-role-input")?.value || "Operator";
+  const saveBtn = document.getElementById("emp-save-btn");
 
   if (!name || !email) {
     showToast("Name and email are required.", "error");
     return;
   }
 
-  const newId = `SNMC-${Math.floor(100 + Math.random() * 900)}`;
-  allEmployeeItems.unshift({ id: newId, name, email, phone, hospital, role });
+  try {
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = `<span class="spinner"></span> Saving to Sheet...`;
+    }
 
-  showToast(`✅ Member ${name} added to Directory!`, "success");
-  closeAddEmployeeModal();
-  document.getElementById("add-employee-form")?.reset();
-  renderEmployeesList();
+    // Live Server-Side Append to user_hospitals Google Sheet Tab
+    const res = await sheetsRequest("addEmployee", {
+      method: "POST",
+      body: JSON.stringify({ email, hospital, role })
+    });
+
+    const newId = `EMP-${100 + (allEmployeeItems.length + 1)}`;
+    allEmployeeItems.unshift({ id: newId, name, email, phone, hospital, role });
+
+    showToast(`✅ Member ${name} (${email}) saved to Google Sheet (user_hospitals)!`, "success");
+    closeAddEmployeeModal();
+    document.getElementById("add-employee-form")?.reset();
+    renderEmployeesList();
+  } catch (err) {
+    showToast(`Failed to save to Google Sheet: ${err.message}`, "error");
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = `💾 Save Member`;
+    }
+  }
 }
 
 function copyContactDetails(event, name, phone, email, hospital) {
