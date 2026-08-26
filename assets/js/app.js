@@ -38,11 +38,67 @@ function validateReadings() {
   }
 }
 
-// ── Hospital-Wise Analytics Calculator ─────────────────────
+// ── Hospital-Wise Analytics Calculator with Custom Date Range Filter ──
+let summaryStartDate = "";
+let summaryEndDate = "";
+
+function setSummaryDatePreset(preset, btn) {
+  const container = document.querySelector(".summary-quick-pills");
+  if (container && btn) {
+    container.querySelectorAll(".summary-quick-pill").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  }
+
+  const startInput = document.getElementById("summary-start-date");
+  const endInput = document.getElementById("summary-end-date");
+  const today = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
+  if (preset === "today") {
+    summaryStartDate = todayStr;
+    summaryEndDate = todayStr;
+    if (startInput) startInput.value = todayStr;
+    if (endInput) endInput.value = todayStr;
+  } else if (preset === "this_month") {
+    const firstDay = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-01`;
+    summaryStartDate = firstDay;
+    summaryEndDate = todayStr;
+    if (startInput) startInput.value = firstDay;
+    if (endInput) endInput.value = todayStr;
+  } else {
+    // All time
+    summaryStartDate = "";
+    summaryEndDate = "";
+    if (startInput) startInput.value = "";
+    if (endInput) endInput.value = "";
+  }
+
+  calculateHospitalMetrics();
+}
+
+function filterSummaryByDateRange() {
+  const startInput = document.getElementById("summary-start-date");
+  const endInput = document.getElementById("summary-end-date");
+  summaryStartDate = startInput ? startInput.value : "";
+  summaryEndDate = endInput ? endInput.value : "";
+
+  // Reset active pill when custom date picked
+  const container = document.querySelector(".summary-quick-pills");
+  if (container) {
+    container.querySelectorAll(".summary-quick-pill").forEach(b => b.classList.remove("active"));
+  }
+
+  calculateHospitalMetrics();
+}
+
 function calculateHospitalMetrics() {
-  let mdmTotal = 0;
-  let mghTotal = 0;
-  let umaidTotal = 0;
+  const stats = {
+    TOTAL: { issued: 0, prints: 0, entries: 0 },
+    MDM:   { issued: 0, prints: 0, entries: 0 },
+    MGH:   { issued: 0, prints: 0, entries: 0 },
+    UMAID: { issued: 0, prints: 0, entries: 0 }
+  };
 
   // Build counter-to-hospital map from printerData if available
   const counterHospitalMap = {};
@@ -59,9 +115,26 @@ function calculateHospitalMetrics() {
   }
 
   allDailyRows.forEach(r => {
+    // Date Range Check
+    if (summaryStartDate || summaryEndDate) {
+      const dateVal = r["Date"] || r["Timestamp"] || "";
+      const parsedDate = parseRowDate(dateVal);
+      if (parsedDate) {
+        const pad = n => String(n).padStart(2, "0");
+        const rowDateStr = `${parsedDate.getFullYear()}-${pad(parsedDate.getMonth() + 1)}-${pad(parsedDate.getDate())}`;
+        if (summaryStartDate && rowDateStr < summaryStartDate) return;
+        if (summaryEndDate && rowDateStr > summaryEndDate) return;
+      }
+    }
+
     const cVal = r["counter Number"] || r["Counter Number"] || r["Counter"] || "";
     const hospCol = (r["Hospital Name"] || r["Hospital Name "] || r["Hospital"] || "").toUpperCase();
     const issued = parseFloat(r["Paper Issued"] || r["Issued"] || 0) || 0;
+    
+    // Calculate prints made from Opening to Closing
+    const opening = parseFloat(r["Opening Reading"] || r["Opening"] || 0) || 0;
+    const closing = parseFloat(r["Closing Reading"] || r["Closing"] || 0) || 0;
+    const prints = (closing >= opening && opening > 0) ? (closing - opening) : 0;
 
     let hospital = hospCol || counterHospitalMap[cVal.trim()] || counterHospitalMap[cVal.split(" ")[0].trim()] || "";
 
@@ -72,18 +145,44 @@ function calculateHospitalMetrics() {
       else if (rawStr.includes("UMAID") || rawStr.includes("GYN") || rawStr.includes("PEDIA")) hospital = "UMAID";
     }
 
-    if (hospital.includes("MDM")) mdmTotal += issued;
-    else if (hospital.includes("MGH")) mghTotal += issued;
-    else if (hospital.includes("UMAID") || hospital.includes("GYN") || hospital.includes("PEDIA")) umaidTotal += issued;
+    // Accumulate Global Total
+    stats.TOTAL.issued += issued;
+    stats.TOTAL.prints += prints;
+    stats.TOTAL.entries += 1;
+
+    // Accumulate Hospital Specific
+    if (hospital.includes("MDM")) {
+      stats.MDM.issued += issued;
+      stats.MDM.prints += prints;
+      stats.MDM.entries += 1;
+    } else if (hospital.includes("MGH")) {
+      stats.MGH.issued += issued;
+      stats.MGH.prints += prints;
+      stats.MGH.entries += 1;
+    } else if (hospital.includes("UMAID") || hospital.includes("GYN") || hospital.includes("PEDIA")) {
+      stats.UMAID.issued += issued;
+      stats.UMAID.prints += prints;
+      stats.UMAID.entries += 1;
+    }
   });
 
-  const mdmEl = document.getElementById("mdm-issued-count");
-  const mghEl = document.getElementById("mgh-issued-count");
-  const umaidEl = document.getElementById("umaid-issued-count");
+  // Helper to safely populate card elements
+  const updateCard = (prefix, data) => {
+    const issuedEl = document.getElementById(`${prefix}-summary-issued`);
+    const printsEl = document.getElementById(`${prefix}-summary-prints`);
+    const entriesEl = document.getElementById(`${prefix}-summary-entries`);
+    const rimsEl = document.getElementById(`${prefix}-summary-rims`);
 
-  if (mdmEl) mdmEl.textContent = mdmTotal.toLocaleString("en-IN");
-  if (mghEl) mghEl.textContent = mghTotal.toLocaleString("en-IN");
-  if (umaidEl) umaidEl.textContent = umaidTotal.toLocaleString("en-IN");
+    if (issuedEl) issuedEl.textContent = data.issued.toLocaleString("en-IN");
+    if (printsEl) printsEl.textContent = data.prints.toLocaleString("en-IN");
+    if (entriesEl) entriesEl.textContent = data.entries.toLocaleString("en-IN");
+    if (rimsEl) rimsEl.textContent = (data.issued / 500).toFixed(1);
+  };
+
+  updateCard("total", stats.TOTAL);
+  updateCard("mdm", stats.MDM);
+  updateCard("mgh", stats.MGH);
+  updateCard("umaid", stats.UMAID);
 }
 
 let historyViewMode = window.innerWidth <= 768 ? "cards" : "table";

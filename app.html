@@ -291,35 +291,116 @@
       
       <!-- Hospital-Wise Summary Analytics Section -->
       <div class="skynex-card">
-        <div class="skynex-card-title">
+        <div class="hospital-summary-header">
           <div>
-            <div style="font-size: 0.95rem; font-weight: 800;">Hospital-Wise Summary</div>
-            <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">Live MDM, MGH &amp; UMAID Metrics</div>
+            <div style="font-size: 1rem; font-weight: 800;">Hospital-Wise Performance Summary</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">Filter readings, paper consumption &amp; prints across custom date periods</div>
           </div>
-          <div class="arrow-btn" onclick="loadHistory(); showTab('history');">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+          
+          <!-- Interactive Start-to-End Date Range Filter -->
+          <div class="summary-date-filter-bar">
+            <label>From:</label>
+            <input type="date" id="summary-start-date" onchange="filterSummaryByDateRange()">
+            <label>To:</label>
+            <input type="date" id="summary-end-date" onchange="filterSummaryByDateRange()">
+            
+            <div class="summary-quick-pills">
+              <button type="button" class="summary-quick-pill active" onclick="setSummaryDatePreset('all', this)">All</button>
+              <button type="button" class="summary-quick-pill" onclick="setSummaryDatePreset('today', this)">Today</button>
+              <button type="button" class="summary-quick-pill" onclick="setSummaryDatePreset('this_month', this)">This Month</button>
+            </div>
           </div>
         </div>
 
-        <!-- Hospital Wise Cards Grid -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 10px;" id="hospital-cards-grid">
+        <!-- Distinct Hospital State Cards Grid -->
+        <div class="hospital-state-cards-grid" id="hospital-state-cards-container">
           
-          <div style="background: rgba(59, 130, 246, 0.08); border: 1.5px solid rgba(59, 130, 246, 0.2); border-radius: 16px; padding: 12px; text-align: center;">
-            <div style="font-size: 0.7rem; font-weight: 800; color: #1d4ed8;">MDM Hospital</div>
-            <div style="font-size: 1.3rem; font-weight: 800; color: #0f172a;" id="mdm-issued-count">0</div>
-            <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600;">Paper Issued</div>
+          <!-- ALL Combined State Card -->
+          <div class="hospital-state-card card-all">
+            <div class="hcard-top">
+              <span class="hcard-name">🏢 All Hospitals (Total)</span>
+              <span class="hcard-badge">SNMC Global</span>
+            </div>
+            <div class="hcard-metrics-grid">
+              <div class="hmetric-box">
+                <div class="hmetric-label">Paper Issued</div>
+                <div class="hmetric-val blue" id="total-summary-issued">0</div>
+              </div>
+              <div class="hmetric-box">
+                <div class="hmetric-label">Prints Made</div>
+                <div class="hmetric-val green" id="total-summary-prints">0</div>
+              </div>
+            </div>
+            <div class="hcard-footer-info">
+              <span>Entries Logged: <strong id="total-summary-entries">0</strong></span>
+              <span>Rims: <strong id="total-summary-rims">0</strong></span>
+            </div>
           </div>
 
-          <div style="background: rgba(168, 85, 247, 0.08); border: 1.5px solid rgba(168, 85, 247, 0.2); border-radius: 16px; padding: 12px; text-align: center;">
-            <div style="font-size: 0.7rem; font-weight: 800; color: #7e22ce;">MGH Hospital</div>
-            <div style="font-size: 1.3rem; font-weight: 800; color: #0f172a;" id="mgh-issued-count">0</div>
-            <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600;">Paper Issued</div>
+          <!-- MDM Hospital State Card -->
+          <div class="hospital-state-card card-mdm">
+            <div class="hcard-top">
+              <span class="hcard-name">🏥 MDM Hospital</span>
+              <span class="hcard-badge">Main Campus</span>
+            </div>
+            <div class="hcard-metrics-grid">
+              <div class="hmetric-box">
+                <div class="hmetric-label">Paper Issued</div>
+                <div class="hmetric-val blue" id="mdm-summary-issued">0</div>
+              </div>
+              <div class="hmetric-box">
+                <div class="hmetric-label">Prints Made</div>
+                <div class="hmetric-val green" id="mdm-summary-prints">0</div>
+              </div>
+            </div>
+            <div class="hcard-footer-info">
+              <span>Entries: <strong id="mdm-summary-entries">0</strong></span>
+              <span>Rims: <strong id="mdm-summary-rims">0</strong></span>
+            </div>
           </div>
 
-          <div style="background: rgba(236, 72, 153, 0.08); border: 1.5px solid rgba(236, 72, 153, 0.2); border-radius: 16px; padding: 12px; text-align: center;">
-            <div style="font-size: 0.7rem; font-weight: 800; color: #be185d;">UMAID Hospital</div>
-            <div style="font-size: 1.3rem; font-weight: 800; color: #0f172a;" id="umaid-issued-count">0</div>
-            <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600;">Paper Issued</div>
+          <!-- MGH Hospital State Card -->
+          <div class="hospital-state-card card-mgh">
+            <div class="hcard-top">
+              <span class="hcard-name">🏥 MGH Hospital</span>
+              <span class="hcard-badge">City Campus</span>
+            </div>
+            <div class="hcard-metrics-grid">
+              <div class="hmetric-box">
+                <div class="hmetric-label">Paper Issued</div>
+                <div class="hmetric-val blue" id="mgh-summary-issued">0</div>
+              </div>
+              <div class="hmetric-box">
+                <div class="hmetric-label">Prints Made</div>
+                <div class="hmetric-val green" id="mgh-summary-prints">0</div>
+              </div>
+            </div>
+            <div class="hcard-footer-info">
+              <span>Entries: <strong id="mgh-summary-entries">0</strong></span>
+              <span>Rims: <strong id="mgh-summary-rims">0</strong></span>
+            </div>
+          </div>
+
+          <!-- UMAID Hospital State Card -->
+          <div class="hospital-state-card card-umaid">
+            <div class="hcard-top">
+              <span class="hcard-name">🏥 UMAID Hospital</span>
+              <span class="hcard-badge">Women &amp; Child</span>
+            </div>
+            <div class="hcard-metrics-grid">
+              <div class="hmetric-box">
+                <div class="hmetric-label">Paper Issued</div>
+                <div class="hmetric-val blue" id="umaid-summary-issued">0</div>
+              </div>
+              <div class="hmetric-box">
+                <div class="hmetric-label">Prints Made</div>
+                <div class="hmetric-val green" id="umaid-summary-prints">0</div>
+              </div>
+            </div>
+            <div class="hcard-footer-info">
+              <span>Entries: <strong id="umaid-summary-entries">0</strong></span>
+              <span>Rims: <strong id="umaid-summary-rims">0</strong></span>
+            </div>
           </div>
 
         </div>
