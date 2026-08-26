@@ -2,27 +2,37 @@
 // PrintTrack — Service Worker with FCM Push Support
 // ============================================================
 
-const CACHE_NAME = 'printtrack-v5';
+const CACHE_NAME = 'printtrack-v6';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/app.html',
-  '/manifest.json',
-  '/assets/css/app.css',
-  '/assets/js/config.js',
-  '/assets/js/schema.js',
-  '/assets/js/auth.js',
-  '/assets/js/sheets.js',
-  '/assets/js/db.js',
-  '/assets/js/app.js',
-  '/assets/js/notifications.js'
+  './',
+  './index.html',
+  './app.html',
+  './manifest.json',
+  './assets/css/app.css',
+  './assets/js/config.js',
+  './assets/js/schema.js',
+  './assets/js/auth.js',
+  './assets/js/sheets.js',
+  './assets/js/db.js',
+  './assets/js/app.js',
+  './assets/js/notifications.js',
+  './assets/js/admob.js'
 ];
 
 // ── Install ──
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
+    caches.open(CACHE_NAME).then((cache) => {
+      // Use Promise.allSettled so a single missing asset does not fail the entire SW install
+      return Promise.allSettled(
+        ASSETS_TO_CACHE.map((url) =>
+          fetch(url).then((res) => {
+            if (res.ok) return cache.put(url, res);
+          }).catch(() => {})
+        )
+      );
+    })
   );
 });
 

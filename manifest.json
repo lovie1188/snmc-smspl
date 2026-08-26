@@ -3,8 +3,8 @@
   "name": "PrintTrack — Hospital Paper & Printer System",
   "short_name": "PrintTrack",
   "description": "Daily Printer Reading & Hospital Paper Stock Entry Management System — SNMC",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "any",
@@ -16,25 +16,25 @@
   "categories": ["productivity", "utilities", "business", "medical"],
   "icons": [
     {
-      "src": "/assets/icons/icon-192.png",
+      "src": "assets/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/assets/icons/icon-192.png",
+      "src": "assets/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/assets/icons/icon-512.png",
+      "src": "assets/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/assets/icons/icon-512.png",
+      "src": "assets/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -45,34 +45,34 @@
       "name": "New Entry",
       "short_name": "Entry",
       "description": "Add a new daily printer reading",
-      "url": "/app.html#entry",
-      "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }]
+      "url": "./app.html#entry",
+      "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }]
     },
     {
       "name": "Printers Directory",
       "short_name": "Printers",
       "description": "View master printer catalog and status",
-      "url": "/app.html#printers",
-      "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }]
+      "url": "./app.html#printers",
+      "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }]
     },
     {
       "name": "View History",
       "short_name": "History",
       "description": "View recent printer reading history",
-      "url": "/app.html#history",
-      "icons": [{ "src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }]
+      "url": "./app.html#history",
+      "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }]
     }
   ],
   "screenshots": [
     {
-      "src": "/assets/screenshots/mobile-preview.png",
+      "src": "assets/screenshots/mobile-preview.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "PrintTrack Mobile Dashboard"
     },
     {
-      "src": "/assets/screenshots/desktop-preview.png",
+      "src": "assets/screenshots/desktop-preview.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "wide",
