@@ -149,10 +149,13 @@ function calculateHospitalMetrics() {
     });
   }
 
-  // 3. Calculate Daily Readings, Issued and Prints Made
+  // 3. Group Daily Rows by Counter to calculate Prints Made & Paper Issued
+  const counterGroups = {};
+  const isDateFiltered = !!(summaryStartDate || summaryEndDate);
+
   allDailyRows.forEach(r => {
-    // Date Range Check
-    if (summaryStartDate || summaryEndDate) {
+    // Date Range Filter Check
+    if (isDateFiltered) {
       const dateVal = r["Date"] || r["Timestamp"] || "";
       const parsedDate = parseRowDate(dateVal);
       if (parsedDate) {
@@ -163,49 +166,79 @@ function calculateHospitalMetrics() {
       }
     }
 
-    const cVal = r["counter Number"] || r["Counter Number"] || r["Counter"] || "";
-    const hospCol = (r["Hospital Name"] || r["Hospital Name "] || r["Hospital"] || "").toUpperCase();
-    const issued = parseFloat(r["Paper Issued"] || r["Issued"] || 0) || 0;
-    
-    // Robust multi-key reading parsing for Opening & Closing
-    const opening = parseFloat(r["Opening reading"] || r["Opening Reading"] || r["Opening"] || 0) || 0;
-    const closing = parseFloat(r["Closing Reading"] || r["Closing reading"] || r["Closing"] || 0) || 0;
-    
-    // Prints made is strictly (Closing - Opening) when both valid readings exist and closing >= opening
-    let prints = 0;
-    if (closing >= opening && opening > 0) {
-      prints = closing - opening;
-    } else if (closing > 0 && opening === 0) {
-      prints = closing;
-    }
+    const cVal = (r["counter Number"] || r["Counter Number"] || r["Counter"] || "").trim();
+    if (!cVal) return;
 
-    let hospital = hospCol || counterHospitalMap[cVal.trim()] || counterHospitalMap[cVal.split(" ")[0].trim()] || "";
+    if (!counterGroups[cVal]) {
+      counterGroups[cVal] = [];
+    }
+    counterGroups[cVal].push(r);
+  });
+
+  // Calculate stats for each counter
+  Object.keys(counterGroups).forEach(cVal => {
+    const rows = counterGroups[cVal];
+    
+    // Sort chronological: oldest first, latest last
+    rows.sort((a, b) => {
+      const da = parseRowDate(a["Date"] || a["hg"]) || 0;
+      const db = parseRowDate(b["Date"] || b["hg"]) || 0;
+      return da - db;
+    });
+
+    const latestRow = rows[rows.length - 1];
+    const firstRow  = rows[0];
+
+    // Determine hospital for this counter
+    const hospCol = (latestRow["Hospital Name"] || latestRow["Hospital Name "] || latestRow["Hospital"] || "").toUpperCase();
+    let hospital = hospCol || counterHospitalMap[cVal] || counterHospitalMap[cVal.split(" ")[0].trim()] || "";
 
     if (!hospital) {
-      const rawStr = Object.values(r).join(" ").toUpperCase();
+      const rawStr = Object.values(latestRow).join(" ").toUpperCase();
       if (rawStr.includes("MDM")) hospital = "MDM";
       else if (rawStr.includes("MGH")) hospital = "MGH";
       else if (rawStr.includes("UMAID") || rawStr.includes("UMMED") || rawStr.includes("GYN") || rawStr.includes("PEDIA")) hospital = "UMAID";
     }
 
-    // Accumulate Global Total
-    stats.TOTAL.issued += issued;
-    stats.TOTAL.prints += prints;
-    stats.TOTAL.entries += 1;
+    // Prints Made Calculation:
+    // When Lifetime (no date filter): Latest Closing Reading represents the total lifetime prints on that counter.
+    // When Date Filtered: Latest Closing in period minus Initial Opening in period.
+    let counterPrints = 0;
+    const latestClosing = parseFloat(latestRow["Closing Reading"] || latestRow["Closing reading"] || latestRow["Closing"] || 0) || 0;
+    
+    if (isDateFiltered) {
+      const firstOpening = parseFloat(firstRow["Opening reading"] || firstRow["Opening Reading"] || firstRow["Opening"] || 0) || 0;
+      counterPrints = Math.max(0, latestClosing - firstOpening);
+    } else {
+      counterPrints = latestClosing;
+    }
 
-    // Accumulate Hospital Specific
+    // Sum paper issued & entry count across the period for this counter
+    let counterIssued = 0;
+    rows.forEach(r => {
+      counterIssued += parseFloat(r["Paper Issued"] || r["Issued"] || 0) || 0;
+    });
+
+    const entriesCount = rows.length;
+
+    // Accumulate Global
+    stats.TOTAL.issued += counterIssued;
+    stats.TOTAL.prints += counterPrints;
+    stats.TOTAL.entries += entriesCount;
+
+    // Accumulate Hospital-specific
     if (hospital.includes("MDM")) {
-      stats.MDM.issued += issued;
-      stats.MDM.prints += prints;
-      stats.MDM.entries += 1;
+      stats.MDM.issued += counterIssued;
+      stats.MDM.prints += counterPrints;
+      stats.MDM.entries += entriesCount;
     } else if (hospital.includes("MGH")) {
-      stats.MGH.issued += issued;
-      stats.MGH.prints += prints;
-      stats.MGH.entries += 1;
+      stats.MGH.issued += counterIssued;
+      stats.MGH.prints += counterPrints;
+      stats.MGH.entries += entriesCount;
     } else if (hospital.includes("UMAID") || hospital.includes("UMMED") || hospital.includes("GYN") || hospital.includes("PEDIA")) {
-      stats.UMAID.issued += issued;
-      stats.UMAID.prints += prints;
-      stats.UMAID.entries += 1;
+      stats.UMAID.issued += counterIssued;
+      stats.UMAID.prints += counterPrints;
+      stats.UMAID.entries += entriesCount;
     }
   });
 
