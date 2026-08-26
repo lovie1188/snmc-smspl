@@ -450,6 +450,62 @@ async function handleActionRequest(req, res) {
       return res.json({ ok: true, email: targetEmail });
     }
 
+    if (action === "getEmployees") {
+      const data = await fetchSheetData(`'${USER_HOSPITALS_TAB}'!${USER_HOSPITALS_RANGE}`);
+      if (!data || !data.values || data.values.length === 0) {
+        return res.json({ employees: [] });
+      }
+
+      const rows = data.values.slice(1);
+      const employees = rows
+        .filter(r => r[0] && String(r[0]).trim() !== "")
+        .map((r, i) => {
+          const email = String(r[0] || "").trim();
+          const hospital = String(r[1] || "ALL").trim().toUpperCase();
+          const role = String(r[2] || "Operator").trim();
+          const name = email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+          const id = `EMP-${100 + (i + 1)}`;
+          return {
+            id,
+            name,
+            email,
+            phone: "+91 94140 XXXXX",
+            hospital,
+            role
+          };
+        });
+
+      const filtered = perms.isAll 
+        ? employees 
+        : employees.filter(e => isHospitalAllowed(e.hospital, perms.hospitals, false));
+
+      return res.json({ employees: filtered, isSuperAdmin: perms.isSuperAdmin });
+    }
+
+    if (action === "addEmployee" && method === "POST") {
+      if (!perms.isSuperAdmin) {
+        return res.status(403).json({ error: "Forbidden: SuperAdmin access required to add team members." });
+      }
+
+      const email = String(req.body.email || "").toLowerCase().trim();
+      const hospital = String(req.body.hospital || "MDM").toUpperCase().trim();
+      const role = String(req.body.role || "Operator").trim();
+
+      if (!email || !email.includes("@")) {
+        return res.status(400).json({ error: "Invalid email address." });
+      }
+
+      const authHeaders = await getSheetsAuthHeaders();
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(`'${USER_HOSPITALS_TAB}'!${USER_HOSPITALS_RANGE}`)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+      await fetch(url, {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [[email, hospital, role]] })
+      });
+
+      return res.json({ ok: true, email, hospital, role });
+    }
+
     return res.status(400).json({ error: `Unsupported action: ${action}` });
   } catch (err) {
     return res.status(500).json({ error: err.message });
