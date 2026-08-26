@@ -901,14 +901,15 @@ body {
 .card-all .hcard-badge { background: rgba(16, 185, 129, 0.12); color: #059669; }
 
 .hcard-metrics-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-  background: #f8fafc; border-radius: 12px; padding: 10px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  background: #f8fafc; border-radius: 12px; padding: 10px 8px;
 }
-.hmetric-box { text-align: left; }
-.hmetric-label { font-size: 0.6rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-.hmetric-val { font-size: 1.15rem; font-weight: 900; color: var(--text); margin-top: 1px; }
+.hmetric-box { text-align: center; }
+.hmetric-label { font-size: 0.58rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; white-space: nowrap; }
+.hmetric-val { font-size: 1.05rem; font-weight: 900; color: var(--text); margin-top: 2px; }
 .hmetric-val.green { color: #059669; }
 .hmetric-val.blue { color: #1d4ed8; }
+.hmetric-val.purple { color: #7e22ce; }
 
 .hcard-footer-info {
   margin-top: 10px; font-size: 0.68rem; color: var(--text-muted);

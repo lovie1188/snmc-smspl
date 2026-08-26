@@ -94,13 +94,48 @@ function filterSummaryByDateRange() {
 
 function calculateHospitalMetrics() {
   const stats = {
-    TOTAL: { issued: 0, prints: 0, entries: 0 },
-    MDM:   { issued: 0, prints: 0, entries: 0 },
-    MGH:   { issued: 0, prints: 0, entries: 0 },
-    UMAID: { issued: 0, prints: 0, entries: 0 }
+    TOTAL: { delivered: 0, stockRims: 0, issued: 0, prints: 0, entries: 0 },
+    MDM:   { delivered: 0, stockRims: 0, issued: 0, prints: 0, entries: 0 },
+    MGH:   { delivered: 0, stockRims: 0, issued: 0, prints: 0, entries: 0 },
+    UMAID: { delivered: 0, stockRims: 0, issued: 0, prints: 0, entries: 0 }
   };
 
-  // Build counter-to-hospital map from printerData if available
+  // 1. Calculate Stock Delivered / Received from allStockRows
+  if (Array.isArray(allStockRows) && allStockRows.length) {
+    allStockRows.forEach(s => {
+      // Date Range Filter for Stock
+      if (summaryStartDate || summaryEndDate) {
+        const dateVal = s["Date"] || "";
+        const parsedDate = parseRowDate(dateVal);
+        if (parsedDate) {
+          const pad = n => String(n).padStart(2, "0");
+          const rowDateStr = `${parsedDate.getFullYear()}-${pad(parsedDate.getMonth() + 1)}-${pad(parsedDate.getDate())}`;
+          if (summaryStartDate && rowDateStr < summaryStartDate) return;
+          if (summaryEndDate && rowDateStr > summaryEndDate) return;
+        }
+      }
+
+      const rims = parseFloat(s["Qualtity"] || s["Quantity"] || 0) || 0;
+      const sheets = parseFloat(s["PAPER Quantity"] || 0) || (rims * 500);
+      const hosp = String(s["HOSPITAL"] || s["Hospital"] || "").toUpperCase().trim();
+
+      stats.TOTAL.delivered += sheets;
+      stats.TOTAL.stockRims += rims;
+
+      if (hosp.includes("MDM")) {
+        stats.MDM.delivered += sheets;
+        stats.MDM.stockRims += rims;
+      } else if (hosp.includes("MGH")) {
+        stats.MGH.delivered += sheets;
+        stats.MGH.stockRims += rims;
+      } else if (hosp.includes("UMAID") || hosp.includes("UMMED") || hosp.includes("GYN") || hosp.includes("PEDIA")) {
+        stats.UMAID.delivered += sheets;
+        stats.UMAID.stockRims += rims;
+      }
+    });
+  }
+
+  // 2. Build counter-to-hospital map from printerData if available
   const counterHospitalMap = {};
   if (printerData && printerData.rows) {
     printerData.rows.forEach(p => {
@@ -114,6 +149,7 @@ function calculateHospitalMetrics() {
     });
   }
 
+  // 3. Calculate Daily Readings, Issued and Prints Made
   allDailyRows.forEach(r => {
     // Date Range Check
     if (summaryStartDate || summaryEndDate) {
@@ -140,7 +176,6 @@ function calculateHospitalMetrics() {
     if (closing >= opening && opening > 0) {
       prints = closing - opening;
     } else if (closing > 0 && opening === 0) {
-      // If opening is 0, check if paper issued was consumed or treat closing as total
       prints = closing;
     }
 
@@ -176,15 +211,17 @@ function calculateHospitalMetrics() {
 
   // Helper to safely populate card elements
   const updateCard = (prefix, data) => {
+    const deliveredEl = document.getElementById(`${prefix}-summary-delivered`);
     const issuedEl = document.getElementById(`${prefix}-summary-issued`);
     const printsEl = document.getElementById(`${prefix}-summary-prints`);
     const entriesEl = document.getElementById(`${prefix}-summary-entries`);
-    const rimsEl = document.getElementById(`${prefix}-summary-rims`);
+    const stockRimsEl = document.getElementById(`${prefix}-summary-stock-rims`);
 
+    if (deliveredEl) deliveredEl.textContent = data.delivered.toLocaleString("en-IN");
     if (issuedEl) issuedEl.textContent = data.issued.toLocaleString("en-IN");
     if (printsEl) printsEl.textContent = data.prints.toLocaleString("en-IN");
     if (entriesEl) entriesEl.textContent = data.entries.toLocaleString("en-IN");
-    if (rimsEl) rimsEl.textContent = (data.issued / 500).toFixed(1);
+    if (stockRimsEl) stockRimsEl.textContent = data.stockRims.toLocaleString("en-IN");
   };
 
   updateCard("total", stats.TOTAL);
@@ -913,6 +950,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     await loadPrinterDropdowns();
+    try {
+      const stockData = await fetchStockEntries();
+      allStockRows = (stockData && stockData.rows) ? stockData.rows : [];
+    } catch (e) {
+      console.warn("Stock preload:", e.message);
+    }
     await loadHistory();
     setDefaultDate();
     toggleIssueReceiveFields();
