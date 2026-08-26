@@ -1,0 +1,23 @@
+﻿services:
+  - type: web
+    name: snmc-backend
+    env: node
+    plan: free
+    rootDir: snmcBackend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_VERSION
+        value: 20.0.0
+      - key: PORT
+        value: 5000
+      - key: FIREBASE_PROJECT_ID
+        value: gen-lang-client-0070625213
+      - key: SUPER_ADMIN_EMAILS
+        value: softtech.lovejeet@gmail.com,softtech2009@gmail.com
+      - key: GOOGLE_SERVICE_ACCOUNT_EMAIL
+        sync: false
+      - key: GOOGLE_PRIVATE_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://snmc-smspl.netlify.app,http://localhost:8080,http://localhost:3000

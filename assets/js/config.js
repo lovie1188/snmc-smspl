@@ -31,7 +31,7 @@ const APP_CONFIG = {
       "softtech2009@gmail.com"
     ]
   },
-  // Dedicated Express Backend deployed on Render.com
+  // Dedicated Render.com Backend API Service
   apiBaseUrl: "https://snmcbackend.onrender.com"
 };
 
