@@ -832,6 +832,79 @@ body {
 .stock-kpi-card .kpi-val.highlight { color: #059669; }
 .stock-kpi-card .kpi-sub { font-size: 0.6rem; color: var(--text-muted); font-weight: 600; }
 
+/* ── 3-Core Lifecycle Hero KPI Cards (Delivered, Issued, Prints) ── */
+.kpi-hero-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.kpi-hero-card {
+  background: #ffffff;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 20px;
+  padding: 16px 18px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.kpi-hero-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+}
+.kpi-hero-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+}
+.kpi-hero-card.card-delivered::before { background: linear-gradient(90deg, #7c3aed, #a855f7); }
+.kpi-hero-card.card-issued::before    { background: linear-gradient(90deg, #1d4ed8, #3b82f6); }
+.kpi-hero-card.card-prints::before    { background: linear-gradient(90deg, #059669, #10b981); }
+
+.kpi-card-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+}
+.kpi-card-title {
+  font-size: 0.85rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px;
+}
+.kpi-card-icon {
+  width: 36px; height: 36px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+}
+.card-delivered .kpi-card-icon { background: rgba(124, 58, 237, 0.1); color: #7c3aed; }
+.card-issued .kpi-card-icon    { background: rgba(29, 78, 216, 0.1);  color: #1d4ed8; }
+.card-prints .kpi-card-icon    { background: rgba(5, 150, 105, 0.1);  color: #059669; }
+
+.kpi-main-val {
+  font-size: 1.8rem; font-weight: 900; color: var(--text); line-height: 1.1; margin: 4px 0 2px;
+}
+.card-delivered .kpi-main-val { color: #6d28d9; }
+.card-issued .kpi-main-val    { color: #1e40af; }
+.card-prints .kpi-main-val    { color: #047857; }
+
+.kpi-sub-text {
+  font-size: 0.74rem; font-weight: 600; color: var(--text-muted);
+}
+.kpi-card-footer {
+  margin-top: 12px; padding-top: 8px; border-top: 1px dashed #e2e8f0;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.72rem; color: #475569; font-weight: 600;
+}
+.kpi-card-footer strong { color: var(--text); font-weight: 800; }
+
+/* ── Stock vs Issue Consumption Tracker Bar ── */
+.consumption-summary-bar {
+  background: #f8fafc; border: 1.5px solid #e2e8f0;
+  border-radius: 16px; padding: 14px 16px; margin-top: 14px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px; align-items: center;
+}
+.cs-item { text-align: left; }
+.cs-label { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+.cs-val { font-size: 1.15rem; font-weight: 900; color: var(--text); margin-top: 2px; }
+.cs-val.good { color: #059669; }
+.cs-val.warn { color: #d97706; }
+
 /* ── Hospital Summary State Cards & Date Range Analytics ───── */
 .hospital-summary-header {
   display: flex; align-items: center; justify-content: space-between;

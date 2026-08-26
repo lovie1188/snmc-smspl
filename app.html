@@ -312,113 +312,73 @@
           </div>
         </div>
 
-        <!-- Distinct Hospital State Cards Grid -->
-        <div class="hospital-state-cards-grid" id="hospital-state-cards-container">
+        <!-- 3-Core Lifecycle Hero KPI Cards (Delivered, Issued, Prints) -->
+        <div class="kpi-hero-grid">
           
-          <!-- ALL Combined State Card -->
-          <div class="hospital-state-card card-all">
-            <div class="hcard-top">
-              <span class="hcard-name">🏢 All Hospitals (Total)</span>
-              <span class="hcard-badge">SNMC Global</span>
+          <!-- 1. Paper Delivered (Stock Received) -->
+          <div class="kpi-hero-card card-delivered">
+            <div>
+              <div class="kpi-card-header">
+                <span class="kpi-card-title">1. Paper Delivered</span>
+                <div class="kpi-card-icon">📦</div>
+              </div>
+              <div class="kpi-main-val" id="kpi-delivered-sheets">0</div>
+              <div class="kpi-sub-text">Total Paper Received in Stock</div>
             </div>
-            <div class="hcard-metrics-grid">
-              <div class="hmetric-box">
-                <div class="hmetric-label">Delivered (Stock)</div>
-                <div class="hmetric-val purple" id="total-summary-delivered">0</div>
-              </div>
-              <div class="hmetric-box">
-                <div class="hmetric-label">Paper Issued</div>
-                <div class="hmetric-val blue" id="total-summary-issued">0</div>
-              </div>
-              <div class="hmetric-box">
-                <div class="hmetric-label">Prints Made</div>
-                <div class="hmetric-val green" id="total-summary-prints">0</div>
-              </div>
-            </div>
-            <div class="hcard-footer-info">
-              <span>Entries Logged: <strong id="total-summary-entries">0</strong></span>
-              <span>Stock Rims: <strong id="total-summary-stock-rims">0</strong></span>
+            <div class="kpi-card-footer">
+              <span>Stock Rims: <strong id="kpi-delivered-rims">0</strong></span>
+              <span class="badge" style="background:rgba(124,58,237,0.1); color:#7c3aed;">Stock In</span>
             </div>
           </div>
 
-          <!-- MDM Hospital State Card -->
-          <div class="hospital-state-card card-mdm">
-            <div class="hcard-top">
-              <span class="hcard-name">🏥 MDM Hospital</span>
-              <span class="hcard-badge">Main Campus</span>
+          <!-- 2. Paper Issued (Counter Allocation) -->
+          <div class="kpi-hero-card card-issued">
+            <div>
+              <div class="kpi-card-header">
+                <span class="kpi-card-title">2. Paper Issued</span>
+                <div class="kpi-card-icon">📝</div>
+              </div>
+              <div class="kpi-main-val" id="kpi-issued-sheets">0</div>
+              <div class="kpi-sub-text">Allocated to Counters</div>
             </div>
-            <div class="hcard-metrics-grid">
-              <div class="hmetric-box">
-                <div class="hmetric-label">Delivered</div>
-                <div class="hmetric-val purple" id="mdm-summary-delivered">0</div>
-              </div>
-              <div class="hmetric-box">
-                <div class="hmetric-label">Paper Issued</div>
-                <div class="hmetric-val blue" id="mdm-summary-issued">0</div>
-              </div>
-              <div class="hmetric-box">
-                <div class="hmetric-label">Prints Made</div>
-                <div class="hmetric-val green" id="mdm-summary-prints">0</div>
-              </div>
-            </div>
-            <div class="hcard-footer-info">
-              <span>Entries: <strong id="mdm-summary-entries">0</strong></span>
-              <span>Stock Rims: <strong id="mdm-summary-stock-rims">0</strong></span>
+            <div class="kpi-card-footer">
+              <span>Issued Rims: <strong id="kpi-issued-rims">0</strong></span>
+              <span class="badge" style="background:rgba(29,78,216,0.1); color:#1d4ed8;">Counter Out</span>
             </div>
           </div>
 
-          <!-- MGH Hospital State Card -->
-          <div class="hospital-state-card card-mgh">
-            <div class="hcard-top">
-              <span class="hcard-name">🏥 MGH Hospital</span>
-              <span class="hcard-badge">City Campus</span>
+          <!-- 3. Prints Made (Actual Output) -->
+          <div class="kpi-hero-card card-prints">
+            <div>
+              <div class="kpi-card-header">
+                <span class="kpi-card-title">3. Prints Made</span>
+                <div class="kpi-card-icon">🖨️</div>
+              </div>
+              <div class="kpi-main-val" id="kpi-prints-count">0</div>
+              <div class="kpi-sub-text">Actual Meter Consumption</div>
             </div>
-            <div class="hcard-metrics-grid">
-              <div class="hmetric-box">
-                <div class="hmetric-label">Delivered</div>
-                <div class="hmetric-val purple" id="mgh-summary-delivered">0</div>
-              </div>
-              <div class="hmetric-box">
-                <div class="hmetric-label">Paper Issued</div>
-                <div class="hmetric-val blue" id="mgh-summary-issued">0</div>
-              </div>
-              <div class="hmetric-box">
-                <div class="hmetric-label">Prints Made</div>
-                <div class="hmetric-val green" id="mgh-summary-prints">0</div>
-              </div>
-            </div>
-            <div class="hcard-footer-info">
-              <span>Entries: <strong id="mgh-summary-entries">0</strong></span>
-              <span>Stock Rims: <strong id="mgh-summary-stock-rims">0</strong></span>
+            <div class="kpi-card-footer">
+              <span>Daily Entries: <strong id="kpi-entries-count">0</strong></span>
+              <span class="badge" style="background:rgba(5,150,105,0.1); color:#059669;">Machine Out</span>
             </div>
           </div>
 
-          <!-- UMAID Hospital State Card -->
-          <div class="hospital-state-card card-umaid">
-            <div class="hcard-top">
-              <span class="hcard-name">🏥 UMAID Hospital</span>
-              <span class="hcard-badge">Women &amp; Child</span>
-            </div>
-            <div class="hcard-metrics-grid">
-              <div class="hmetric-box">
-                <div class="hmetric-label">Delivered</div>
-                <div class="hmetric-val purple" id="umaid-summary-delivered">0</div>
-              </div>
-              <div class="hmetric-box">
-                <div class="hmetric-label">Paper Issued</div>
-                <div class="hmetric-val blue" id="umaid-summary-issued">0</div>
-              </div>
-              <div class="hmetric-box">
-                <div class="hmetric-label">Prints Made</div>
-                <div class="hmetric-val green" id="umaid-summary-prints">0</div>
-              </div>
-            </div>
-            <div class="hcard-footer-info">
-              <span>Entries: <strong id="umaid-summary-entries">0</strong></span>
-              <span>Stock Rims: <strong id="umaid-summary-stock-rims">0</strong></span>
-            </div>
-          </div>
+        </div>
 
+        <!-- Smart Consumption & Stock Variance Tracker Bar -->
+        <div class="consumption-summary-bar">
+          <div class="cs-item">
+            <div class="cs-label">Unissued Stock Balance</div>
+            <div class="cs-val" id="kpi-stock-balance">0 Sheets</div>
+          </div>
+          <div class="cs-item">
+            <div class="cs-label">Counter Paper Utilization</div>
+            <div class="cs-val good" id="kpi-utilization-rate">0%</div>
+          </div>
+          <div class="cs-item">
+            <div class="cs-label">Active Scope</div>
+            <div class="cs-val" id="kpi-active-scope" style="font-size:0.95rem; color:var(--primary);">All Hospitals</div>
+          </div>
         </div>
       </div>
 

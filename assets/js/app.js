@@ -209,25 +209,52 @@ function calculateHospitalMetrics() {
     }
   });
 
-  // Helper to safely populate card elements
-  const updateCard = (prefix, data) => {
-    const deliveredEl = document.getElementById(`${prefix}-summary-delivered`);
-    const issuedEl = document.getElementById(`${prefix}-summary-issued`);
-    const printsEl = document.getElementById(`${prefix}-summary-prints`);
-    const entriesEl = document.getElementById(`${prefix}-summary-entries`);
-    const stockRimsEl = document.getElementById(`${prefix}-summary-stock-rims`);
+  // 4. Select stats matching activeSelectedHospital view
+  let activeStats = stats.TOTAL;
+  let activeHospitalName = "All Hospitals (SNMC)";
 
-    if (deliveredEl) deliveredEl.textContent = data.delivered.toLocaleString("en-IN");
-    if (issuedEl) issuedEl.textContent = data.issued.toLocaleString("en-IN");
-    if (printsEl) printsEl.textContent = data.prints.toLocaleString("en-IN");
-    if (entriesEl) entriesEl.textContent = data.entries.toLocaleString("en-IN");
-    if (stockRimsEl) stockRimsEl.textContent = data.stockRims.toLocaleString("en-IN");
-  };
+  if (activeSelectedHospital === "MDM") {
+    activeStats = stats.MDM;
+    activeHospitalName = "MDM Hospital";
+  } else if (activeSelectedHospital === "MGH") {
+    activeStats = stats.MGH;
+    activeHospitalName = "MGH Hospital";
+  } else if (activeSelectedHospital === "UMMED" || activeSelectedHospital === "UMAID") {
+    activeStats = stats.UMAID;
+    activeHospitalName = "UMAID Hospital";
+  }
 
-  updateCard("total", stats.TOTAL);
-  updateCard("mdm", stats.MDM);
-  updateCard("mgh", stats.MGH);
-  updateCard("umaid", stats.UMAID);
+  // Populate 3-Core Lifecycle Hero Cards
+  const delSheetsEl = document.getElementById("kpi-delivered-sheets");
+  const delRimsEl   = document.getElementById("kpi-delivered-rims");
+  const issSheetsEl = document.getElementById("kpi-issued-sheets");
+  const issRimsEl   = document.getElementById("kpi-issued-rims");
+  const prnCountEl  = document.getElementById("kpi-prints-count");
+  const entriesEl   = document.getElementById("kpi-entries-count");
+
+  if (delSheetsEl) delSheetsEl.textContent = activeStats.delivered.toLocaleString("en-IN");
+  if (delRimsEl)   delRimsEl.textContent   = activeStats.stockRims.toLocaleString("en-IN");
+  if (issSheetsEl) issSheetsEl.textContent = activeStats.issued.toLocaleString("en-IN");
+  if (issRimsEl)   issRimsEl.textContent   = (activeStats.issued / 500).toFixed(1);
+  if (prnCountEl)  prnCountEl.textContent  = activeStats.prints.toLocaleString("en-IN");
+  if (entriesEl)   entriesEl.textContent   = activeStats.entries.toLocaleString("en-IN");
+
+  // Populate Consumption Tracker Bar
+  const stockBalanceEl = document.getElementById("kpi-stock-balance");
+  const utilRateEl     = document.getElementById("kpi-utilization-rate");
+  const scopeEl        = document.getElementById("kpi-active-scope");
+
+  const unissuedSheets = Math.max(0, activeStats.delivered - activeStats.issued);
+  const utilizationPct = activeStats.issued > 0 
+    ? Math.min(100, Math.round((activeStats.prints / activeStats.issued) * 100))
+    : 0;
+
+  if (stockBalanceEl) stockBalanceEl.textContent = `${unissuedSheets.toLocaleString("en-IN")} Sheets`;
+  if (utilRateEl) {
+    utilRateEl.textContent = `${utilizationPct}% (Prints / Issue)`;
+    utilRateEl.className = utilizationPct >= 80 ? "cs-val good" : "cs-val warn";
+  }
+  if (scopeEl) scopeEl.textContent = activeHospitalName;
 }
 
 let historyViewMode = window.innerWidth <= 768 ? "cards" : "table";
