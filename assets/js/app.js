@@ -771,10 +771,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadHistory();
     setDefaultDate();
     toggleIssueReceiveFields();
-    showLoader(false);
-    
-    // Always default to Landing Dashboard after login!
-    showTab("dashboard");
+    // Respect URL hash routing (e.g. #employees, #printers, #stock, #history, #entry)
+    const initialHash = window.location.hash.replace("#", "").trim();
+    if (initialHash && document.getElementById("tab-" + initialHash)) {
+      showTab(initialHash);
+      if (initialHash === "employees" && typeof loadEmployeesPage === "function") loadEmployeesPage();
+      if (initialHash === "printers" && typeof loadPrintersPage === "function") loadPrintersPage();
+      if (initialHash === "stock" && typeof loadStockPage === "function") loadStockPage();
+      if (initialHash === "history" && typeof loadHistory === "function") loadHistory();
+    } else {
+      // Default to Landing Dashboard
+      showTab("dashboard");
+    }
   } catch (err) {
     console.error("[App Boot] Fatal error during app startup:", err);
     showToast("Application initialization failed. Please refresh.", "error");
