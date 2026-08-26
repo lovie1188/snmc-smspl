@@ -354,26 +354,35 @@ function canSendNotification() {
 async function initNotifications() {
   const user = firebase.auth().currentUser;
   if (!user) return;
+  const userEmail = (user.email || '').toLowerCase().trim();
+  const clientIsSuper = isSuperAdmin(userEmail);
+
+  // Immediate optimistic UI reveal for SuperAdmins
+  const notifDropdownItem = document.getElementById('nav-notif-dropdown');
+  if (notifDropdownItem && clientIsSuper) {
+    notifDropdownItem.style.display = 'flex';
+  }
+  const superadminBadge = document.getElementById('superadmin-badge');
+  if (superadminBadge && clientIsSuper) {
+    superadminBadge.style.display = 'inline-flex';
+  }
 
   if (Notification.permission === 'granted') {
     updateNotifBellState('granted');
     await getFCMToken();
   }
 
-  // Server-authoritative sender approval (replaces broken client-only fetch).
+  // Server-authoritative sender approval
   await fetchSenderPermission();
 
-  const userEmail = user.email || '';
-  const isAllowed = canSendNotification();
-  const isAdmin = senderPermission.checked ? senderPermission.isSuperAdmin : isSuperAdmin(userEmail);
+  const isAllowed = canSendNotification() || clientIsSuper;
+  const isAdmin = senderPermission.checked ? (senderPermission.isSuperAdmin || clientIsSuper) : clientIsSuper;
 
-  // Show dropdown menu item and Push Broadcast tab only if user is SuperAdmin or Approved Sender
-  const notifDropdownItem = document.getElementById('nav-notif-dropdown');
+  // Show dropdown menu item and Push Broadcast tab if user is SuperAdmin or Approved Sender
   if (notifDropdownItem) {
     notifDropdownItem.style.display = isAllowed ? 'flex' : 'none';
   }
 
-  const superadminBadge = document.getElementById('superadmin-badge');
   if (superadminBadge) {
     superadminBadge.style.display = isAdmin ? 'inline-flex' : 'none';
   }

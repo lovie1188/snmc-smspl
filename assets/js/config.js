@@ -28,7 +28,8 @@ const APP_CONFIG = {
   notifications: {
     superAdmins: [
       "softtech.lovejeet@gmail.com",
-      "softtech2009@gmail.com"
+      "softtech2009@gmail.com",
+      "softtech.solar@gmail.com"
     ]
   },
   // Dedicated Render.com Backend API Service
@@ -45,7 +46,8 @@ let cachedAllowedSenders = [];
 // SuperAdmins always have 'ALL' access with interactive switcher.
 const USER_HOSPITAL_MAP = {
   "softtech.lovejeet@gmail.com": "ALL",
-  "softtech2009@gmail.com": "ALL"
+  "softtech2009@gmail.com": "ALL",
+  "softtech.solar@gmail.com": "ALL"
 };
 
 // Helper: Check if current user is SuperAdmin
