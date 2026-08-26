@@ -131,10 +131,18 @@ function calculateHospitalMetrics() {
     const hospCol = (r["Hospital Name"] || r["Hospital Name "] || r["Hospital"] || "").toUpperCase();
     const issued = parseFloat(r["Paper Issued"] || r["Issued"] || 0) || 0;
     
-    // Calculate prints made from Opening to Closing
-    const opening = parseFloat(r["Opening Reading"] || r["Opening"] || 0) || 0;
-    const closing = parseFloat(r["Closing Reading"] || r["Closing"] || 0) || 0;
-    const prints = (closing >= opening && opening > 0) ? (closing - opening) : 0;
+    // Robust multi-key reading parsing for Opening & Closing
+    const opening = parseFloat(r["Opening reading"] || r["Opening Reading"] || r["Opening"] || 0) || 0;
+    const closing = parseFloat(r["Closing Reading"] || r["Closing reading"] || r["Closing"] || 0) || 0;
+    
+    // Prints made is strictly (Closing - Opening) when both valid readings exist and closing >= opening
+    let prints = 0;
+    if (closing >= opening && opening > 0) {
+      prints = closing - opening;
+    } else if (closing > 0 && opening === 0) {
+      // If opening is 0, check if paper issued was consumed or treat closing as total
+      prints = closing;
+    }
 
     let hospital = hospCol || counterHospitalMap[cVal.trim()] || counterHospitalMap[cVal.split(" ")[0].trim()] || "";
 
@@ -142,7 +150,7 @@ function calculateHospitalMetrics() {
       const rawStr = Object.values(r).join(" ").toUpperCase();
       if (rawStr.includes("MDM")) hospital = "MDM";
       else if (rawStr.includes("MGH")) hospital = "MGH";
-      else if (rawStr.includes("UMAID") || rawStr.includes("GYN") || rawStr.includes("PEDIA")) hospital = "UMAID";
+      else if (rawStr.includes("UMAID") || rawStr.includes("UMMED") || rawStr.includes("GYN") || rawStr.includes("PEDIA")) hospital = "UMAID";
     }
 
     // Accumulate Global Total
@@ -159,7 +167,7 @@ function calculateHospitalMetrics() {
       stats.MGH.issued += issued;
       stats.MGH.prints += prints;
       stats.MGH.entries += 1;
-    } else if (hospital.includes("UMAID") || hospital.includes("GYN") || hospital.includes("PEDIA")) {
+    } else if (hospital.includes("UMAID") || hospital.includes("UMMED") || hospital.includes("GYN") || hospital.includes("PEDIA")) {
       stats.UMAID.issued += issued;
       stats.UMAID.prints += prints;
       stats.UMAID.entries += 1;
@@ -330,6 +338,19 @@ function filterHistoryTable() {
   }
 
   const filteredRows = allDailyRows.filter(r => {
+    // Hospital Filter
+    const hospCol = (r["Hospital Name"] || r["Hospital Name "] || r["Hospital"] || "").toUpperCase();
+    const cVal = r["counter Number"] || r["Counter Number"] || r["Counter"] || "";
+    let rowHosp = hospCol;
+    if (!rowHosp) {
+      const rawStr = Object.values(r).join(" ").toUpperCase();
+      if (rawStr.includes("MDM")) rowHosp = "MDM";
+      else if (rawStr.includes("MGH")) rowHosp = "MGH";
+      else if (rawStr.includes("UMAID") || rawStr.includes("UMMED")) rowHosp = "UMMED";
+    }
+
+    if (!isHospitalVisible(rowHosp)) return false;
+
     const rowStr = Object.values(r).join(" ").toLowerCase();
     const matchesSearch = !searchVal || rowStr.includes(searchVal);
     const rowDate = String(r["Date"] || "").trim();
@@ -563,12 +584,37 @@ function openHospitalSwitcherModal() {
   updateHeaderHospitalBadge();
   showToast(`🏥 Switched view: ${activeSelectedHospital === "ALL" ? "All Hospitals" : activeSelectedHospital}`, "success");
   
+  // Sync page-specific active filter variables
+  activePrinterHospitalFilter = activeSelectedHospital;
+  activeStockHospitalFilter = activeSelectedHospital;
+  activeEmployeeHospitalFilter = activeSelectedHospital;
+
+  // Sync all visual pill buttons across pages
+  const syncPills = (containerId) => {
+    const container = document.getElementById(containerId);
+    if (container) {
+      container.querySelectorAll(".pill-btn").forEach(btn => {
+        const txt = btn.textContent.trim().toUpperCase();
+        if (txt === activeSelectedHospital || (activeSelectedHospital === "ALL" && txt === "ALL") || (activeSelectedHospital === "UMMED" && (txt === "UMMED" || txt === "UMAID"))) {
+          btn.classList.add("active");
+        } else {
+          btn.classList.remove("active");
+        }
+      });
+    }
+  };
+
+  syncPills("printer-hospital-pills");
+  syncPills("stock-hospital-pills");
+  syncPills("employee-hospital-pills");
+
   // Refresh UI views with new hospital filter
   calculateHospitalMetrics();
   loadPrinterDropdowns();
   filterHistoryTable();
-  if (typeof filterPrintersList === "function") filterPrintersList();
-  if (typeof filterStockList === "function") filterStockList();
+  if (typeof renderPrintersList === "function") renderPrintersList();
+  if (typeof renderStockList === "function") renderStockList();
+  if (typeof renderEmployeesList === "function") renderEmployeesList();
 }
 
 // ── 2-Row Mobile-Optimized Counter Picker ─────────────────
