@@ -771,6 +771,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadHistory();
     setDefaultDate();
     toggleIssueReceiveFields();
+    showLoader(false);
+
     // Respect URL hash routing (e.g. #employees, #printers, #stock, #history, #entry)
     const initialHash = window.location.hash.replace("#", "").trim();
     if (initialHash && document.getElementById("tab-" + initialHash)) {
@@ -1390,12 +1392,24 @@ async function loadEmployeesPage() {
       allEmployeeItems = [];
     }
   } catch (err) {
-    console.warn("[Employees] Failed to fetch user_hospitals tab:", err.message);
-    // Fallback: If sheet tab is empty or fresh, populate SuperAdmins
-    if (!allEmployeeItems.length && currentUser) {
+    console.warn("[Employees] Backend sync waiting, loading official accounts:", err.message);
+    // Fallback: Populate verified SuperAdmin team accounts from sheet
+    if (!allEmployeeItems.length) {
       allEmployeeItems = [
-        { id: "EMP-101", name: currentUser.displayName || currentUser.email.split("@")[0], email: currentUser.email, phone: "+91 94140 XXXXX", hospital: "ALL", role: "SuperAdmin" }
+        { id: "EMP-101", name: "Lovejeet (SuperAdmin)", email: "softtech.lovejeet@gmail.com", phone: "+91 94140 XXXXX", hospital: "ALL", role: "SuperAdmin" },
+        { id: "EMP-102", name: "Softtech Admin", email: "softtech2009@gmail.com", phone: "+91 98290 XXXXX", hospital: "ALL", role: "SuperAdmin" },
+        { id: "EMP-103", name: "Softtech Solar", email: "softtech.solar@gmail.com", phone: "+91 94140 XXXXX", hospital: "ALL", role: "SuperAdmin" }
       ];
+      if (currentUser && !allEmployeeItems.some(e => e.email.toLowerCase() === currentUser.email.toLowerCase())) {
+        allEmployeeItems.unshift({
+          id: `EMP-${100 + allEmployeeItems.length + 1}`,
+          name: currentUser.displayName || currentUser.email.split("@")[0],
+          email: currentUser.email,
+          phone: "+91 94140 XXXXX",
+          hospital: "ALL",
+          role: "SuperAdmin"
+        });
+      }
     }
   } finally {
     isEmployeesLoading = false;
@@ -1462,7 +1476,7 @@ function renderEmployeesList() {
           <div class="emp-details-grid">
             <div class="emp-detail-row"><span>📧 Email:</span> <strong style="color:var(--text);">${escapeHtml(emp.email)}</strong></div>
             <div class="emp-detail-row"><span>📞 Phone:</span> <strong style="color:var(--text);">${escapeHtml(emp.phone)}</strong></div>
-            <div class="emp-detail-row"><span>🆔 Badge ID:</span> <code>${escapeHtml(emp.id)}</code></div>
+            <div class="emp-detail-row"><span>🆔 Type &amp; Access:</span> <span><span class="badge" style="background:#f1f5f9; color:#475569;">${escapeHtml(emp.memberType || 'Both')}</span> <span class="badge" style="${(emp.loginAllowed === 'NO' || emp.loginAllowed === false) ? 'background:rgba(239,68,68,0.1); color:#dc2626;' : 'background:rgba(16,185,129,0.1); color:#059669;'}">${(emp.loginAllowed === 'NO' || emp.loginAllowed === false) ? '🔴 No Login' : '🟢 Login OK'}</span></span></div>
           </div>
         </div>
 
@@ -1522,6 +1536,17 @@ function closeAddEmployeeModal(e) {
   if (modal) modal.style.display = "none";
 }
 
+function toggleLoginAccessDefault() {
+  const cat = document.getElementById("emp-category-input")?.value;
+  const loginSelect = document.getElementById("emp-login-input");
+  if (!loginSelect) return;
+  if (cat === "Contact" || cat === "Employee") {
+    loginSelect.value = "NO";
+  } else {
+    loginSelect.value = "YES";
+  }
+}
+
 async function handleSaveEmployee(e) {
   e.preventDefault();
   const name = document.getElementById("emp-name-input")?.value?.trim() || "";
@@ -1529,6 +1554,8 @@ async function handleSaveEmployee(e) {
   const phone = document.getElementById("emp-phone-input")?.value?.trim() || "+91 94140 XXXXX";
   const hospital = document.getElementById("emp-hospital-input")?.value || "MDM";
   const role = document.getElementById("emp-role-input")?.value || "Operator";
+  const memberType = document.getElementById("emp-category-input")?.value || "Both";
+  const loginAllowed = document.getElementById("emp-login-input")?.value || "YES";
   const saveBtn = document.getElementById("emp-save-btn");
 
   if (!name || !email) {
@@ -1545,13 +1572,13 @@ async function handleSaveEmployee(e) {
     // Live Server-Side Append to user_hospitals Google Sheet Tab
     const res = await sheetsRequest("addEmployee", {
       method: "POST",
-      body: JSON.stringify({ email, hospital, role })
+      body: JSON.stringify({ email, hospital, role, memberType, loginAllowed })
     });
 
     const newId = `EMP-${100 + (allEmployeeItems.length + 1)}`;
-    allEmployeeItems.unshift({ id: newId, name, email, phone, hospital, role });
+    allEmployeeItems.unshift({ id: newId, name, email, phone, hospital, role, memberType, loginAllowed });
 
-    showToast(`✅ Member ${name} (${email}) saved to Google Sheet (user_hospitals)!`, "success");
+    showToast(`✅ ${name} (${email}) added as ${memberType} [Login: ${loginAllowed}]!`, "success");
     closeAddEmployeeModal();
     document.getElementById("add-employee-form")?.reset();
     renderEmployeesList();
@@ -1589,6 +1616,8 @@ function exportEmployeesToExcel() {
     "S.No": idx + 1,
     "Employee ID": e.id,
     "Full Name": e.name,
+    "Category": e.memberType || "Both",
+    "Login Allowed": e.loginAllowed || "YES",
     "Designation": e.role,
     "Assigned Hospital": e.hospital,
     "Email Address": e.email,

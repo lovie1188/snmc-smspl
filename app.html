@@ -955,6 +955,23 @@
             <option value="Supervisor">Supervisor</option>
             <option value="SuperAdmin">SuperAdmin</option>
             <option value="Technician">Service Technician</option>
+            <option value="Staff">Hospital Staff / Doctor</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Member Category <span class="req">*</span></label>
+          <select id="emp-category-input" class="native-select" required onchange="toggleLoginAccessDefault()">
+            <option value="Both">👥 Both (Employee ID Card + App User)</option>
+            <option value="Employee">🪪 Employee Only (ID Card, No Login)</option>
+            <option value="Contact">📞 Contact Only (Phone Directory, No Login)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>App Login Access <span class="req">*</span></label>
+          <select id="emp-login-input" class="native-select" required>
+            <option value="YES">🟢 YES (Allow Google Sign-In & Entry Access)</option>
+            <option value="NO">🔴 NO (Block App Login Access)</option>
           </select>
         </div>
 

@@ -128,6 +128,29 @@ async function requireAuth() {
           uid: fbUser.uid
         };
         const storedToken = await fbUser.getIdToken();
+        const userEmail = (fbUser.email || "").toLowerCase().trim();
+
+        // ── Secondary Auth Guard: Verify user in user_hospitals ──
+        if (!isSuperAdmin(userEmail)) {
+          try {
+            const baseUrl = (typeof APP_CONFIG !== "undefined" && APP_CONFIG.apiBaseUrl) ? APP_CONFIG.apiBaseUrl : "";
+            const checkUrl = baseUrl ? `${baseUrl}/api/sheets?action=checkAuth` : `/.netlify/functions/sheets?action=checkAuth`;
+            const checkRes = await fetch(checkUrl, {
+              headers: { Authorization: `Bearer ${storedToken}` }
+            });
+            if (checkRes.ok) {
+              const checkData = await checkRes.json();
+              if (checkData.authorized !== true) {
+                await signOut();
+                window.location.replace("index.html?msg=unauthorized&email=" + encodeURIComponent(userEmail));
+                resolve(null);
+                return;
+              }
+            }
+          } catch (e) {
+            console.warn("[Auth Guard] Pre-check warning:", e.message);
+          }
+        }
 
         // Save back to storage so subsequent requests have token
         setSessionData(storedToken, storedUser);

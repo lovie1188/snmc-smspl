@@ -135,12 +135,38 @@ body {
 .dropdown-item.danger { color: #ef4444; }
 .dropdown-item.danger svg { color: #ef4444; }
 
-/* ── Main Layout (Tight & Premium Screen Space Utilization) ── */
+/* ── Main Layout (Tight & Responsive Screen Space Utilization) ── */
 .app-main {
   padding-top: calc(var(--header-h) + 8px);
-  padding-bottom: calc(var(--nav-h) + 12px);
-  padding-left: 5px; padding-right: 5px;
-  max-width: 520px; margin: 0 auto;
+  padding-bottom: calc(var(--nav-h) + 16px);
+  padding-left: 8px; padding-right: 8px;
+  width: 100%;
+  max-width: 540px; margin: 0 auto;
+  transition: max-width 0.2s ease;
+}
+
+/* Tablet screens */
+@media (min-width: 768px) {
+  .app-main {
+    max-width: 760px;
+    padding-left: 14px; padding-right: 14px;
+  }
+}
+
+/* Desktop & Laptop screens */
+@media (min-width: 1024px) {
+  .app-main {
+    max-width: 1080px;
+    padding-left: 20px; padding-right: 20px;
+  }
+}
+
+/* Wide / Ultra-wide monitors */
+@media (min-width: 1440px) {
+  .app-main {
+    max-width: 1240px;
+    padding-left: 24px; padding-right: 24px;
+  }
 }
 
 .tab-panel { display: none; }

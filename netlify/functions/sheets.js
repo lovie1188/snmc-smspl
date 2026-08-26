@@ -333,11 +333,11 @@ async function getUserHospitalPermissions(email) {
 
   // SuperAdmins always have full global access
   if (SUPER_ADMINS.includes(cleanEmail)) {
-    return { hospitals: ["ALL"], isSuperAdmin: true, isAll: true };
+    return { hospitals: ["ALL"], isSuperAdmin: true, isAll: true, isLoginAllowed: true, memberType: "SuperAdmin" };
   }
 
   try {
-    const data = await fetchSheetDataPublic(`'${USER_HOSPITALS_TAB}'!${USER_HOSPITALS_RANGE}`);
+    const data = await fetchSheetDataPublic(`'${USER_HOSPITALS_TAB}'!A:E`);
     if (data && data.values && data.values.length > 1) {
       const rows = data.values.slice(1);
       for (const row of rows) {
@@ -345,9 +345,12 @@ async function getUserHospitalPermissions(email) {
         if (rowEmail === cleanEmail) {
           const hospStr = String(row[1] || "").toUpperCase().trim();
           const role = String(row[2] || "").trim();
+          const memberType = String(row[3] || "Both").trim();
+          const loginFlag = String(row[4] || "YES").trim().toUpperCase();
+          const isLoginAllowed = loginFlag === "YES" || loginFlag === "TRUE" || loginFlag === "1";
           const isSuper = role.toLowerCase() === "superadmin" || hospStr === "ALL";
           const hospitals = hospStr === "ALL" ? ["ALL"] : hospStr.split(",").map(h => h.trim()).filter(Boolean);
-          return { hospitals, isSuperAdmin: isSuper, isAll: hospitals.includes("ALL") };
+          return { hospitals, isSuperAdmin: isSuper, isAll: hospitals.includes("ALL"), isLoginAllowed, memberType, role };
         }
       }
     }
@@ -356,7 +359,7 @@ async function getUserHospitalPermissions(email) {
   }
 
   // Default fallback if not mapped in sheet (deny access to unassigned or restrict)
-  return { hospitals: [], isSuperAdmin: false, isAll: false };
+  return { hospitals: [], isSuperAdmin: false, isAll: false, isLoginAllowed: false, memberType: "Unregistered" };
 }
 
 // ── Check if a hospital matches user's allowed hospital set server-side ──
@@ -680,9 +683,22 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { ok: true, sent, failed, total: tokens.length });
     }
 
-    // ── 9. Live Fetch Employees from user_hospitals Sheet Tab ──
+    // ── 9. Live Pre-Login Authorization & User Validation ──
+    if (action === "checkAuth" && event.httpMethod === "GET") {
+      const isAllowed = userPerms.isSuperAdmin || (userPerms.isLoginAllowed === true);
+      return jsonResponse(200, headers, {
+        authorized: isAllowed,
+        email: userEmail,
+        isSuperAdmin: userPerms.isSuperAdmin,
+        hospitals: userPerms.hospitals,
+        memberType: userPerms.memberType || "App User",
+        role: userPerms.role || "Operator"
+      });
+    }
+
+    // ── 10. Live Fetch Employees from user_hospitals Sheet Tab ──
     if (action === "getEmployees" && event.httpMethod === "GET") {
-      const data = await fetchSheetDataPublic(`'${USER_HOSPITALS_TAB}'!${USER_HOSPITALS_RANGE}`);
+      const data = await fetchSheetDataPublic(`'${USER_HOSPITALS_TAB}'!A:E`);
       if (!data || !data.values || data.values.length === 0) {
         return jsonResponse(200, headers, { employees: [] });
       }
@@ -694,6 +710,8 @@ exports.handler = async function (event, context) {
           const email = String(r[0] || "").trim();
           const hospital = String(r[1] || "ALL").trim().toUpperCase();
           const role = String(r[2] || "Operator").trim();
+          const memberType = String(r[3] || "Both").trim();
+          const loginAllowed = String(r[4] || "YES").trim().toUpperCase();
           const name = email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
           const id = `EMP-${100 + (i + 1)}`;
           return {
@@ -702,7 +720,9 @@ exports.handler = async function (event, context) {
             email,
             phone: "+91 94140 XXXXX",
             hospital,
-            role
+            role,
+            memberType,
+            loginAllowed
           };
         });
 
@@ -713,7 +733,7 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { employees: filtered, isSuperAdmin: userIsSuperAdmin });
     }
 
-    // ── 10. Add New Employee / Team Member to user_hospitals Tab ──
+    // ── 11. Add New Employee / Team Member to user_hospitals Tab ──
     if (action === "addEmployee" && event.httpMethod === "POST") {
       if (!userIsSuperAdmin) {
         const err = new Error("Forbidden: SuperAdmin access required to add team members.");
@@ -725,6 +745,8 @@ exports.handler = async function (event, context) {
       const email = String(payload.email || "").toLowerCase().trim();
       const hospital = String(payload.hospital || "MDM").toUpperCase().trim();
       const role = String(payload.role || "Operator").trim();
+      const memberType = String(payload.memberType || "Both").trim();
+      const loginAllowed = String(payload.loginAllowed || "YES").trim().toUpperCase();
 
       if (!email || !email.includes("@")) {
         const err = new Error("Invalid email address.");
@@ -732,8 +754,8 @@ exports.handler = async function (event, context) {
         throw err;
       }
 
-      await appendSheetRow(USER_HOSPITALS_TAB, USER_HOSPITALS_RANGE, [email, hospital, role]);
-      return jsonResponse(200, headers, { ok: true, email, hospital, role });
+      await appendSheetRow(USER_HOSPITALS_TAB, "A:E", [email, hospital, role, memberType, loginAllowed]);
+      return jsonResponse(200, headers, { ok: true, email, hospital, role, memberType, loginAllowed });
     }
 
     return {

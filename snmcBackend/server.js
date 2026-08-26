@@ -142,27 +142,30 @@ async function fetchSheetData(range) {
 }
 
 async function getUserHospitalPermissions(email) {
-  if (!email) return { hospitals: [], isSuperAdmin: false, isAll: false };
+  if (!email) return { hospitals: [], isSuperAdmin: false, isAll: false, isLoginAllowed: false, memberType: "Unregistered" };
   const cleanEmail = email.toLowerCase().trim();
-  if (SUPER_ADMINS.includes(cleanEmail)) return { hospitals: ["ALL"], isSuperAdmin: true, isAll: true };
+  if (SUPER_ADMINS.includes(cleanEmail)) return { hospitals: ["ALL"], isSuperAdmin: true, isAll: true, isLoginAllowed: true, memberType: "SuperAdmin" };
 
   try {
-    const data = await fetchSheetData(`'${USER_HOSPITALS_TAB}'!${USER_HOSPITALS_RANGE}`);
+    const data = await fetchSheetData(`'${USER_HOSPITALS_TAB}'!A:E`);
     if (data && data.values && data.values.length > 1) {
       for (const row of data.values.slice(1)) {
         if (String(row[0] || "").toLowerCase().trim() === cleanEmail) {
           const hospStr = String(row[1] || "").toUpperCase().trim();
           const role = String(row[2] || "").trim();
+          const memberType = String(row[3] || "Both").trim();
+          const loginFlag = String(row[4] || "YES").trim().toUpperCase();
+          const isLoginAllowed = loginFlag === "YES" || loginFlag === "TRUE" || loginFlag === "1";
           const isSuper = role.toLowerCase() === "superadmin" || hospStr === "ALL";
           const hospitals = hospStr === "ALL" ? ["ALL"] : hospStr.split(",").map(h => h.trim()).filter(Boolean);
-          return { hospitals, isSuperAdmin: isSuper, isAll: hospitals.includes("ALL") };
+          return { hospitals, isSuperAdmin: isSuper, isAll: hospitals.includes("ALL"), isLoginAllowed, memberType, role };
         }
       }
     }
   } catch (err) {
     console.warn("Could not read user_hospitals:", err.message);
   }
-  return { hospitals: [], isSuperAdmin: false, isAll: false };
+  return { hospitals: [], isSuperAdmin: false, isAll: false, isLoginAllowed: false, memberType: "Unregistered" };
 }
 
 function isHospitalAllowed(hospitalName, allowedHospitals, isAll) {
@@ -452,8 +455,20 @@ async function handleActionRequest(req, res) {
       return res.json({ ok: true, email: targetEmail });
     }
 
+    if (action === "checkAuth") {
+      const isAllowed = perms.isSuperAdmin || (perms.isLoginAllowed === true);
+      return res.json({
+        authorized: isAllowed,
+        email: req.user.email,
+        isSuperAdmin: perms.isSuperAdmin,
+        hospitals: perms.hospitals,
+        memberType: perms.memberType || "App User",
+        role: perms.role || "Operator"
+      });
+    }
+
     if (action === "getEmployees") {
-      const data = await fetchSheetData(`'${USER_HOSPITALS_TAB}'!${USER_HOSPITALS_RANGE}`);
+      const data = await fetchSheetData(`'${USER_HOSPITALS_TAB}'!A:E`);
       if (!data || !data.values || data.values.length === 0) {
         return res.json({ employees: [] });
       }
@@ -465,6 +480,8 @@ async function handleActionRequest(req, res) {
           const email = String(r[0] || "").trim();
           const hospital = String(r[1] || "ALL").trim().toUpperCase();
           const role = String(r[2] || "Operator").trim();
+          const memberType = String(r[3] || "Both").trim();
+          const loginAllowed = String(r[4] || "YES").trim().toUpperCase();
           const name = email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
           const id = `EMP-${100 + (i + 1)}`;
           return {
@@ -473,7 +490,9 @@ async function handleActionRequest(req, res) {
             email,
             phone: "+91 94140 XXXXX",
             hospital,
-            role
+            role,
+            memberType,
+            loginAllowed
           };
         });
 
@@ -492,20 +511,22 @@ async function handleActionRequest(req, res) {
       const email = String(req.body.email || "").toLowerCase().trim();
       const hospital = String(req.body.hospital || "MDM").toUpperCase().trim();
       const role = String(req.body.role || "Operator").trim();
+      const memberType = String(req.body.memberType || "Both").trim();
+      const loginAllowed = String(req.body.loginAllowed || "YES").trim().toUpperCase();
 
       if (!email || !email.includes("@")) {
         return res.status(400).json({ error: "Invalid email address." });
       }
 
       const authHeaders = await getSheetsAuthHeaders();
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(`'${USER_HOSPITALS_TAB}'!${USER_HOSPITALS_RANGE}`)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(`'${USER_HOSPITALS_TAB}'!A:E`)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
       await fetch(url, {
         method: "POST",
         headers: { ...authHeaders, "Content-Type": "application/json" },
-        body: JSON.stringify({ values: [[email, hospital, role]] })
+        body: JSON.stringify({ values: [[email, hospital, role, memberType, loginAllowed]] })
       });
 
-      return res.json({ ok: true, email, hospital, role });
+      return res.json({ ok: true, email, hospital, role, memberType, loginAllowed });
     }
 
     return res.status(400).json({ error: `Unsupported action: ${action}` });
