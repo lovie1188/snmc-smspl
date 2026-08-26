@@ -951,6 +951,66 @@ body {
 .cs-val.good { color: #059669; }
 .cs-val.warn { color: #d97706; }
 
+/* ── Amber Low Stock Alert Banner ── */
+.low-stock-alert-banner {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 1.5px solid #f59e0b;
+  border-radius: 16px;
+  padding: 12px 16px;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.12);
+  animation: pulseAlert 2s infinite ease-in-out;
+}
+@keyframes pulseAlert {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.01); }
+}
+.low-stock-alert-banner .alert-icon { font-size: 1.5rem; flex-shrink: 0; }
+.low-stock-alert-banner .alert-title { font-size: 0.84rem; font-weight: 800; color: #92400e; }
+.low-stock-alert-banner .alert-desc { font-size: 0.74rem; font-weight: 600; color: #b45309; margin-top: 1px; }
+
+/* ── Executive Actions Bar (WhatsApp & PDF Export) ── */
+.executive-actions-bar {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.btn-exec-share {
+  flex: 1;
+  min-width: 170px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+}
+.btn-exec-share:active { transform: scale(0.98); }
+.btn-exec-share.whatsapp {
+  background: #25d366;
+  color: #ffffff;
+}
+.btn-exec-share.whatsapp:hover {
+  background: #20ba5a;
+}
+.btn-exec-share.pdf {
+  background: #1e293b;
+  color: #ffffff;
+}
+.btn-exec-share.pdf:hover {
+  background: #0f172a;
+}
+
 /* ── Hospital Summary State Cards & Date Range Analytics ───── */
 .hospital-summary-header {
   display: flex; align-items: center; justify-content: space-between;

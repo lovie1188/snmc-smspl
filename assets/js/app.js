@@ -255,6 +255,167 @@ function calculateHospitalMetrics() {
     utilRateEl.className = utilizationPct >= 80 ? "cs-val good" : "cs-val warn";
   }
   if (scopeEl) scopeEl.textContent = activeHospitalName;
+
+  // ⚠️ 5. Low Stock Re-order Alert Handler (< 10 Rims / 5000 Sheets)
+  const lowStockBanner = document.getElementById("low-stock-alert-banner");
+  const lowStockText   = document.getElementById("low-stock-alert-text");
+  const remainingRims  = (unissuedSheets / 500).toFixed(1);
+
+  if (lowStockBanner) {
+    if (unissuedSheets < 5000) {
+      lowStockBanner.style.display = "flex";
+      if (lowStockText) {
+        lowStockText.innerHTML = `<strong>${activeHospitalName}</strong> available unissued paper stock is critically low (<strong>${remainingRims} Rims / ${unissuedSheets.toLocaleString("en-IN")} Sheets</strong> remaining). Please place a re-order!`;
+      }
+    } else {
+      lowStockBanner.style.display = "none";
+    }
+  }
+}
+
+// ── One-Click Executive Share: WhatsApp Summary ────────────
+function shareSummaryWhatsApp() {
+  const scope = document.getElementById("kpi-active-scope")?.textContent || "All Hospitals";
+  const delivered = document.getElementById("kpi-delivered-sheets")?.textContent || "0";
+  const delRims = document.getElementById("kpi-delivered-rims")?.textContent || "0";
+  const issued = document.getElementById("kpi-issued-sheets")?.textContent || "0";
+  const issRims = document.getElementById("kpi-issued-rims")?.textContent || "0";
+  const prints = document.getElementById("kpi-prints-count")?.textContent || "0";
+  const entries = document.getElementById("kpi-entries-count")?.textContent || "0";
+  const balance = document.getElementById("kpi-stock-balance")?.textContent || "0 Sheets";
+  const util = document.getElementById("kpi-utilization-rate")?.textContent || "0%";
+
+  const todayStr = new Date().toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' });
+  const dateRangeStr = (summaryStartDate && summaryEndDate) 
+    ? `${summaryStartDate} to ${summaryEndDate}` 
+    : (summaryStartDate ? `From ${summaryStartDate}` : todayStr);
+
+  const text = `📊 *SNMC PrintTrack — Executive Daily Summary*
+🏥 *Hospital:* ${scope}
+📅 *Period:* ${dateRangeStr}
+----------------------------------
+📦 *1. Paper Delivered (Stock In):* ${delivered} Sheets (${delRims} Rims)
+📝 *2. Paper Issued (Counter Out):* ${issued} Sheets (${issRims} Rims)
+🖨️ *3. Prints Made (Meter Output):* ${prints} Pages (${entries} Entries)
+----------------------------------
+⚖️ *Unissued Stock Balance:* ${balance}
+📈 *Counter Utilization:* ${util}
+----------------------------------
+_Generated via SNMC PrintTrack Cloud Suite_`;
+
+  const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+  window.open(waUrl, "_blank");
+  showToast("📱 WhatsApp Summary opened!", "success");
+}
+
+// ── One-Click Executive Share: Printable PDF / Summary View ─
+function exportExecutivePDF() {
+  const scope = document.getElementById("kpi-active-scope")?.textContent || "All Hospitals";
+  const delivered = document.getElementById("kpi-delivered-sheets")?.textContent || "0";
+  const delRims = document.getElementById("kpi-delivered-rims")?.textContent || "0";
+  const issued = document.getElementById("kpi-issued-sheets")?.textContent || "0";
+  const issRims = document.getElementById("kpi-issued-rims")?.textContent || "0";
+  const prints = document.getElementById("kpi-prints-count")?.textContent || "0";
+  const entries = document.getElementById("kpi-entries-count")?.textContent || "0";
+  const balance = document.getElementById("kpi-stock-balance")?.textContent || "0 Sheets";
+  const util = document.getElementById("kpi-utilization-rate")?.textContent || "0%";
+
+  const todayStr = new Date().toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' });
+  const dateRangeStr = (summaryStartDate && summaryEndDate) 
+    ? `${summaryStartDate} to ${summaryEndDate}` 
+    : (summaryStartDate ? `From ${summaryStartDate}` : todayStr);
+
+  const printHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Executive Summary - ${scope}</title>
+      <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 24px; color: #1e293b; line-height: 1.5; }
+        .header { text-align: center; border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 20px; }
+        .header h1 { margin: 0; color: #0f172a; font-size: 1.4rem; }
+        .header p { margin: 4px 0 0; color: #64748b; font-size: 0.9rem; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+        .card { background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 14px; text-align: center; }
+        .card .title { font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; }
+        .card .val { font-size: 1.6rem; font-weight: 900; color: #0f172a; margin: 4px 0; }
+        .card .sub { font-size: 0.75rem; color: #475569; font-weight: 600; }
+        .summary-box { background: #e0f2fe; border: 1.5px solid #bae6fd; border-radius: 12px; padding: 14px; margin-top: 14px; display: flex; justify-content: space-around; }
+        .summary-box div { text-align: center; }
+        .summary-box .label { font-size: 0.75rem; font-weight: 700; color: #0369a1; text-transform: uppercase; }
+        .summary-box .val { font-size: 1.2rem; font-weight: 900; color: #0c4a6e; }
+        .footer { margin-top: 40px; display: flex; justify-content: space-between; font-size: 0.8rem; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 10px; }
+        @media print {
+          body { padding: 0; }
+          .no-print { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Dr. S.N. Medical College & Associated Hospitals, Jodhpur</h1>
+        <p><strong>PrintTrack — Executive Daily Paper &amp; Consumption Summary</strong></p>
+        <p><strong>Hospital Scope:</strong> ${scope} &nbsp;|&nbsp; <strong>Period:</strong> ${dateRangeStr}</p>
+      </div>
+
+      <div class="grid">
+        <div class="card" style="border-top: 4px solid #7c3aed;">
+          <div class="title">📦 1. Paper Delivered</div>
+          <div class="val" style="color: #6d28d9;">${delivered}</div>
+          <div class="sub">${delRims} Stock Rims</div>
+        </div>
+
+        <div class="card" style="border-top: 4px solid #1d4ed8;">
+          <div class="title">📝 2. Paper Issued</div>
+          <div class="val" style="color: #1e40af;">${issued}</div>
+          <div class="sub">${issRims} Counter Rims</div>
+        </div>
+
+        <div class="card" style="border-top: 4px solid #059669;">
+          <div class="title">🖨️ 3. Prints Made</div>
+          <div class="val" style="color: #047857;">${prints}</div>
+          <div class="sub">${entries} Entries Logged</div>
+        </div>
+      </div>
+
+      <div class="summary-box">
+        <div>
+          <div class="label">Unissued Stock Balance</div>
+          <div class="val">${balance}</div>
+        </div>
+        <div>
+          <div class="label">Counter Utilization Rate</div>
+          <div class="val">${util}</div>
+        </div>
+        <div>
+          <div class="label">Report Generated On</div>
+          <div class="val">${todayStr}</div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <span>SNMC PrintTrack Cloud Reporting System</span>
+        <span>Authorized Signatory: ____________________</span>
+      </div>
+
+      <script>
+        window.onload = function() {
+          window.print();
+        };
+      </script>
+    </body>
+    </html>
+  `;
+
+  const printWin = window.open("", "_blank");
+  if (printWin) {
+    printWin.document.open();
+    printWin.document.write(printHtml);
+    printWin.document.close();
+    showToast("📄 Executive PDF printable summary generated!", "success");
+  } else {
+    showToast("⚠️ Pop-up blocked. Please allow pop-ups for PDF export.", "warn");
+  }
 }
 
 let historyViewMode = window.innerWidth <= 768 ? "cards" : "table";
