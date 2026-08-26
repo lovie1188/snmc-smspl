@@ -172,8 +172,10 @@ function isHospitalAllowed(hospitalName, allowedHospitals, isAll) {
   return allowedHospitals.some(h => cleanHosp.includes(h.toUpperCase()));
 }
 
-// ── Health Check ──
-app.get("/health", (req, res) => res.json({ status: "ok", service: "snmc-backend", timestamp: new Date().toISOString() }));
+// ── Healthcheck Endpoint
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", service: "snmc-backend", version: "1.2.0-employees-sync", timestamp: new Date().toISOString() });
+});
 
 // ── GET /api/printers ──
 app.get("/api/printers", requireFirebaseAuth, async (req, res) => {
