@@ -1074,7 +1074,20 @@ async function loadHistory() {
 }
 
 function setDefaultDate() {
-  // Date is auto handled on backend submission (Column C)
+  const userEmail = (currentUser?.email || "").toLowerCase().trim();
+  const dateGroup = document.getElementById("entry-date-group");
+  const dateInput = document.getElementById("entry-date-input");
+
+  if (isSuperAdmin(userEmail)) {
+    if (dateGroup) dateGroup.style.display = "block";
+    if (dateInput && !dateInput.value) {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, "0");
+      dateInput.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    }
+  } else {
+    if (dateGroup) dateGroup.style.display = "none";
+  }
 }
 
 // ── Submit Daily Entry (Supports Offline IndexedDB & Online Sync) ──
@@ -1122,15 +1135,30 @@ async function submitEntry(event) {
     return;
   }
 
-  // Automatic Backend Fields
+  // Date Calculation: SuperAdmin Custom Date OR Real-Time Today Date
   const now = new Date();
   const timestamp = now.toLocaleString("en-IN");
   const email = currentUser?.email || "";
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  // Date format: DD/MM/YYYY (Column C in Form responses 1)
-  const currentDate = `${dd}/${mm}/${yyyy}`;
+  
+  let currentDate = "";
+  const customDateVal = document.getElementById("entry-date-input")?.value;
+  const userEmail = (currentUser?.email || "").toLowerCase().trim();
+
+  if (isSuperAdmin(userEmail) && customDateVal && customDateVal.includes("-")) {
+    const parts = customDateVal.split("-");
+    if (parts.length === 3) {
+      // Convert YYYY-MM-DD to DD/MM/YYYY
+      currentDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  }
+
+  if (!currentDate) {
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    // Date format: DD/MM/YYYY (Column C in Form responses 1)
+    currentDate = `${dd}/${mm}/${yyyy}`;
+  }
 
   // Column Mapping A to K (single source of truth: SHEET_SCHEMA.daily)
   const row = buildDailyRow({
@@ -1761,7 +1789,11 @@ function populateHeader(user) {
 
   if (dropNameEl)  dropNameEl.textContent  = user.name || "User";
   if (dropEmailEl) dropEmailEl.textContent = user.email || "";
-  if (dashNameEl)  dashNameEl.textContent  = user.name || user.email || "User";
+  const isSuper = isSuperAdmin(user.email || "");
+  const badgeEl = document.getElementById("superadmin-badge");
+  if (badgeEl) {
+    badgeEl.style.display = isSuper ? "inline-flex" : "none";
+  }
 
   if (user.photo) {
     if (photoEl) { photoEl.src = user.photo; photoEl.style.display = "block"; }
