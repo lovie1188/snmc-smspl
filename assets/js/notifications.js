@@ -32,10 +32,19 @@ async function getFCMToken() {
 
   try {
     const reg = await navigator.serviceWorker.ready;
-    const vapidKey = APP_CONFIG.notifications.vapidKey;
+    let vapidKey = APP_CONFIG.notifications?.vapidKey;
+
+    // If not in client config, fetch securely from backend config endpoint
+    if (!vapidKey) {
+      try {
+        const confRes = await sheetsRequest("config");
+        if (confRes && confRes.vapidKey) {
+          vapidKey = confRes.vapidKey;
+        }
+      } catch (_) {}
+    }
 
     if (!vapidKey || vapidKey === 'REPLACE_WITH_VAPID_PUBLIC_KEY') {
-      console.warn('[Notifications] VAPID key not configured. Using basic push subscription.');
       return await getBasicPushToken(reg);
     }
 

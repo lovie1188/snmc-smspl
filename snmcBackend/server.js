@@ -427,6 +427,11 @@ async function handleActionRequest(req, res) {
       return res.json({ headers: rawHeaders, rows: filteredRows, userHospital: perms.isAll ? "ALL" : perms.hospitals.join(", "), isSuperAdmin: perms.isSuperAdmin });
     }
 
+    if (action === "config") {
+      const vapidKey = process.env.VITE_FIREBASE_VAPID_KEY || process.env.FIREBASE_VAPID_KEY || "";
+      return res.json({ vapidKey });
+    }
+
     if (action === "checkSender") {
       const email = req.user.email;
       const isSuper = perms.isSuperAdmin;

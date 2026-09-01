@@ -640,6 +640,12 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { ok: true, email });
     }
 
+    // ── 7b. Secure Client Config Endpoint (VAPID key from env) ──
+    if (action === "config") {
+      const vapidKey = process.env.VITE_FIREBASE_VAPID_KEY || process.env.FIREBASE_VAPID_KEY || "";
+      return jsonResponse(200, headers, { vapidKey });
+    }
+
     // ── 8. Server-side push broadcast ──
     if (action === "broadcastNotification" && event.httpMethod === "POST") {
       const allowedSenders = await readAllowedSendersFromSheet();
