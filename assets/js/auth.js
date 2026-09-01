@@ -99,20 +99,62 @@ async function signInWithGoogle() {
   return { token, user: getStoredUser() };
 }
 
-// Check redirect result on load (for mobile APK/WebView fallback)
+// ── Shared Authorization Gatekeeper (Queries backend /checkAuth) ──
+async function verifyUserAuthorization(userEmail, idToken) {
+  const cleanEmail = (userEmail || "").toLowerCase().trim();
+  if (isSuperAdmin(cleanEmail)) {
+    return { authorized: true, role: "SuperAdmin" };
+  }
+
+  try {
+    const baseUrl = (typeof APP_CONFIG !== "undefined" && APP_CONFIG.apiBaseUrl) ? APP_CONFIG.apiBaseUrl : "";
+    const checkUrl = baseUrl ? `${baseUrl}/api/sheets?action=checkAuth` : `/.netlify/functions/sheets?action=checkAuth`;
+    const res = await fetch(checkUrl, {
+      headers: { Authorization: `Bearer ${idToken}` }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        authorized: data.authorized === true,
+        memberType: data.memberType || "",
+        role: data.role || "",
+        reason: data.authorized === true ? "" : (data.memberType ? `Registered as "${data.memberType}" with Login Disabled` : "Not Registered in user_hospitals")
+      };
+    }
+  } catch (err) {
+    console.warn("[Auth Gatekeeper] CheckAuth request failed:", err.message);
+  }
+
+  return { authorized: false, reason: "Server verification unreachable" };
+}
+
+// ── Protected Redirect Handler (Fully Synchronized & Secured Gatekeeper) ──
 firebase.auth().getRedirectResult().then(async (result) => {
   if (result && result.user) {
+    const userEmail = (result.user.email || "").toLowerCase().trim();
     const token = await result.user.getIdToken();
-    setSessionData(token, {
-      name:  result.user.displayName  || "User",
-      email: result.user.email        || "",
-      photo: result.user.photoURL     || "",
-      uid:   result.user.uid
-    });
-    window.location.replace("app.html");
+
+    // 1. Check authorization gatekeeper before persisting session
+    const authCheck = await verifyUserAuthorization(userEmail, token);
+
+    if (authCheck.authorized === true) {
+      setSessionData(token, {
+        name:  result.user.displayName  || "User",
+        email: userEmail,
+        photo: result.user.photoURL     || "",
+        uid:   result.user.uid
+      });
+      window.location.replace("app.html");
+    } else {
+      // Unauthorized redirect sign-in — reject immediately & purge session
+      await signOut();
+      const reasonParam = encodeURIComponent(authCheck.reason || "Unauthorized");
+      window.location.replace(`index.html?msg=unauthorized&email=${encodeURIComponent(userEmail)}&reason=${reasonParam}`);
+    }
   }
 }).catch((err) => {
-  console.error("Redirect sign-in error:", err);
+  console.error("[Auth] Redirect sign-in error:", err);
 });
 
 // ── Auth Guard (call on protected pages) ──────────────────
@@ -132,23 +174,13 @@ async function requireAuth() {
 
         // ── Secondary Auth Guard: Verify user in user_hospitals ──
         if (!isSuperAdmin(userEmail)) {
-          try {
-            const baseUrl = (typeof APP_CONFIG !== "undefined" && APP_CONFIG.apiBaseUrl) ? APP_CONFIG.apiBaseUrl : "";
-            const checkUrl = baseUrl ? `${baseUrl}/api/sheets?action=checkAuth` : `/.netlify/functions/sheets?action=checkAuth`;
-            const checkRes = await fetch(checkUrl, {
-              headers: { Authorization: `Bearer ${storedToken}` }
-            });
-            if (checkRes.ok) {
-              const checkData = await checkRes.json();
-              if (checkData.authorized !== true) {
-                await signOut();
-                window.location.replace("index.html?msg=unauthorized&email=" + encodeURIComponent(userEmail));
-                resolve(null);
-                return;
-              }
-            }
-          } catch (e) {
-            console.warn("[Auth Guard] Pre-check warning:", e.message);
+          const check = await verifyUserAuthorization(userEmail, storedToken);
+          if (check.authorized !== true) {
+            await signOut();
+            const reasonParam = encodeURIComponent(check.reason || "Unauthorized");
+            window.location.replace(`index.html?msg=unauthorized&email=${encodeURIComponent(userEmail)}&reason=${reasonParam}`);
+            resolve(null);
+            return;
           }
         }
 
