@@ -30,7 +30,8 @@ const APP_CONFIG = {
       "softtech.lovejeet@gmail.com",
       "softtech2009@gmail.com",
       "softtech.solar@gmail.com"
-    ]
+    ],
+    vapidKey: "BLLZlYIB8broqTykqcvk0vrESTxqhLTpqUNrRzMA1GSBWrmB37RSP-a-golMWDA7it0mru0wNVK-FGTZX15D3hA"
   },
   // Dedicated Render.com Backend API Service
   apiBaseUrl: "https://snmcbackend.onrender.com"
