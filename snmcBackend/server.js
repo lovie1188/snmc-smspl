@@ -443,7 +443,7 @@ async function handleActionRequest(req, res) {
           if (allowedList.includes(email)) isAllowed = true;
         }
       } catch (_) {}
-      return res.json({ isAllowedSender: isAllowed, isSuperAdmin: isSuper, email });
+      return res.json({ allowed: isAllowed, isAllowedSender: isAllowed, isSuperAdmin: isSuper, email });
     }
 
     if (action === "approveSender" && method === "POST") {

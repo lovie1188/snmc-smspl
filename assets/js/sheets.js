@@ -50,7 +50,7 @@ async function sheetsRequest(action, options = {}) {
     }
     return await res.json();
   } catch (e) {
-    console.error(`[API Error] Action ${action} failed:`, e.message);
+    console.error(`[API Error] Action "${action}" failed:`, e.message);
     throw e;
   }
 }

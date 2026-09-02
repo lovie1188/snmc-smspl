@@ -337,14 +337,15 @@ async function handleApproveSenderClick() {
 let senderPermission = { checked: false, allowed: false, isSuperAdmin: false, email: "" };
 
 async function fetchSenderPermission() {
-  const user = firebase.auth().currentUser;
+  const user = firebase.auth().currentUser || currentUser;
   if (!user) return senderPermission;
   try {
     const res = await sheetsRequest("checkSender");
     senderPermission = {
       checked: true,
-      allowed: !!res.allowed,
+      allowed: !!(res.allowed || res.isAllowedSender || res.isSuperAdmin),
       isSuperAdmin: !!res.isSuperAdmin,
+      isAllowedSender: !!(res.allowed || res.isAllowedSender),
       email: res.email || user.email || ""
     };
   } catch (e) {
@@ -354,8 +355,10 @@ async function fetchSenderPermission() {
 }
 
 function canSendNotification() {
-  if (senderPermission.checked) return senderPermission.allowed;
-  const email = (firebase.auth().currentUser && firebase.auth().currentUser.email) || "";
+  const user = firebase.auth().currentUser || currentUser;
+  const email = (user && user.email ? user.email : "").toLowerCase().trim();
+  if (isSuperAdmin(email)) return true;
+  if (senderPermission.checked) return !!(senderPermission.allowed || senderPermission.isAllowedSender);
   return isAllowedSender(email);
 }
 

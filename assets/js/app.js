@@ -1860,25 +1860,8 @@ async function loadEmployeesPage() {
       allEmployeeItems = [];
     }
   } catch (err) {
-    console.warn("[Employees] Backend sync waiting, loading official accounts:", err.message);
-    // Fallback: Populate verified SuperAdmin team accounts from sheet
-    if (!allEmployeeItems.length) {
-      allEmployeeItems = [
-        { id: "EMP-101", name: "Lovejeet (SuperAdmin)", email: "softtech.lovejeet@gmail.com", phone: "+91 94140 XXXXX", hospital: "ALL", role: "SuperAdmin" },
-        { id: "EMP-102", name: "Softtech Admin", email: "softtech2009@gmail.com", phone: "+91 98290 XXXXX", hospital: "ALL", role: "SuperAdmin" },
-        { id: "EMP-103", name: "Softtech Solar", email: "softtech.solar@gmail.com", phone: "+91 94140 XXXXX", hospital: "ALL", role: "SuperAdmin" }
-      ];
-      if (currentUser && !allEmployeeItems.some(e => e.email.toLowerCase() === currentUser.email.toLowerCase())) {
-        allEmployeeItems.unshift({
-          id: `EMP-${100 + allEmployeeItems.length + 1}`,
-          name: currentUser.displayName || currentUser.email.split("@")[0],
-          email: currentUser.email,
-          phone: "+91 94140 XXXXX",
-          hospital: "ALL",
-          role: "SuperAdmin"
-        });
-      }
-    }
+    allEmployeeItems = [];
+    showToast("⚠️ Could not load team list: " + err.message, "error");
   } finally {
     isEmployeesLoading = false;
     renderEmployeesList();
