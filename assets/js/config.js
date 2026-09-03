@@ -33,8 +33,8 @@ const APP_CONFIG = {
     ],
     vapidKey: "BLLZlYIB8broqTykqcvk0vrESTxqhLTpqUNrRzMA1GSBWrmB37RSP-a-golMWDA7it0mru0wNVK-FGTZX15D3hA"
   },
-  // Dedicated Render.com Backend API Service
-  apiBaseUrl: "https://snmcbackend.onrender.com"
+  // Backend API Service: Use relative Netlify Functions on Netlify, or Render API when on localhost/standalone
+  apiBaseUrl: (typeof window !== "undefined" && window.location.origin.includes("netlify.app")) ? "" : "https://snmcbackend.onrender.com"
 };
 
 // Google OAuth Scope for Sheets access

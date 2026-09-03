@@ -92,11 +92,15 @@ const SHEET_SCHEMA = {
   // ── User-to-Hospital dynamic permission mapping tab ──
   userHospitals: {
     tab: "user_hospitals",
-    range: "A:C",
+    range: "A:G",
     columns: [
-      { key: "email",     header: "Email",     type: "string" },
-      { key: "hospitals", header: "Hospitals", type: "string" }, // Comma-separated (e.g. "MDM, MGH" or "ALL")
-      { key: "role",      header: "Role",      type: "string" }  // "SuperAdmin", "Supervisor", "Operator"
+      { key: "email",        header: "Email",         type: "string" }, // Col A
+      { key: "hospitals",    header: "Hospitals",     type: "string" }, // Col B: Comma-separated (e.g. "MDM, MGH" or "ALL")
+      { key: "role",         header: "Role",          type: "string" }, // Col C: "SuperAdmin", "Supervisor", "Operator", "Technician", "Staff"
+      { key: "memberType",   header: "Member Type",   type: "string" }, // Col D: "Both", "Employee", "Contact"
+      { key: "loginAllowed", header: "Login Allowed", type: "string" }, // Col E: "YES" / "NO"
+      { key: "name",         header: "Full Name",     type: "string" }, // Col F: Employee Full Name
+      { key: "phone",        header: "Phone",         type: "string" }  // Col G: Mobile Phone Number
     ]
   }
 };

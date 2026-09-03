@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "SNMC Daily Printer Reading & Paper Entry System",
   "scripts": {
-    "build": "echo 'No build step required'"
+    "build": "node -e \"const fs=require('fs'); fs.rmSync('www',{recursive:true,force:true}); fs.mkdirSync('www'); ['index.html','app.html','manifest.json','sw.js'].forEach(f=>{if(fs.existsSync(f)) fs.copyFileSync(f,'www/'+f)}); fs.cpSync('assets','www/assets',{recursive:true}); console.log('www bundle created successfully');\""
   },
   "dependencies": {
     "google-auth-library": "^9.0.0"

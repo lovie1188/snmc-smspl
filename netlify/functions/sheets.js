@@ -13,7 +13,7 @@ const FCMTOKENS_TAB = "fcmtokens";
 const STOCK_TAB = "stock";
 const STOCK_RANGE = "A:M";
 const USER_HOSPITALS_TAB = "user_hospitals";
-const USER_HOSPITALS_RANGE = "A:C";
+const USER_HOSPITALS_RANGE = "A:G";
 // Server-authoritative SuperAdmin list (override per environment via SUPER_ADMIN_EMAILS).
 const SUPER_ADMINS = (process.env.SUPER_ADMIN_EMAILS || "softtech.lovejeet@gmail.com,softtech2009@gmail.com")
   .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
@@ -259,6 +259,56 @@ async function appendSheetRow(tab, range, row) {
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
     throw new Error(`Google Sheets append failed: HTTP ${res.status}: ${errText || res.statusText}`);
+  }
+
+  return res.json();
+}
+
+async function updateSheetRow(tab, range, row) {
+  const authHeaders = await getSheetsAuthHeaders();
+  if (!authHeaders) {
+    throw new Error("SERVER_CONFIG_ERROR: Google Sheets service account credentials are required for writes.");
+  }
+
+  const cleanRow = row.map((value) => String(value ?? "").slice(0, 1000));
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(`'${tab}'!${range}`)}?valueInputOption=USER_ENTERED`;
+
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      ...authHeaders,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ values: [cleanRow] })
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Google Sheets update failed: HTTP ${res.status}: ${errText || res.statusText}`);
+  }
+
+  return res.json();
+}
+
+async function clearSheetRow(tab, range) {
+  const authHeaders = await getSheetsAuthHeaders();
+  if (!authHeaders) {
+    throw new Error("SERVER_CONFIG_ERROR: Google Sheets service account credentials are required for writes.");
+  }
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(`'${tab}'!${range}`)}:clear`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...authHeaders,
+      "Content-Type": "application/json"
+    }
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Google Sheets clear failed: HTTP ${res.status}: ${errText || res.statusText}`);
   }
 
   return res.json();
@@ -704,37 +754,43 @@ exports.handler = async function (event, context) {
 
     // ── 10. Live Fetch Employees from user_hospitals Sheet Tab ──
     if (action === "getEmployees" && event.httpMethod === "GET") {
-      const data = await fetchSheetDataPublic(`'${USER_HOSPITALS_TAB}'!A:E`);
+      const data = await fetchSheetDataPublic(`'${USER_HOSPITALS_TAB}'!A:G`);
       if (!data || !data.values || data.values.length === 0) {
         return jsonResponse(200, headers, { employees: [] });
       }
 
       const rows = data.values.slice(1);
       const employees = rows
-        .filter(r => r[0] && String(r[0]).trim() !== "")
         .map((r, i) => {
           const email = String(r[0] || "").trim();
+          if (!email) return null;
           const hospital = String(r[1] || "ALL").trim().toUpperCase();
           const role = String(r[2] || "Operator").trim();
           const memberType = String(r[3] || "Both").trim();
           const loginAllowed = String(r[4] || "YES").trim().toUpperCase();
-          const name = email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-          const id = `EMP-${100 + (i + 1)}`;
+          const name = (r[5] && String(r[5]).trim()) 
+            ? String(r[5]).trim() 
+            : email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+          const phone = (r[6] && String(r[6]).trim()) ? String(r[6]).trim() : "+91 94140 XXXXX";
+          const id = `SNMC-EMP-${100 + (i + 1)}`;
+          const rowIndex = i + 2;
           return {
             id,
+            rowIndex,
             name,
             email,
-            phone: "+91 94140 XXXXX",
+            phone,
             hospital,
             role,
             memberType,
             loginAllowed
           };
-        });
+        })
+        .filter(Boolean);
 
       const filtered = hasAllAccess 
         ? employees 
-        : employees.filter(e => isHospitalAllowedServer(e.hospital, allowedHospitals, false));
+        : employees.filter(e => isHospitalAllowedServer(e.hospital, allowedHospitals, false) || e.hospital === "ALL");
 
       return jsonResponse(200, headers, { employees: filtered, isSuperAdmin: userIsSuperAdmin });
     }
@@ -753,6 +809,8 @@ exports.handler = async function (event, context) {
       const role = String(payload.role || "Operator").trim();
       const memberType = String(payload.memberType || "Both").trim();
       const loginAllowed = String(payload.loginAllowed || "YES").trim().toUpperCase();
+      const name = String(payload.name || "").trim();
+      const phone = String(payload.phone || "").trim();
 
       if (!email || !email.includes("@")) {
         const err = new Error("Invalid email address.");
@@ -760,8 +818,85 @@ exports.handler = async function (event, context) {
         throw err;
       }
 
-      await appendSheetRow(USER_HOSPITALS_TAB, "A:E", [email, hospital, role, memberType, loginAllowed]);
-      return jsonResponse(200, headers, { ok: true, email, hospital, role, memberType, loginAllowed });
+      await appendSheetRow(USER_HOSPITALS_TAB, "A:G", [email, hospital, role, memberType, loginAllowed, name, phone]);
+      return jsonResponse(200, headers, { ok: true, email, hospital, role, memberType, loginAllowed, name, phone });
+    }
+
+    // ── 12. Update Existing Employee / Team Member in user_hospitals Tab ──
+    if (action === "updateEmployee" && event.httpMethod === "POST") {
+      if (!userIsSuperAdmin) {
+        const err = new Error("Forbidden: SuperAdmin access required to update team members.");
+        err.statusCode = 403;
+        throw err;
+      }
+
+      const payload = JSON.parse(event.body || "{}");
+      const originalEmail = String(payload.originalEmail || payload.email || "").toLowerCase().trim();
+      const email = String(payload.email || "").toLowerCase().trim();
+      const hospital = String(payload.hospital || "MDM").toUpperCase().trim();
+      const role = String(payload.role || "Operator").trim();
+      const memberType = String(payload.memberType || "Both").trim();
+      const loginAllowed = String(payload.loginAllowed || "YES").trim().toUpperCase();
+      const name = String(payload.name || "").trim();
+      const phone = String(payload.phone || "").trim();
+      let targetRowIndex = parseInt(payload.rowIndex, 10);
+
+      if (!email || !email.includes("@")) {
+        const err = new Error("Invalid email address.");
+        err.statusCode = 400;
+        throw err;
+      }
+
+      if (!targetRowIndex || isNaN(targetRowIndex) || targetRowIndex < 2) {
+        const data = await fetchSheetDataPublic(`'${USER_HOSPITALS_TAB}'!A:A`);
+        if (data && data.values) {
+          const idx = data.values.findIndex((r, i) => i > 0 && String(r[0] || "").toLowerCase().trim() === originalEmail);
+          if (idx !== -1) {
+            targetRowIndex = idx + 1;
+          }
+        }
+      }
+
+      if (!targetRowIndex || targetRowIndex < 2) {
+        const err = new Error(`Employee record "${originalEmail}" not found in user_hospitals.`);
+        err.statusCode = 404;
+        throw err;
+      }
+
+      await updateSheetRow(USER_HOSPITALS_TAB, `A${targetRowIndex}:G${targetRowIndex}`, [email, hospital, role, memberType, loginAllowed, name, phone]);
+      return jsonResponse(200, headers, { ok: true, email, hospital, role, memberType, loginAllowed, name, phone, rowIndex: targetRowIndex });
+    }
+
+    // ── 13. Delete / Clear Employee from user_hospitals Tab ──
+    if (action === "deleteEmployee" && event.httpMethod === "POST") {
+      if (!userIsSuperAdmin) {
+        const err = new Error("Forbidden: SuperAdmin access required to delete team members.");
+        err.statusCode = 403;
+        throw err;
+      }
+
+      const payload = JSON.parse(event.body || "{}");
+      const email = String(payload.email || "").toLowerCase().trim();
+      let targetRowIndex = parseInt(payload.rowIndex, 10);
+
+      if (!targetRowIndex || isNaN(targetRowIndex) || targetRowIndex < 2) {
+        const data = await fetchSheetDataPublic(`'${USER_HOSPITALS_TAB}'!A:A`);
+        if (data && data.values) {
+          const idx = data.values.findIndex((r, i) => i > 0 && String(r[0] || "").toLowerCase().trim() === email);
+          if (idx !== -1) {
+            targetRowIndex = idx + 1;
+          }
+        }
+      }
+
+      if (!targetRowIndex || targetRowIndex < 2) {
+        const err = new Error(`Employee record "${email}" not found in user_hospitals.`);
+        err.statusCode = 404;
+        throw err;
+      }
+
+      await clearSheetRow(USER_HOSPITALS_TAB, `A${targetRowIndex}:G${targetRowIndex}`);
+      return jsonResponse(200, headers, { ok: true, deletedEmail: email, rowIndex: targetRowIndex });
     }
 
     return {

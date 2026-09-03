@@ -13,6 +13,8 @@ gen-lang-client-*.json
 node_modules/
 dist/
 build/
+www/
+android/
 .tmp.drivedownload/
 .tmp.driveupload/
 

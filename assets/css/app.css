@@ -786,75 +786,154 @@ body {
   display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
 }
 .emp-avatar-circle {
-  width: 40px; height: 40px; border-radius: 50%;
+  width: 42px; height: 42px; border-radius: 50%;
   background: linear-gradient(135deg, var(--primary), var(--purple));
   color: #ffffff; font-weight: 800; font-size: 0.9rem;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
 }
 .emp-name-block { flex: 1; min-width: 0; }
-.emp-full-name { font-size: 0.85rem; font-weight: 800; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.emp-role-tag { font-size: 0.65rem; font-weight: 700; color: var(--primary-dark); }
+.emp-full-name { font-size: 0.88rem; font-weight: 800; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.emp-role-tag { font-size: 0.68rem; font-weight: 700; color: var(--primary-dark); margin-top: 1px; }
 
 .emp-details-grid {
   display: flex; flex-direction: column; gap: 4px; font-size: 0.72rem; color: var(--text-muted);
   border-top: 1px dashed #e2e8f0; border-bottom: 1px dashed #e2e8f0; padding: 6px 0; margin-bottom: 8px;
 }
-.emp-detail-row { display: flex; align-items: center; justify-content: space-between; }
+.emp-detail-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 
 .emp-card-footer {
-  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap;
 }
+.emp-btn-group-left { display: flex; align-items: center; gap: 4px; }
+.emp-btn-group-right { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 
 /* ── Digital ID Card Styling (Print/Download Badge) ───────── */
 .digital-id-card {
-  width: 100%; max-width: 320px;
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  width: 100%; max-width: 330px;
+  background: linear-gradient(180deg, #0b1329 0%, #1e293b 100%);
   border-radius: 18px;
   color: #ffffff;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.35);
   overflow: hidden;
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
   position: relative;
+  box-sizing: border-box;
 }
 .id-card-top-bar {
-  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  background: linear-gradient(135deg, #1e40af, #3b82f6);
   padding: 10px 14px; text-align: center; border-bottom: 2px solid #60a5fa;
 }
-.id-card-org { font-size: 0.75rem; font-weight: 900; letter-spacing: 0.4px; color: #ffffff; }
+.id-card-org { font-size: 0.76rem; font-weight: 900; letter-spacing: 0.4px; color: #ffffff; }
 .id-card-sub { font-size: 0.58rem; font-weight: 600; color: #dbeafe; margin-top: 1px; }
 
 .id-card-body {
-  padding: 14px 16px 10px;
+  padding: 12px 14px 10px;
   display: flex; gap: 12px; align-items: flex-start;
 }
 .id-card-avatar-box {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
 .id-card-avatar {
-  width: 60px; height: 60px; border-radius: 12px;
-  background: linear-gradient(135deg, #a855f7, #ec4899);
+  width: 58px; height: 58px; border-radius: 12px;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.3rem; font-weight: 900; color: #ffffff;
+  font-size: 1.25rem; font-weight: 900; color: #ffffff;
   border: 2px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
 .id-card-role-pill {
-  font-size: 0.55rem; font-weight: 800; background: #3b82f6; color: #ffffff;
-  padding: 2px 6px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.3px;
+  font-size: 0.52rem; font-weight: 800; background: #3b82f6; color: #ffffff;
+  padding: 2px 6px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.3px;
+  text-align: center; width: 100%; box-sizing: border-box;
+}
+.id-card-role-pill.superadmin { background: #d97706; }
+.id-card-role-pill.supervisor { background: #7c3aed; }
+.id-card-role-pill.operator { background: #059669; }
+.id-card-role-pill.technician { background: #ea580c; }
+.id-card-role-pill.staff { background: #0284c7; }
+
+.id-card-status-chip {
+  font-size: 0.48rem; font-weight: 800; background: rgba(16, 185, 129, 0.2); color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.4); padding: 1px 4px; border-radius: 4px; letter-spacing: 0.3px;
 }
 
 .id-card-info { flex: 1; min-width: 0; }
-.id-card-name { font-size: 0.95rem; font-weight: 900; color: #ffffff; margin-bottom: 4px; }
+.id-card-name { font-size: 0.95rem; font-weight: 900; color: #ffffff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .id-card-field { font-size: 0.65rem; color: #94a3b8; margin-bottom: 2px; }
 .id-card-field strong { color: #f8fafc; font-weight: 700; }
+.id-card-field span { word-break: break-all; }
 .id-card-field code { color: #60a5fa; font-family: monospace; font-weight: 700; }
 .id-lbl { font-weight: 800; color: #cbd5e1; font-size: 0.6rem; }
+.id-access-badge { font-size: 0.58rem; font-weight: 700; color: #10b981; }
+
+.id-card-barcode-section {
+  padding: 6px 14px 8px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: #ffffff; margin: 4px 10px 8px; border-radius: 8px;
+  border: 1px solid #cbd5e1;
+}
+.id-card-barcode-svg-wrap { flex: 1; text-align: center; }
+.id-barcode-svg { width: 100%; height: 26px; display: block; }
+.id-barcode-text { font-size: 0.52rem; font-family: monospace; font-weight: 700; color: #0f172a; letter-spacing: 1px; margin-top: 1px; }
+.id-card-qr-box {
+  width: 38px; height: 38px; background: #f8fafc; border: 1px solid #cbd5e1;
+  border-radius: 6px; display: flex; align-items: center; justify-content: center;
+}
 
 .id-card-footer {
-  background: rgba(15, 23, 42, 0.6);
-  padding: 8px 16px;
+  background: rgba(15, 23, 42, 0.85);
+  padding: 8px 14px;
   display: flex; align-items: center; justify-content: space-between;
   border-top: 1px dashed rgba(255, 255, 255, 0.15);
+}
+.id-card-validity { display: flex; flex-direction: column; }
+.id-card-auth-sign { text-align: right; }
+
+/* ── Print Stylesheet for Digital ID Card ──────────────────── */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #id-card-modal,
+  #id-card-modal * {
+    visibility: visible !important;
+  }
+  #id-card-modal {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: transparent !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .modal-card {
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  .modal-header,
+  .modal-close-btn,
+  #toast-container,
+  .bottom-nav,
+  .skynex-header,
+  .skynex-fab {
+    display: none !important;
+  }
+  .digital-id-card {
+    margin: 0 auto !important;
+    page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+  }
 }
 
 /* ── Stock Page KPI Cards ─────────────────────────────────── */

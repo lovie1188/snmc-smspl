@@ -1847,9 +1847,15 @@ let activeEmployeeHospitalFilter = "ALL";
 let isEmployeesLoading = false;
 
 async function loadEmployeesPage() {
-  const container = document.getElementById("employees-cards-grid");
   const countBadge = document.getElementById("employees-count-badge");
+  const addBtn = document.getElementById("add-employee-top-btn");
   if (countBadge) countBadge.textContent = "Connecting to Google Sheet...";
+
+  // SuperAdmin role visibility toggle for add button
+  const userIsSuper = typeof isSuperAdmin === "function" && isSuperAdmin(currentUser?.email || "");
+  if (addBtn) {
+    addBtn.style.display = userIsSuper ? "inline-flex" : "none";
+  }
 
   try {
     isEmployeesLoading = true;
@@ -1883,14 +1889,21 @@ function renderEmployeesList() {
   const container = document.getElementById("employees-cards-grid");
   const noEmp = document.getElementById("no-employees");
   const countBadge = document.getElementById("employees-count-badge");
+  const addBtn = document.getElementById("add-employee-top-btn");
   const searchVal = document.getElementById("employee-search-input")?.value?.toLowerCase().trim() || "";
+  const userIsSuper = typeof isSuperAdmin === "function" && isSuperAdmin(currentUser?.email || "");
+
+  if (addBtn) {
+    addBtn.style.display = userIsSuper ? "inline-flex" : "none";
+  }
 
   if (!container) return;
 
   const filtered = allEmployeeItems.filter(e => {
-    if (!isHospitalVisible(e.hospital)) return false;
-    if (activeEmployeeHospitalFilter !== "ALL" && !e.hospital.includes(activeEmployeeHospitalFilter)) return false;
-    const str = `${e.name} ${e.email} ${e.phone} ${e.hospital} ${e.role} ${e.id}`.toLowerCase();
+    const hosp = String(e.hospital || "").toUpperCase();
+    if (typeof isHospitalVisible === "function" && !isHospitalVisible(hosp)) return false;
+    if (activeEmployeeHospitalFilter !== "ALL" && hosp !== "ALL" && !hosp.includes(activeEmployeeHospitalFilter)) return false;
+    const str = `${e.name || ''} ${e.email || ''} ${e.phone || ''} ${e.hospital || ''} ${e.role || ''} ${e.id || ''} ${e.memberType || ''}`.toLowerCase();
     return !searchVal || str.includes(searchVal);
   });
 
@@ -1912,32 +1925,48 @@ function renderEmployeesList() {
   if (noEmp) noEmp.style.display = "none";
 
   container.innerHTML = filtered.map(emp => {
-    const initials = (emp.name || emp.email).split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+    const rawName = emp.name || emp.email || "Employee";
+    const initials = rawName.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+    const isLoginBlocked = (emp.loginAllowed === "NO" || emp.loginAllowed === false);
+
     return `
-      <div class="employee-card-item">
+      <div class="employee-card-item" data-id="${escapeHtml(emp.id)}">
         <div>
           <div class="emp-card-header">
             <div class="emp-avatar-circle">${escapeHtml(initials)}</div>
             <div class="emp-name-block">
-              <div class="emp-full-name">${escapeHtml(emp.name)}</div>
+              <div class="emp-full-name" title="${escapeHtml(emp.name)}">${escapeHtml(emp.name)}</div>
               <div class="emp-role-tag">${escapeHtml(emp.role)} • <span class="badge" style="background:rgba(59,130,246,0.1); color:#1d4ed8;">${escapeHtml(emp.hospital)}</span></div>
             </div>
           </div>
 
           <div class="emp-details-grid">
-            <div class="emp-detail-row"><span>📧 Email:</span> <strong style="color:var(--text);">${escapeHtml(emp.email)}</strong></div>
-            <div class="emp-detail-row"><span>📞 Phone:</span> <strong style="color:var(--text);">${escapeHtml(emp.phone)}</strong></div>
-            <div class="emp-detail-row"><span>🆔 Type &amp; Access:</span> <span><span class="badge" style="background:#f1f5f9; color:#475569;">${escapeHtml(emp.memberType || 'Both')}</span> <span class="badge" style="${(emp.loginAllowed === 'NO' || emp.loginAllowed === false) ? 'background:rgba(239,68,68,0.1); color:#dc2626;' : 'background:rgba(16,185,129,0.1); color:#059669;'}">${(emp.loginAllowed === 'NO' || emp.loginAllowed === false) ? '🔴 No Login' : '🟢 Login OK'}</span></span></div>
+            <div class="emp-detail-row"><span>📧 Email:</span> <strong style="color:var(--text); word-break:break-all;">${escapeHtml(emp.email)}</strong></div>
+            <div class="emp-detail-row"><span>📞 Phone:</span> <strong style="color:var(--text);">${escapeHtml(emp.phone || '+91 94140 XXXXX')}</strong></div>
+            <div class="emp-detail-row"><span>🆔 Access:</span> <span><span class="badge" style="background:#f1f5f9; color:#475569;">${escapeHtml(emp.memberType || 'Both')}</span> <span class="badge" style="${isLoginBlocked ? 'background:rgba(239,68,68,0.1); color:#dc2626;' : 'background:rgba(16,185,129,0.1); color:#059669;'}">${isLoginBlocked ? '🔴 No Login' : '🟢 Login OK'}</span></span></div>
           </div>
         </div>
 
         <div class="emp-card-footer">
-          <button type="button" class="arrow-btn" style="width: auto; padding: 4px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; color: #1e40af; background: rgba(59, 130, 246, 0.1);" onclick="openIdCardModal('${escapeHtml(emp.name)}', '${escapeHtml(emp.email)}', '${escapeHtml(emp.phone)}', '${escapeHtml(emp.hospital)}', '${escapeHtml(emp.role)}', '${escapeHtml(emp.id)}')">
-            🪪 View ID Card
-          </button>
-          <button type="button" class="printer-card-copy-btn" title="Copy Contact" onclick="copyContactDetails(event, '${escapeHtml(emp.name)}', '${escapeHtml(emp.phone)}', '${escapeHtml(emp.email)}', '${escapeHtml(emp.hospital)}')">
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-          </button>
+          <div class="emp-btn-group-left">
+            <button type="button" class="arrow-btn" style="width: auto; padding: 4px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; color: #1e40af; background: rgba(59, 130, 246, 0.1);" onclick="openEmployeeIdCardById('${escapeHtml(emp.id)}')">
+              🪪 View ID Card
+            </button>
+            <button type="button" class="printer-card-copy-btn" title="Copy Contact" onclick="copyContactDetails(event, '${escapeHtml(emp.name)}', '${escapeHtml(emp.phone)}', '${escapeHtml(emp.email)}', '${escapeHtml(emp.hospital)}')">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            </button>
+          </div>
+
+          ${userIsSuper ? `
+          <div class="emp-btn-group-right">
+            <button type="button" class="arrow-btn" style="width: auto; padding: 4px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; color: #0284c7; background: rgba(2, 132, 199, 0.1);" title="Edit Member" onclick="openEditEmployeeModalById('${escapeHtml(emp.id)}')">
+              ✏️
+            </button>
+            <button type="button" class="arrow-btn" style="width: auto; padding: 4px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; color: #dc2626; background: rgba(239, 68, 68, 0.1);" title="Delete Member" onclick="handleDeleteEmployee('${escapeHtml(emp.id)}', '${escapeHtml(emp.email)}', ${emp.rowIndex || 0})">
+              🗑️
+            </button>
+          </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -1945,7 +1974,32 @@ function renderEmployeesList() {
 }
 
 // ── Open Digital ID Card Modal ──
-function openIdCardModal(name, email, phone, hospital, role, id) {
+function openEmployeeIdCardById(empId) {
+  const emp = allEmployeeItems.find(e => e.id === empId);
+  if (!emp) return;
+  openIdCardModal(emp.name, emp.email, emp.phone, emp.hospital, emp.role, emp.id, emp.memberType, emp.loginAllowed);
+}
+
+function generateSvgBarcode(code) {
+  const clean = (code || "SNMC-EMP").toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  let rects = "";
+  let currentX = 10;
+  const height = 30;
+
+  for (let i = 0; i < clean.length; i++) {
+    const charCode = clean.charCodeAt(i);
+    const w1 = ((charCode % 3) + 1) * 1.5;
+    const w2 = (((charCode >> 1) % 2) + 1) * 1.2;
+    rects += `<rect x="${currentX.toFixed(1)}" y="2" width="${w1.toFixed(1)}" height="${height}" fill="#0f172a" />`;
+    currentX += w1 + 1.5;
+    rects += `<rect x="${currentX.toFixed(1)}" y="2" width="${w2.toFixed(1)}" height="${height}" fill="#0f172a" />`;
+    currentX += w2 + 2;
+  }
+
+  return rects;
+}
+
+function openIdCardModal(name, email, phone, hospital, role, id, memberType, loginAllowed) {
   const modal = document.getElementById("id-card-modal");
   const nameEl = document.getElementById("idc-name");
   const emailEl = document.getElementById("idc-email");
@@ -1954,15 +2008,41 @@ function openIdCardModal(name, email, phone, hospital, role, id) {
   const roleEl = document.getElementById("idc-role");
   const idEl = document.getElementById("idc-id");
   const avatarEl = document.getElementById("idc-avatar");
+  const statusEl = document.getElementById("idc-status");
+  const accessEl = document.getElementById("idc-access");
+  const barcodeSvg = document.getElementById("idc-barcode-svg");
+  const barcodeText = document.getElementById("idc-barcode-text");
 
   if (modal) modal.style.display = "flex";
-  if (nameEl) nameEl.textContent = name;
-  if (emailEl) emailEl.textContent = email;
-  if (phoneEl) phoneEl.textContent = phone;
-  if (hospEl) hospEl.textContent = `${hospital} HOSPITAL`;
-  if (roleEl) roleEl.textContent = role.toUpperCase();
-  if (idEl) idEl.textContent = id;
-  if (avatarEl) avatarEl.textContent = (name || email).split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+  if (nameEl) nameEl.textContent = name || "Employee Name";
+  if (emailEl) emailEl.textContent = email || "user@gmail.com";
+  if (phoneEl) phoneEl.textContent = phone || "+91 94140 XXXXX";
+  if (hospEl) hospEl.textContent = `${hospital || 'MDM'} HOSPITAL`;
+  
+  if (roleEl) {
+    const safeRole = (role || "Operator").trim();
+    roleEl.textContent = safeRole.toUpperCase();
+    roleEl.className = "id-card-role-pill " + safeRole.toLowerCase();
+  }
+
+  const empId = id || "SNMC-EMP-100";
+  if (idEl) idEl.textContent = empId;
+  if (barcodeText) barcodeText.textContent = empId;
+  if (barcodeSvg) barcodeSvg.innerHTML = generateSvgBarcode(empId);
+
+  const initials = (name || email || "OP").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+  if (avatarEl) avatarEl.textContent = initials;
+
+  const isBlocked = (loginAllowed === "NO" || loginAllowed === false);
+  if (statusEl) {
+    statusEl.textContent = isBlocked ? "RESTRICTED" : "VERIFIED ACTIVE";
+    statusEl.style.color = isBlocked ? "#f87171" : "#34d399";
+    statusEl.style.borderColor = isBlocked ? "rgba(248,113,113,0.4)" : "rgba(52,211,153,0.4)";
+  }
+
+  if (accessEl) {
+    accessEl.textContent = `${memberType || 'Both'} (${isBlocked ? 'No Login' : 'Login OK'})`;
+  }
 }
 
 function closeIdCardModal(e) {
@@ -1975,14 +2055,68 @@ function printIdCard() {
   window.print();
 }
 
-// ── Add Employee Modal & Live 2-Way Google Sheet Sync ──
+// ── Add/Edit Employee Modal & Live 2-Way Google Sheet Sync ──
 function openAddEmployeeModal() {
   const modal = document.getElementById("add-employee-modal");
+  const form = document.getElementById("add-employee-form");
+  const titleEl = document.getElementById("add-emp-modal-title");
+  const subEl = document.getElementById("add-emp-modal-sub");
+  const modeInput = document.getElementById("emp-mode-input");
+  const rowIdxInput = document.getElementById("emp-rowindex-input");
+  const origEmailInput = document.getElementById("emp-orig-email-input");
+  const saveBtn = document.getElementById("emp-save-btn");
+
+  if (form) form.reset();
+  if (modeInput) modeInput.value = "add";
+  if (rowIdxInput) rowIdxInput.value = "";
+  if (origEmailInput) origEmailInput.value = "";
+  if (titleEl) titleEl.textContent = "Add Team Member";
+  if (subEl) subEl.textContent = "Save to user_hospitals directory";
+  if (saveBtn) saveBtn.innerHTML = "💾 Save Member";
+
+  if (modal) modal.style.display = "flex";
+}
+
+function openEditEmployeeModalById(empId) {
+  const emp = allEmployeeItems.find(e => e.id === empId);
+  if (!emp) return;
+
+  const modal = document.getElementById("add-employee-modal");
+  const titleEl = document.getElementById("add-emp-modal-title");
+  const subEl = document.getElementById("add-emp-modal-sub");
+  const modeInput = document.getElementById("emp-mode-input");
+  const rowIdxInput = document.getElementById("emp-rowindex-input");
+  const origEmailInput = document.getElementById("emp-orig-email-input");
+  const saveBtn = document.getElementById("emp-save-btn");
+
+  if (modeInput) modeInput.value = "edit";
+  if (rowIdxInput) rowIdxInput.value = emp.rowIndex || "";
+  if (origEmailInput) origEmailInput.value = emp.email || "";
+  if (titleEl) titleEl.textContent = `Edit Member: ${emp.name}`;
+  if (subEl) subEl.textContent = `Updating record in user_hospitals`;
+  if (saveBtn) saveBtn.innerHTML = "💾 Update Member";
+
+  const nameInp = document.getElementById("emp-name-input");
+  const emailInp = document.getElementById("emp-email-input");
+  const phoneInp = document.getElementById("emp-phone-input");
+  const hospInp = document.getElementById("emp-hospital-input");
+  const roleInp = document.getElementById("emp-role-input");
+  const catInp = document.getElementById("emp-category-input");
+  const loginInp = document.getElementById("emp-login-input");
+
+  if (nameInp) nameInp.value = emp.name || "";
+  if (emailInp) emailInp.value = emp.email || "";
+  if (phoneInp) phoneInp.value = emp.phone || "";
+  if (hospInp) hospInp.value = emp.hospital || "MDM";
+  if (roleInp) roleInp.value = emp.role || "Operator";
+  if (catInp) catInp.value = emp.memberType || "Both";
+  if (loginInp) loginInp.value = (emp.loginAllowed === "NO" || emp.loginAllowed === false) ? "NO" : "YES";
+
   if (modal) modal.style.display = "flex";
 }
 
 function closeAddEmployeeModal(e) {
-  if (e && e.target !== e.currentTarget) return;
+  if (e && e.target !== e.currentTarget && !e.target.classList.contains("modal-close-btn") && e.target.tagName !== "BUTTON") return;
   const modal = document.getElementById("add-employee-modal");
   if (modal) modal.style.display = "none";
 }
@@ -2000,6 +2134,10 @@ function toggleLoginAccessDefault() {
 
 async function handleSaveEmployee(e) {
   e.preventDefault();
+  const mode = document.getElementById("emp-mode-input")?.value || "add";
+  const rowIndex = parseInt(document.getElementById("emp-rowindex-input")?.value || "0", 10);
+  const originalEmail = document.getElementById("emp-orig-email-input")?.value || "";
+
   const name = document.getElementById("emp-name-input")?.value?.trim() || "";
   const email = document.getElementById("emp-email-input")?.value?.trim().toLowerCase() || "";
   const phone = document.getElementById("emp-phone-input")?.value?.trim() || "+91 94140 XXXXX";
@@ -2017,29 +2155,64 @@ async function handleSaveEmployee(e) {
   try {
     if (saveBtn) {
       saveBtn.disabled = true;
-      saveBtn.innerHTML = `<span class="spinner"></span> Saving to Sheet...`;
+      saveBtn.innerHTML = `<span class="spinner"></span> Syncing with Sheet...`;
     }
 
-    // Live Server-Side Append to user_hospitals Google Sheet Tab
-    const res = await sheetsRequest("addEmployee", {
-      method: "POST",
-      body: JSON.stringify({ email, hospital, role, memberType, loginAllowed })
-    });
+    if (mode === "edit") {
+      // Live Server-Side Update in user_hospitals Google Sheet Tab
+      await sheetsRequest("updateEmployee", {
+        method: "POST",
+        body: JSON.stringify({ originalEmail, email, hospital, role, memberType, loginAllowed, name, phone, rowIndex })
+      });
 
-    const newId = `EMP-${100 + (allEmployeeItems.length + 1)}`;
-    allEmployeeItems.unshift({ id: newId, name, email, phone, hospital, role, memberType, loginAllowed });
+      const idx = allEmployeeItems.findIndex(item => item.email.toLowerCase() === originalEmail.toLowerCase() || (rowIndex && item.rowIndex === rowIndex));
+      if (idx !== -1) {
+        allEmployeeItems[idx] = { ...allEmployeeItems[idx], name, email, phone, hospital, role, memberType, loginAllowed };
+      }
 
-    showToast(`✅ ${name} (${email}) added as ${memberType} [Login: ${loginAllowed}]!`, "success");
+      showToast(`✅ ${name} updated successfully in user_hospitals!`, "success");
+    } else {
+      // Live Server-Side Append to user_hospitals Google Sheet Tab
+      const res = await sheetsRequest("addEmployee", {
+        method: "POST",
+        body: JSON.stringify({ email, hospital, role, memberType, loginAllowed, name, phone })
+      });
+
+      const newId = `SNMC-EMP-${100 + (allEmployeeItems.length + 1)}`;
+      allEmployeeItems.unshift({ id: newId, name, email, phone, hospital, role, memberType, loginAllowed });
+      showToast(`✅ ${name} (${email}) added as ${memberType} [Login: ${loginAllowed}]!`, "success");
+    }
+
     closeAddEmployeeModal();
     document.getElementById("add-employee-form")?.reset();
     renderEmployeesList();
   } catch (err) {
-    showToast(`Failed to save to Google Sheet: ${err.message}`, "error");
+    showToast(`Failed to sync with Google Sheet: ${err.message}`, "error");
   } finally {
     if (saveBtn) {
       saveBtn.disabled = false;
-      saveBtn.innerHTML = `💾 Save Member`;
+      saveBtn.innerHTML = mode === "edit" ? `💾 Update Member` : `💾 Save Member`;
     }
+  }
+}
+
+async function handleDeleteEmployee(empId, email, rowIndex) {
+  if (!confirm(`Are you sure you want to remove ${email} from the user_hospitals directory?`)) {
+    return;
+  }
+
+  try {
+    showToast(`Deleting ${email}...`, "info");
+    await sheetsRequest("deleteEmployee", {
+      method: "POST",
+      body: JSON.stringify({ email, rowIndex })
+    });
+
+    allEmployeeItems = allEmployeeItems.filter(e => e.id !== empId && e.email.toLowerCase() !== email.toLowerCase());
+    showToast(`🗑️ ${email} removed from user_hospitals.`, "success");
+    renderEmployeesList();
+  } catch (err) {
+    showToast(`Failed to delete employee: ${err.message}`, "error");
   }
 }
 
@@ -2058,8 +2231,9 @@ function exportEmployeesToExcel() {
     return;
   }
   const filtered = allEmployeeItems.filter(e => {
-    if (!isHospitalVisible(e.hospital)) return false;
-    if (activeEmployeeHospitalFilter !== "ALL" && !e.hospital.includes(activeEmployeeHospitalFilter)) return false;
+    const hosp = String(e.hospital || "").toUpperCase();
+    if (typeof isHospitalVisible === "function" && !isHospitalVisible(hosp)) return false;
+    if (activeEmployeeHospitalFilter !== "ALL" && hosp !== "ALL" && !hosp.includes(activeEmployeeHospitalFilter)) return false;
     return true;
   });
 
@@ -2072,7 +2246,7 @@ function exportEmployeesToExcel() {
     "Designation": e.role,
     "Assigned Hospital": e.hospital,
     "Email Address": e.email,
-    "Mobile Number": e.phone
+    "Mobile Number": e.phone || "+91 94140 XXXXX"
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(exportData);
