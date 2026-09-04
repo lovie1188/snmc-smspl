@@ -34,13 +34,23 @@ async function sheetsRequest(action, options = {}) {
       headers["Content-Type"] = "application/json";
     }
 
-    const baseUrl = (typeof APP_CONFIG !== "undefined" && typeof APP_CONFIG.apiBaseUrl === "string")
-      ? APP_CONFIG.apiBaseUrl
-      : (window.location.origin.includes("netlify.app") ? "" : "https://snmcbackend.onrender.com");
+    const baseUrl = (typeof getApiBaseUrl === "function") 
+      ? getApiBaseUrl() 
+      : ((typeof APP_CONFIG !== "undefined" && typeof APP_CONFIG.apiBaseUrl === "string") ? APP_CONFIG.apiBaseUrl : "");
 
-    const apiUrl = baseUrl 
-      ? `${baseUrl}/api/sheets?action=${encodeURIComponent(action)}`
-      : `/.netlify/functions/sheets?action=${encodeURIComponent(action)}`;
+    // Direct endpoint path with explicit query parameter
+    const apiUrl = `${baseUrl}/.netlify/functions/sheets?action=${encodeURIComponent(action)}`;
+
+    // If POST request with JSON body, ensure action is also in body payload for zero-fail redundancy
+    if (options.body && typeof options.body === "string" && options.body.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(options.body);
+        if (!parsed.action) {
+          parsed.action = action;
+          options.body = JSON.stringify(parsed);
+        }
+      } catch (_) {}
+    }
 
     const res = await fetch(apiUrl, {
       ...options,

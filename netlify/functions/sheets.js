@@ -4,6 +4,34 @@
 // Sheet ID: 1Zbx8wOV3FTTxEH0k4i_F2v7SA2_pSp3R6VACroY19H0
 // ============================================================
 
+const fs = require("fs");
+const path = require("path");
+
+function loadEnvFallback() {
+  try {
+    const envPath = path.resolve(__dirname, "../../.env");
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, "utf8");
+      content.split("\n").forEach((line) => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) return;
+        const eqIdx = trimmed.indexOf("=");
+        if (eqIdx > 0) {
+          const key = trimmed.slice(0, eqIdx).trim();
+          let val = trimmed.slice(eqIdx + 1).trim();
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+          }
+          if (!process.env[key]) {
+            process.env[key] = val;
+          }
+        }
+      });
+    }
+  } catch (_) {}
+}
+loadEnvFallback();
+
 const SHEET_ID = "1Zbx8wOV3FTTxEH0k4i_F2v7SA2_pSp3R6VACroY19H0";
 const DAILY_TAB = "Form responses 1";
 const PRINTER_TAB = "printerdetails";
@@ -13,7 +41,14 @@ const FCMTOKENS_TAB = "fcmtokens";
 const STOCK_TAB = "stock";
 const STOCK_RANGE = "A:M";
 const USER_HOSPITALS_TAB = "user_hospitals";
-const USER_HOSPITALS_RANGE = "A:G";
+const USER_HOSPITALS_RANGE = "A:H";
+
+// ── New Manpower Sheet Integration (Dedicated Employee & Team Master) ──
+const MANPOWER_SHEET_ID = "1FrHbNqlJF1BpFdlVLsUMYVIGC9z0N_JS3vjrYAhwazA";
+const MANPOWER_TAB = "manpower";
+const MANPOWER_RANGE = "A1:AD45";
+
+const GOOGLE_DRIVE_PHOTO_FOLDER_ID = "129N1_3z_802vJ-9I5nH9jMmSBinpbzGY";
 // Server-authoritative SuperAdmin list (override per environment via SUPER_ADMIN_EMAILS).
 const SUPER_ADMINS = (process.env.SUPER_ADMIN_EMAILS || "softtech.lovejeet@gmail.com,softtech2009@gmail.com")
   .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
@@ -54,7 +89,10 @@ async function getFirebaseCerts() {
   return certs;
 }
 
-async function verifyFirebaseIdToken(authHeader) {
+const jwt = require("jsonwebtoken");
+const JWT_SECRET = process.env.JWT_SECRET || "SMSPL@PrintTrackJWTSecret2026";
+
+async function verifyToken(authHeader) {
   const match = String(authHeader || "").match(/^Bearer\s+(.+)$/i);
   if (!match) {
     const err = new Error("Missing Authorization bearer token.");
@@ -63,6 +101,22 @@ async function verifyFirebaseIdToken(authHeader) {
   }
 
   const token = match[1];
+
+  // 1. First check if it's a Neon DB issued JWT token
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded && decoded.email) {
+      return {
+        uid: decoded.uid || decoded.id,
+        email: decoded.email,
+        name: decoded.name || "",
+        role: decoded.role || "Operator",
+        hospitals: decoded.hospitals || []
+      };
+    }
+  } catch (_) {}
+
+  // 2. If not local JWT, verify Firebase ID Token
   const parts = token.split(".");
   if (parts.length !== 3) {
     const err = new Error("Invalid token format.");
@@ -121,9 +175,11 @@ async function verifyFirebaseIdToken(authHeader) {
   };
 }
 
+
 function getSheetsJwtClient() {
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = (process.env.GOOGLE_PRIVATE_KEY || "").replace(/\\n/g, "\n");
+  const rawKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  const privateKey = rawKey.replace(/^"|"$/g, "").replace(/\\n/g, "\n").trim();
 
   if (!clientEmail || !privateKey) {
     return null;
@@ -133,7 +189,11 @@ function getSheetsJwtClient() {
     sheetsJwtClient = new JWT({
       email: clientEmail,
       key: privateKey,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets"]
+      scopes: [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
     });
   }
 
@@ -152,7 +212,8 @@ async function getSheetsAuthHeaders() {
 
 async function getFcmAuthHeaders() {
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = (process.env.GOOGLE_PRIVATE_KEY || "").replace(/\\n/g, "\n");
+  const rawKey = process.env.GOOGLE_PRIVATE_KEY || "";
+  const privateKey = rawKey.replace(/^"|"$/g, "").replace(/\\n/g, "\n").trim();
 
   if (!clientEmail || !privateKey) {
     const err = new Error("SERVER_CONFIG_ERROR: Google service account credentials are required for push notifications.");
@@ -176,14 +237,15 @@ async function getFcmAuthHeaders() {
 }
 
 // Fetch sheet data using server environment variable (GOOGLE_SHEETS_API_KEY only — no hardcoded fallback)
-async function fetchSheetDataPublic(range) {
+async function fetchSheetDataPublic(range, customSheetId = null) {
+  const targetSheetId = customSheetId || SHEET_ID;
   const authHeaders = await getSheetsAuthHeaders();
   const apiKey = process.env.GOOGLE_SHEETS_API_KEY;
   if (!authHeaders && !apiKey) {
     throw new Error("SERVER_CONFIG_ERROR: Configure Google Sheets service account credentials or GOOGLE_SHEETS_API_KEY.");
   }
   const query = authHeaders ? "" : `?key=${apiKey}`;
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}${query}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${targetSheetId}/values/${encodeURIComponent(range)}${query}`;
 
   const res = await fetch(url, authHeaders ? { headers: authHeaders } : undefined);
   if (!res.ok) {
@@ -238,14 +300,15 @@ async function appendDailyEntry(row) {
   return res.json();
 }
 
-async function appendSheetRow(tab, range, row) {
+async function appendSheetRow(tab, range, row, customSheetId = null) {
+  const targetSheetId = customSheetId || SHEET_ID;
   const authHeaders = await getSheetsAuthHeaders();
   if (!authHeaders) {
     throw new Error("SERVER_CONFIG_ERROR: Google Sheets service account credentials are required for writes.");
   }
 
   const cleanRow = row.map((value) => String(value ?? "").slice(0, 1000));
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(`'${tab}'!${range}`)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${targetSheetId}/values/${encodeURIComponent(`'${tab}'!${range}`)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -264,14 +327,15 @@ async function appendSheetRow(tab, range, row) {
   return res.json();
 }
 
-async function updateSheetRow(tab, range, row) {
+async function updateSheetRow(tab, range, row, customSheetId = null) {
+  const targetSheetId = customSheetId || SHEET_ID;
   const authHeaders = await getSheetsAuthHeaders();
   if (!authHeaders) {
     throw new Error("SERVER_CONFIG_ERROR: Google Sheets service account credentials are required for writes.");
   }
 
   const cleanRow = row.map((value) => String(value ?? "").slice(0, 1000));
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(`'${tab}'!${range}`)}?valueInputOption=USER_ENTERED`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${targetSheetId}/values/${encodeURIComponent(`'${tab}'!${range}`)}?valueInputOption=USER_ENTERED`;
 
   const res = await fetch(url, {
     method: "PUT",
@@ -290,13 +354,14 @@ async function updateSheetRow(tab, range, row) {
   return res.json();
 }
 
-async function clearSheetRow(tab, range) {
+async function clearSheetRow(tab, range, customSheetId = null) {
+  const targetSheetId = customSheetId || SHEET_ID;
   const authHeaders = await getSheetsAuthHeaders();
   if (!authHeaders) {
     throw new Error("SERVER_CONFIG_ERROR: Google Sheets service account credentials are required for writes.");
   }
 
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(`'${tab}'!${range}`)}:clear`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${targetSheetId}/values/${encodeURIComponent(`'${tab}'!${range}`)}:clear`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -376,16 +441,68 @@ async function sendFcmMessage(token, payload) {
   return res.json();
 }
 
-// ── Read User-to-Hospital Mappings from Google Sheet (user_hospitals tab) ──
+// ── Read User-to-Hospital Mappings from Dedicated Manpower Google Sheet (manpower!A1:AD45) ──
 async function getUserHospitalPermissions(email) {
   if (!email) return { hospitals: [], isSuperAdmin: false, isAll: false };
   const cleanEmail = email.toLowerCase().trim();
 
   // SuperAdmins always have full global access
   if (SUPER_ADMINS.includes(cleanEmail)) {
-    return { hospitals: ["ALL"], isSuperAdmin: true, isAll: true, isLoginAllowed: true, memberType: "SuperAdmin" };
+    return { hospitals: ["ALL"], isSuperAdmin: true, isAll: true, isLoginAllowed: true, memberType: "SuperAdmin", role: "SuperAdmin" };
   }
 
+  try {
+    const data = await fetchSheetDataPublic(`'${MANPOWER_TAB}'!${MANPOWER_RANGE}`, MANPOWER_SHEET_ID);
+    if (data && data.values && data.values.length > 1) {
+      const headers = data.values[0].map(h => String(h || "").toLowerCase().trim());
+      
+      const emailIdx = headers.findIndex(h => h === "office email" || h.includes("office email"));
+      const fallbackEmailIdx = headers.findIndex(h => h === "email id" || h.includes("email id") || h === "email");
+      const nameIdx = headers.findIndex(h => h === "name" || h.includes("name"));
+      const desigIdx = headers.findIndex(h => h === "designation" || h.includes("designation"));
+      const hospIdx = headers.findIndex(h => h === "reporting office" || h.includes("reporting office") || h.includes("hospital"));
+      const projIdx = headers.findIndex(h => h === "project");
+      const statusIdx = headers.findIndex(h => h === "status");
+
+      const rows = data.values.slice(1);
+      for (const row of rows) {
+        const primaryEmail = (emailIdx !== -1 ? String(row[emailIdx] || "") : "").toLowerCase().trim();
+        const fallbackEmail = (fallbackEmailIdx !== -1 ? String(row[fallbackEmailIdx] || "") : "").toLowerCase().trim();
+        
+        if (primaryEmail === cleanEmail || fallbackEmail === cleanEmail) {
+          const project = projIdx !== -1 ? String(row[projIdx] || "").trim().toUpperCase() : "";
+          const status = statusIdx !== -1 ? String(row[statusIdx] || "").trim().toUpperCase() : "";
+          const hospStr = hospIdx !== -1 ? String(row[hospIdx] || "").toUpperCase().trim() : "ALL";
+          const role = desigIdx !== -1 ? String(row[desigIdx] || "Operator").trim() : "Operator";
+          const name = nameIdx !== -1 ? String(row[nameIdx] || "").trim() : "";
+
+          // Access criteria: Active status AND (SNMC project or Director/SuperAdmin)
+          const isSuper = role.toLowerCase().includes("director") || role.toLowerCase().includes("superadmin") || hospStr === "ALL";
+          const isProjectAllowed = isSuper || !project || project === "SNMC";
+          const isStatusActive = status === "ACTIVE" || status === "YES" || status === "1" || status === "TRUE" || !status; // default allow if active/unspecified
+          
+          const isLoginAllowed = isSuper || (isProjectAllowed && isStatusActive);
+          const hospitals = (hospStr === "ALL" || isSuper) ? ["ALL"] : hospStr.split(",").map(h => h.trim()).filter(Boolean);
+
+          return { 
+            hospitals: hospitals.length ? hospitals : ["ALL"], 
+            isSuperAdmin: isSuper, 
+            isAll: hospitals.includes("ALL") || isSuper, 
+            isLoginAllowed, 
+            memberType: role, 
+            role, 
+            name,
+            project,
+            status 
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Could not read manpower sheet permissions:", err.message);
+  }
+
+  // Fallback check in legacy user_hospitals tab if not present in manpower
   try {
     const data = await fetchSheetDataPublic(`'${USER_HOSPITALS_TAB}'!A:E`);
     if (data && data.values && data.values.length > 1) {
@@ -404,13 +521,12 @@ async function getUserHospitalPermissions(email) {
         }
       }
     }
-  } catch (err) {
-    console.warn("Could not read user_hospitals tab:", err.message);
-  }
+  } catch (_) {}
 
-  // Default fallback if not mapped in sheet (deny access to unassigned or restrict)
+  // Default fallback if not mapped
   return { hospitals: [], isSuperAdmin: false, isAll: false, isLoginAllowed: false, memberType: "Unregistered" };
 }
+
 
 // ── Check if a hospital matches user's allowed hospital set server-side ──
 function isHospitalAllowedServer(hospitalName, allowedHospitals, isAll) {
@@ -462,10 +578,21 @@ exports.handler = async function (event, context) {
     return { statusCode: 200, headers, body: "" };
   }
 
-  const action = (event.queryStringParameters && event.queryStringParameters.action) || "printerdetails";
+  let action = (event.queryStringParameters && event.queryStringParameters.action) || "";
+  if (!action && event.rawQuery) {
+    const qMatch = event.rawQuery.match(/action=([^&]+)/);
+    if (qMatch) action = decodeURIComponent(qMatch[1]);
+  }
+  if (!action && event.body) {
+    try {
+      const parsedBody = JSON.parse(event.body);
+      if (parsedBody && parsedBody.action) action = parsedBody.action;
+    } catch (_) {}
+  }
+  if (!action) action = "printerdetails";
 
   try {
-    const claims = await verifyFirebaseIdToken(event.headers.authorization || event.headers.Authorization);
+    const claims = await verifyToken(event.headers.authorization || event.headers.Authorization);
     const userEmail = (claims.email || "").toLowerCase();
 
     // ── Enforce Server-Side User Hospital Permissions ──
@@ -752,38 +879,87 @@ exports.handler = async function (event, context) {
       });
     }
 
-    // ── 10. Live Fetch Employees from user_hospitals Sheet Tab ──
+    // ── 10. Live Fetch Employees from Dedicated Manpower Google Sheet (A1:AD45) ──
     if (action === "getEmployees" && event.httpMethod === "GET") {
-      const data = await fetchSheetDataPublic(`'${USER_HOSPITALS_TAB}'!A:G`);
+      const data = await fetchSheetDataPublic(`'${MANPOWER_TAB}'!${MANPOWER_RANGE}`, MANPOWER_SHEET_ID);
       if (!data || !data.values || data.values.length === 0) {
         return jsonResponse(200, headers, { employees: [] });
       }
 
+      const headersRow = data.values[0].map(h => String(h || "").toLowerCase().trim());
+      const empIdIdx = headersRow.findIndex(h => h === "employee id" || h.includes("employee id"));
+      const nameIdx = headersRow.findIndex(h => h === "name" || h.includes("name"));
+      const desigIdx = headersRow.findIndex(h => h === "designation" || h.includes("designation"));
+      const contactIdx = headersRow.findIndex(h => h === "contact no." || h.includes("contact"));
+      const emailIdx = headersRow.findIndex(h => h === "office email" || h.includes("office email"));
+      const fallbackEmailIdx = headersRow.findIndex(h => h === "email id" || h.includes("email id") || h === "email");
+      const hospIdx = headersRow.findIndex(h => h === "reporting office" || h.includes("reporting office") || h.includes("hospital"));
+      const photoIdx = headersRow.findIndex(h => h === "photo");
+      const projIdx = headersRow.findIndex(h => h === "project");
+      const statusIdx = headersRow.findIndex(h => h === "status");
+      const bloodIdx = headersRow.findIndex(h => h.includes("blood"));
+
       const rows = data.values.slice(1);
       const employees = rows
         .map((r, i) => {
-          const email = String(r[0] || "").trim();
-          if (!email) return null;
-          const hospital = String(r[1] || "ALL").trim().toUpperCase();
-          const role = String(r[2] || "Operator").trim();
-          const memberType = String(r[3] || "Both").trim();
-          const loginAllowed = String(r[4] || "YES").trim().toUpperCase();
-          const name = (r[5] && String(r[5]).trim()) 
-            ? String(r[5]).trim() 
-            : email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-          const phone = (r[6] && String(r[6]).trim()) ? String(r[6]).trim() : "+91 94140 XXXXX";
-          const id = `SNMC-EMP-${100 + (i + 1)}`;
+          const name = nameIdx !== -1 ? String(r[nameIdx] || "").trim() : "";
+          const primaryEmail = emailIdx !== -1 ? String(r[emailIdx] || "").trim() : "";
+          const fallbackEmail = fallbackEmailIdx !== -1 ? String(r[fallbackEmailIdx] || "").trim() : "";
+          const email = primaryEmail || fallbackEmail;
+          if (!name && !email) return null;
+
+          const rawEmpId = empIdIdx !== -1 ? String(r[empIdIdx] || "").trim() : "";
+          const id = rawEmpId || `SMSPL${String(100 + (i + 1)).padStart(4, "0")}`;
+          const designation = desigIdx !== -1 ? String(r[desigIdx] || "Operator").trim() : "Operator";
+          const phone = contactIdx !== -1 ? String(r[contactIdx] || "").trim() : "+91 94140 XXXXX";
+          const hospital = hospIdx !== -1 ? String(r[hospIdx] || "ALL").trim().toUpperCase() : "ALL";
+          const photoUrl = photoIdx !== -1 ? String(r[photoIdx] || "").trim() : "";
+          const project = projIdx !== -1 ? String(r[projIdx] || "").trim() : "";
+          const status = statusIdx !== -1 ? String(r[statusIdx] || "").trim() : "";
+          const bloodGroup = bloodIdx !== -1 ? String(r[bloodIdx] || "").trim() : "";
           const rowIndex = i + 2;
+
+          const projectUpper = project.toUpperCase();
+          const statusUpper = status.toUpperCase();
+          const roleLower = designation.toLowerCase();
+          const isSuper = SUPER_ADMINS.includes(email.toLowerCase()) || roleLower.includes("director") || roleLower.includes("superadmin");
+
+          // Standardized access criteria:
+          // 1. SuperAdmin / Director always allowed.
+          // 2. Otherwise, PROJECT must be 'SNMC' and STATUS must be 'ACTIVE' (or YES / 1 / TRUE).
+          const isProjSNMC = (projectUpper === "SNMC" || (!projectUpper && (hospital === "MDM" || hospital === "MGH" || hospital === "UMMED" || hospital === "UMAID" || hospital === "SNMC")));
+          const isStatusActive = (statusUpper === "ACTIVE" || statusUpper === "YES" || statusUpper === "1" || statusUpper === "TRUE");
+
+          let isLoginAllowed = false;
+          let accessReason = "🔴 Access Disabled";
+
+          if (isSuper) {
+            isLoginAllowed = true;
+            accessReason = "⚡ SuperAdmin";
+          } else if (isProjSNMC && isStatusActive) {
+            isLoginAllowed = true;
+            accessReason = "🟢 Login Active (SNMC)";
+          } else if (!isProjSNMC) {
+            accessReason = "🔴 Non-SNMC Project";
+          } else {
+            accessReason = "🔴 Inactive Status";
+          }
+
           return {
             id,
             rowIndex,
-            name,
-            email,
-            phone,
-            hospital,
-            role,
-            memberType,
-            loginAllowed
+            name: name || (email ? email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "Employee"),
+            email: email || "no-email@softtechseva.com",
+            phone: phone || "+91 94140 XXXXX",
+            photoUrl,
+            hospital: hospital || "MDM",
+            role: designation || "Operator",
+            memberType: designation || "Staff",
+            loginAllowed: isLoginAllowed ? "YES" : "NO",
+            accessReason,
+            project,
+            status,
+            bloodGroup
           };
         })
         .filter(Boolean);
@@ -795,7 +971,7 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { employees: filtered, isSuperAdmin: userIsSuperAdmin });
     }
 
-    // ── 11. Add New Employee / Team Member to user_hospitals Tab ──
+    // ── 11. Add New Employee / Team Member to Manpower Google Sheet ──
     if (action === "addEmployee" && event.httpMethod === "POST") {
       if (!userIsSuperAdmin) {
         const err = new Error("Forbidden: SuperAdmin access required to add team members.");
@@ -805,24 +981,38 @@ exports.handler = async function (event, context) {
 
       const payload = JSON.parse(event.body || "{}");
       const email = String(payload.email || "").toLowerCase().trim();
+      const name = String(payload.name || "").trim();
       const hospital = String(payload.hospital || "MDM").toUpperCase().trim();
       const role = String(payload.role || "Operator").trim();
-      const memberType = String(payload.memberType || "Both").trim();
-      const loginAllowed = String(payload.loginAllowed || "YES").trim().toUpperCase();
-      const name = String(payload.name || "").trim();
       const phone = String(payload.phone || "").trim();
+      const photoUrl = String(payload.photoUrl || "").trim();
+      const project = String(payload.project || "SNMC").trim();
+      const status = String(payload.status || "Active").trim();
 
-      if (!email || !email.includes("@")) {
-        const err = new Error("Invalid email address.");
+      if (!name && !email) {
+        const err = new Error("Name or Email address is required.");
         err.statusCode = 400;
         throw err;
       }
 
-      await appendSheetRow(USER_HOSPITALS_TAB, "A:G", [email, hospital, role, memberType, loginAllowed, name, phone]);
-      return jsonResponse(200, headers, { ok: true, email, hospital, role, memberType, loginAllowed, name, phone });
+      // Build row for manpower (30 columns A to AD)
+      const newRow = new Array(30).fill("");
+      newRow[1] = payload.id || ""; // B: Employee ID
+      newRow[3] = name;             // D: Name
+      newRow[4] = role;             // E: Designation
+      newRow[5] = phone;            // F: Contact No.
+      newRow[8] = email;            // I: Email ID
+      newRow[9] = email;            // J: Office Email
+      newRow[12] = hospital;        // M: Reporting Office
+      newRow[26] = photoUrl;        // AA: PHOTO
+      newRow[27] = project;         // AB: PROJECT
+      newRow[29] = status;          // AD: STATUS
+
+      await appendSheetRow(MANPOWER_TAB, "A:AD", newRow, MANPOWER_SHEET_ID);
+      return jsonResponse(200, headers, { ok: true, name, email, hospital, role, phone, photoUrl, project, status });
     }
 
-    // ── 12. Update Existing Employee / Team Member in user_hospitals Tab ──
+    // ── 12. Update Existing Employee / Team Member in Manpower Google Sheet ──
     if (action === "updateEmployee" && event.httpMethod === "POST") {
       if (!userIsSuperAdmin) {
         const err = new Error("Forbidden: SuperAdmin access required to update team members.");
@@ -833,41 +1023,64 @@ exports.handler = async function (event, context) {
       const payload = JSON.parse(event.body || "{}");
       const originalEmail = String(payload.originalEmail || payload.email || "").toLowerCase().trim();
       const email = String(payload.email || "").toLowerCase().trim();
+      const name = String(payload.name || "").trim();
       const hospital = String(payload.hospital || "MDM").toUpperCase().trim();
       const role = String(payload.role || "Operator").trim();
-      const memberType = String(payload.memberType || "Both").trim();
-      const loginAllowed = String(payload.loginAllowed || "YES").trim().toUpperCase();
-      const name = String(payload.name || "").trim();
       const phone = String(payload.phone || "").trim();
+      const photoUrl = String(payload.photoUrl || "").trim();
+      const project = String(payload.project || "SNMC").trim();
+      const status = String(payload.status || "Active").trim();
       let targetRowIndex = parseInt(payload.rowIndex, 10);
 
-      if (!email || !email.includes("@")) {
-        const err = new Error("Invalid email address.");
-        err.statusCode = 400;
-        throw err;
-      }
-
-      if (!targetRowIndex || isNaN(targetRowIndex) || targetRowIndex < 2) {
-        const data = await fetchSheetDataPublic(`'${USER_HOSPITALS_TAB}'!A:A`);
-        if (data && data.values) {
-          const idx = data.values.findIndex((r, i) => i > 0 && String(r[0] || "").toLowerCase().trim() === originalEmail);
-          if (idx !== -1) {
-            targetRowIndex = idx + 1;
-          }
-        }
-      }
-
-      if (!targetRowIndex || targetRowIndex < 2) {
-        const err = new Error(`Employee record "${originalEmail}" not found in user_hospitals.`);
+      const sheetData = await fetchSheetDataPublic(`'${MANPOWER_TAB}'!${MANPOWER_RANGE}`, MANPOWER_SHEET_ID);
+      if (!sheetData || !sheetData.values || sheetData.values.length < 2) {
+        const err = new Error("Manpower sheet data could not be fetched.");
         err.statusCode = 404;
         throw err;
       }
 
-      await updateSheetRow(USER_HOSPITALS_TAB, `A${targetRowIndex}:G${targetRowIndex}`, [email, hospital, role, memberType, loginAllowed, name, phone]);
-      return jsonResponse(200, headers, { ok: true, email, hospital, role, memberType, loginAllowed, name, phone, rowIndex: targetRowIndex });
+      if (!targetRowIndex || isNaN(targetRowIndex) || targetRowIndex < 2) {
+        const idx = sheetData.values.findIndex((r, i) => {
+          if (i === 0) return false;
+          const rEmail = String(r[9] || r[8] || "").toLowerCase().trim();
+          const rName = String(r[3] || "").toLowerCase().trim();
+          return (originalEmail && rEmail === originalEmail) || (name && rName === name.toLowerCase());
+        });
+        if (idx !== -1) {
+          targetRowIndex = idx + 1;
+        }
+      }
+
+      if (!targetRowIndex || targetRowIndex < 2) {
+        const err = new Error(`Employee record "${originalEmail || name}" not found in manpower sheet.`);
+        err.statusCode = 404;
+        throw err;
+      }
+
+      const existingRow = sheetData.values[targetRowIndex - 1] || [];
+      const updatedRow = new Array(Math.max(30, existingRow.length)).fill("");
+      for (let c = 0; c < existingRow.length; c++) {
+        updatedRow[c] = existingRow[c] || "";
+      }
+
+      if (payload.id) updatedRow[1] = payload.id;
+      if (name) updatedRow[3] = name;
+      if (role) updatedRow[4] = role;
+      if (phone) updatedRow[5] = phone;
+      if (email) {
+        updatedRow[8] = email;
+        updatedRow[9] = email;
+      }
+      if (hospital) updatedRow[12] = hospital;
+      if (photoUrl) updatedRow[26] = photoUrl;
+      if (project) updatedRow[27] = project;
+      if (status) updatedRow[29] = status;
+
+      await updateSheetRow(MANPOWER_TAB, `A${targetRowIndex}:AD${targetRowIndex}`, updatedRow, MANPOWER_SHEET_ID);
+      return jsonResponse(200, headers, { ok: true, name, email, hospital, role, phone, photoUrl, rowIndex: targetRowIndex });
     }
 
-    // ── 13. Delete / Clear Employee from user_hospitals Tab ──
+    // ── 13. Delete / Clear Employee from Manpower Google Sheet ──
     if (action === "deleteEmployee" && event.httpMethod === "POST") {
       if (!userIsSuperAdmin) {
         const err = new Error("Forbidden: SuperAdmin access required to delete team members.");
@@ -880,9 +1093,9 @@ exports.handler = async function (event, context) {
       let targetRowIndex = parseInt(payload.rowIndex, 10);
 
       if (!targetRowIndex || isNaN(targetRowIndex) || targetRowIndex < 2) {
-        const data = await fetchSheetDataPublic(`'${USER_HOSPITALS_TAB}'!A:A`);
-        if (data && data.values) {
-          const idx = data.values.findIndex((r, i) => i > 0 && String(r[0] || "").toLowerCase().trim() === email);
+        const sheetData = await fetchSheetDataPublic(`'${MANPOWER_TAB}'!${MANPOWER_RANGE}`, MANPOWER_SHEET_ID);
+        if (sheetData && sheetData.values) {
+          const idx = sheetData.values.findIndex((r, i) => i > 0 && (String(r[9] || r[8] || "").toLowerCase().trim() === email));
           if (idx !== -1) {
             targetRowIndex = idx + 1;
           }
@@ -890,14 +1103,70 @@ exports.handler = async function (event, context) {
       }
 
       if (!targetRowIndex || targetRowIndex < 2) {
-        const err = new Error(`Employee record "${email}" not found in user_hospitals.`);
+        const err = new Error(`Employee record "${email}" not found in manpower sheet.`);
         err.statusCode = 404;
         throw err;
       }
 
-      await clearSheetRow(USER_HOSPITALS_TAB, `A${targetRowIndex}:G${targetRowIndex}`);
+      await clearSheetRow(MANPOWER_TAB, `A${targetRowIndex}:AD${targetRowIndex}`, MANPOWER_SHEET_ID);
       return jsonResponse(200, headers, { ok: true, deletedEmail: email, rowIndex: targetRowIndex });
     }
+
+    // ── 14. Direct Fast Storage for Employee Photo (Saved to Manpower Sheet & Neon DB) ──
+    if (action === "uploadEmployeePhoto" && event.httpMethod === "POST") {
+      const payload = JSON.parse(event.body || "{}");
+      const targetEmail = String(payload.email || userEmail).toLowerCase().trim();
+      const base64Data = String(payload.base64Data || "").trim();
+      const mimeType = String(payload.mimeType || "image/jpeg").trim();
+
+      // Ensure user is modifying their own photo or is SuperAdmin
+      if (targetEmail !== userEmail && !userIsSuperAdmin) {
+        const err = new Error("Forbidden: You can only upload your own profile photo.");
+        err.statusCode = 403;
+        throw err;
+      }
+
+      if (!base64Data) {
+        const err = new Error("No image data provided.");
+        err.statusCode = 400;
+        throw err;
+      }
+
+      // Format clean data URL (e.g. data:image/jpeg;base64,...)
+      const cleanDataUrl = base64Data.startsWith("data:") 
+        ? base64Data 
+        : `data:${mimeType};base64,${base64Data}`;
+
+      // 1. Update Column AA (index 26) in Manpower Sheet
+      const sheetData = await fetchSheetDataPublic(`'${MANPOWER_TAB}'!${MANPOWER_RANGE}`, MANPOWER_SHEET_ID);
+      if (sheetData && sheetData.values) {
+        const rowIndex = sheetData.values.findIndex((r, i) => {
+          if (i === 0) return false;
+          const rEmail = String(r[9] || r[8] || "").toLowerCase().trim();
+          return rEmail === targetEmail;
+        });
+
+        if (rowIndex !== -1) {
+          const targetRow = rowIndex + 1;
+          const existingRow = sheetData.values[rowIndex] || [];
+          const updatedRow = new Array(Math.max(30, existingRow.length)).fill("");
+          for (let c = 0; c < existingRow.length; c++) {
+            updatedRow[c] = existingRow[c] || "";
+          }
+          updatedRow[26] = cleanDataUrl; // AA: PHOTO
+
+          await updateSheetRow(MANPOWER_TAB, `A${targetRow}:AD${targetRow}`, updatedRow, MANPOWER_SHEET_ID);
+        }
+      }
+
+      // 2. Also persist in Neon DB avatar column if user exists
+      try {
+        await queryNeon(`UPDATE users SET avatar = $1, updated_at = NOW() WHERE LOWER(email) = $2;`, [cleanDataUrl, targetEmail]);
+      } catch (_) {}
+
+      return jsonResponse(200, headers, { ok: true, photoUrl: cleanDataUrl, email: targetEmail });
+    }
+
 
     return {
       statusCode: 400,

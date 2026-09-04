@@ -89,10 +89,11 @@ const SHEET_SCHEMA = {
     ]
   },
 
-  // ── User-to-Hospital dynamic permission mapping tab ──
+  // ── Employee & Manpower Master Sheet Integration ──
   userHospitals: {
-    tab: "user_hospitals",
-    range: "A:G",
+    sheetId: "1FrHbNqlJF1BpFdlVLsUMYVIGC9z0N_JS3vjrYAhwazA",
+    tab: "manpower",
+    range: "A1:AD45",
     columns: [
       { key: "email",        header: "Email",         type: "string" }, // Col A
       { key: "hospitals",    header: "Hospitals",     type: "string" }, // Col B: Comma-separated (e.g. "MDM, MGH" or "ALL")
@@ -100,7 +101,8 @@ const SHEET_SCHEMA = {
       { key: "memberType",   header: "Member Type",   type: "string" }, // Col D: "Both", "Employee", "Contact"
       { key: "loginAllowed", header: "Login Allowed", type: "string" }, // Col E: "YES" / "NO"
       { key: "name",         header: "Full Name",     type: "string" }, // Col F: Employee Full Name
-      { key: "phone",        header: "Phone",         type: "string" }  // Col G: Mobile Phone Number
+      { key: "phone",        header: "Phone",         type: "string" }, // Col G: Mobile Phone Number
+      { key: "photoUrl",     header: "Photo URL",     type: "string" }  // Col H: Google Drive Photo Image URL
     ]
   }
 };

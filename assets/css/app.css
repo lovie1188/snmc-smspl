@@ -613,6 +613,159 @@ body {
   font-size: 0.72rem; font-weight: 600; color: var(--primary-dark); margin-top: 1px;
 }
 
+/* ── Selected Printer Confirmation Highlight Card ──────────── */
+.selected-printer-confirm-card {
+  margin-top: 10px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #e0f2fe 100%);
+  border: 2px solid #10b981;
+  border-radius: 16px;
+  padding: 12px 14px;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.12);
+  animation: fadeIn 0.25s ease-out;
+}
+.spc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.spc-badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.spc-hosp-badge {
+  font-size: 0.62rem;
+  font-weight: 900;
+  background: #0284c7;
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.4px;
+}
+.spc-hosp-badge.mdm { background: #0284c7; }
+.spc-hosp-badge.mgh { background: #7c3aed; }
+.spc-hosp-badge.ummed { background: #ea580c; }
+.spc-status-badge {
+  font-size: 0.58rem;
+  font-weight: 800;
+  color: #065f46;
+  background: rgba(16, 185, 129, 0.2);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.spc-change-btn {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.spc-change-btn:hover { background: #ffffff; border-color: #94a3b8; }
+
+.spc-main-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 8px;
+  border-bottom: 1px dashed rgba(16, 185, 129, 0.35);
+}
+.spc-icon {
+  font-size: 1.6rem;
+  width: 38px;
+  height: 38px;
+  background: #ffffff;
+  border: 1.5px solid #a7f3d0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+.spc-details { flex: 1; min-width: 0; }
+.spc-counter-title {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #064e3b;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+.spc-counter-sub {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #047857;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Prominent Centered S/N Banner ── */
+.spc-serial-banner {
+  margin: 10px 0 8px;
+  background: #ffffff;
+  border: 2px dashed #0284c7;
+  border-radius: 12px;
+  padding: 8px 12px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.08);
+}
+.spc-serial-lbl {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #0284c7;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.spc-serial-val {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #0f172a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 1.5px;
+  margin-top: 2px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.spc-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+.spc-meta-item {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 10px;
+  padding: 6px 8px;
+  text-align: center;
+}
+.spc-meta-lbl {
+  display: block;
+  font-size: 0.55rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.3px;
+}
+.spc-meta-val {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.spc-meta-val.highlight {
+  color: #059669;
+}
+
 /* ── Modal Dialogs (Glassmorphic Bottom Sheets / Drawers) ──── */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 9990;
@@ -809,117 +962,345 @@ body {
 .emp-btn-group-left { display: flex; align-items: center; gap: 4px; }
 .emp-btn-group-right { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 
-/* ── Digital ID Card Styling (Print/Download Badge) ───────── */
+/* ── Digital ID Card Styling (Softtech Multi Service Pvt. Ltd. Official Format) ── */
 .digital-id-card {
-  width: 100%; max-width: 330px;
-  background: linear-gradient(180deg, #0b1329 0%, #1e293b 100%);
-  border-radius: 18px;
-  color: #ffffff;
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.35);
+  width: 100%; max-width: 320px;
+  background: #ffffff;
+  border-radius: 4px;
+  color: #1e293b;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
   overflow: hidden;
-  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  border-left: 14px solid #0ea5e9; /* Left Cyan Accent Stripe */
+  border-top: 1px solid #cbd5e1;
+  border-right: 1px solid #cbd5e1;
+  border-bottom: 1px solid #cbd5e1;
   position: relative;
   box-sizing: border-box;
-}
-.id-card-top-bar {
-  background: linear-gradient(135deg, #1e40af, #3b82f6);
-  padding: 10px 14px; text-align: center; border-bottom: 2px solid #60a5fa;
-}
-.id-card-org { font-size: 0.76rem; font-weight: 900; letter-spacing: 0.4px; color: #ffffff; }
-.id-card-sub { font-size: 0.58rem; font-weight: 600; color: #dbeafe; margin-top: 1px; }
-
-.id-card-body {
-  padding: 12px 14px 10px;
-  display: flex; gap: 12px; align-items: flex-start;
-}
-.id-card-avatar-box {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-}
-.id-card-avatar {
-  width: 58px; height: 58px; border-radius: 12px;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.25rem; font-weight: 900; color: #ffffff;
-  border: 2px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-}
-.id-card-role-pill {
-  font-size: 0.52rem; font-weight: 800; background: #3b82f6; color: #ffffff;
-  padding: 2px 6px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.3px;
-  text-align: center; width: 100%; box-sizing: border-box;
-}
-.id-card-role-pill.superadmin { background: #d97706; }
-.id-card-role-pill.supervisor { background: #7c3aed; }
-.id-card-role-pill.operator { background: #059669; }
-.id-card-role-pill.technician { background: #ea580c; }
-.id-card-role-pill.staff { background: #0284c7; }
-
-.id-card-status-chip {
-  font-size: 0.48rem; font-weight: 800; background: rgba(16, 185, 129, 0.2); color: #34d399;
-  border: 1px solid rgba(52, 211, 153, 0.4); padding: 1px 4px; border-radius: 4px; letter-spacing: 0.3px;
+  text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-.id-card-info { flex: 1; min-width: 0; }
-.id-card-name { font-size: 0.95rem; font-weight: 900; color: #ffffff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.id-card-field { font-size: 0.65rem; color: #94a3b8; margin-bottom: 2px; }
-.id-card-field strong { color: #f8fafc; font-weight: 700; }
-.id-card-field span { word-break: break-all; }
-.id-card-field code { color: #60a5fa; font-family: monospace; font-weight: 700; }
-.id-lbl { font-weight: 800; color: #cbd5e1; font-size: 0.6rem; }
-.id-access-badge { font-size: 0.58rem; font-weight: 700; color: #10b981; }
-
-.id-card-barcode-section {
-  padding: 6px 14px 8px;
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  background: #ffffff; margin: 4px 10px 8px; border-radius: 8px;
-  border: 1px solid #cbd5e1;
+.id-card-top-header {
+  padding: 8px 8px 4px;
+  border-bottom: 2.5px solid #1e3a8a;
+  background: #ffffff;
 }
-.id-card-barcode-svg-wrap { flex: 1; text-align: center; }
-.id-barcode-svg { width: 100%; height: 26px; display: block; }
-.id-barcode-text { font-size: 0.52rem; font-family: monospace; font-weight: 700; color: #0f172a; letter-spacing: 1px; margin-top: 1px; }
-.id-card-qr-box {
-  width: 38px; height: 38px; background: #f8fafc; border: 1px solid #cbd5e1;
-  border-radius: 6px; display: flex; align-items: center; justify-content: center;
+.id-card-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0 2px;
+}
+.id-card-brand-left {
+  text-align: left;
+  flex: 1;
+}
+.id-brand-name {
+  font-size: 1.65rem;
+  font-weight: 900;
+  color: #0ea5e9;
+  letter-spacing: 0.5px;
+  line-height: 0.95;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Arial Black", sans-serif;
+}
+.id-brand-sub {
+  font-size: 0.62rem;
+  font-weight: 900;
+  color: #0ea5e9;
+  letter-spacing: 0.3px;
+  margin-top: 3px;
+  line-height: 1.1;
+}
+.id-card-brand-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.id-card-official-logo {
+  height: 48px;
+  width: auto;
+  max-width: 65px;
+  object-fit: contain;
+  display: block;
+}
+.id-logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+  text-align: center;
+  margin-top: -2px;
+}
+.id-card-tagline {
+  font-size: 0.74rem;
+  font-weight: 900;
+  color: #000000;
+  margin-top: 5px;
+  letter-spacing: 0.1px;
+  text-align: center;
 }
 
-.id-card-footer {
-  background: rgba(15, 23, 42, 0.85);
-  padding: 8px 14px;
+.id-card-emp-id-bar {
+  padding: 5px 4px 3px;
+  font-size: 0.86rem;
+  color: #1e40af;
+  font-weight: 900;
+  text-align: center;
+}
+.id-card-emp-id-bar strong {
+  font-size: 0.88rem;
+  color: #1e40af;
+  letter-spacing: 0.5px;
+  font-weight: 900;
+}
+
+.id-card-photo-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 6px 0 8px;
+}
+.id-card-photo-box {
+  width: 145px;
+  height: 168px;
+  border-radius: 14px;
+  background: #f1f5f9;
+  border: 1.5px solid #94a3b8;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+.id-card-photo-placeholder {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.id-card-details-section {
+  padding: 0 8px 10px;
+}
+.id-card-person-name {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #1e293b;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.id-card-name-divider {
+  width: 88%;
+  height: 2px;
+  background: #1e3a8a;
+  margin: 4px auto 6px;
+}
+.id-card-person-role {
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: #1e293b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+}
+.id-card-person-phone {
+  font-size: 0.92rem;
+  font-weight: 900;
+  color: #000000;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.id-card-person-phone .phone-icon {
+  font-size: 0.9rem;
+}
+.id-card-person-hospital {
+  font-size: 0.84rem;
+  font-weight: 900;
+  color: #000000;
+}
+.id-card-person-hospital strong {
+  color: #000000;
+  font-weight: 900;
+}
+
+.id-card-address-footer {
+  background: #e2e8f0;
+  padding: 8px 8px 6px;
+  border-top: 1.5px solid #475569;
+  text-align: left;
+  font-size: 0.58rem;
+  line-height: 1.35;
+}
+.id-addr-row {
+  display: flex;
+  align-items: flex-start;
+  color: #0f172a;
+  font-weight: 700;
+  margin-bottom: 1px;
+}
+.id-addr-lbl {
+  width: 68px;
+  flex-shrink: 0;
+  font-weight: 800;
+}
+.id-addr-sep {
+  width: 10px;
+  flex-shrink: 0;
+  font-weight: 800;
+}
+.id-addr-val {
+  flex: 1;
+  font-weight: 700;
+}
+.id-web-domain {
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #000000;
+  margin-top: 4px;
+  letter-spacing: 0.2px;
+}
+.id-web-emails {
+  text-align: center;
+  font-size: 0.48rem;
+  color: #334155;
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+.id-card-official-logo {
+  height: 42px;
+  width: auto;
+  max-width: 100px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.08));
+}
+
+/* ── Digital ID Card Offcanvas Drawer ──────────────────────── */
+.offcanvas-overlay {
+  position: fixed; inset: 0; z-index: 9995;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex; justify-content: flex-end;
+  animation: fadeIn 0.2s ease;
+}
+.offcanvas-drawer {
+  width: 100%; max-width: 420px;
+  height: 100%;
+  background: #f8fafc;
+  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.2);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  animation: slideLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideLeft {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.offcanvas-header {
+  padding: 14px 18px;
+  background: #ffffff;
+  border-bottom: 1.5px solid var(--border-subtle);
   display: flex; align-items: center; justify-content: space-between;
-  border-top: 1px dashed rgba(255, 255, 255, 0.15);
 }
-.id-card-validity { display: flex; flex-direction: column; }
-.id-card-auth-sign { text-align: right; }
+.offcanvas-title {
+  font-size: 1.05rem; font-weight: 800; color: var(--text);
+}
+.offcanvas-subtitle {
+  font-size: 0.72rem; font-weight: 600; color: var(--text-muted); margin-top: 1px;
+}
+.offcanvas-body {
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
 
-/* ── Print Stylesheet for Digital ID Card ──────────────────── */
+.id-card-drawer-actions {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.btn-id-action {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+.btn-id-action.upload {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+}
+.btn-id-action.upload:hover { opacity: 0.95; transform: translateY(-1px); }
+.btn-id-action.print {
+  background: #ffffff;
+  color: #1e293b;
+  border: 1.5px solid #cbd5e1;
+}
+.btn-id-action.print:hover { background: #f1f5f9; }
+
+/* ── Precise ISO/CR80 Standard ID Card Print Stylesheet ────── */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+  html, body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
   body * {
     visibility: hidden !important;
   }
-  #id-card-modal,
-  #id-card-modal * {
+  #id-card-offcanvas,
+  #id-card-offcanvas #digital-id-card-el,
+  #id-card-offcanvas #digital-id-card-el * {
     visibility: visible !important;
   }
-  #id-card-modal {
+  #id-card-offcanvas {
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
     background: transparent !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    display: block !important;
     padding: 0 !important;
     margin: 0 !important;
   }
-  .modal-card {
+  .offcanvas-drawer {
     box-shadow: none !important;
     border: none !important;
     background: transparent !important;
     max-width: 100% !important;
     padding: 0 !important;
+    animation: none !important;
   }
-  .modal-header,
+  .offcanvas-header,
+  .id-card-drawer-actions,
   .modal-close-btn,
   #toast-container,
   .bottom-nav,
@@ -928,11 +1309,18 @@ body {
     display: none !important;
   }
   .digital-id-card {
-    margin: 0 auto !important;
+    /* Exact CR80 Physical Card Proportions (approx 54mm x 86mm ratio @ 300dpi / 3.375in x 2.125in) */
+    width: 78mm !important;
+    max-width: 78mm !important;
+    min-height: 122mm !important;
+    margin: 20mm auto !important;
     page-break-inside: avoid !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    box-shadow: none !important;
+    border: 1px solid #94a3b8 !important;
+    border-left: 10mm solid #0ea5e9 !important; /* Left Cyan Accent Stripe */
+    border-radius: 4mm !important;
   }
 }
 

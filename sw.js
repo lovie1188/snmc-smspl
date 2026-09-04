@@ -2,7 +2,7 @@
 // PrintTrack — Service Worker with FCM Push Support
 // ============================================================
 
-const CACHE_NAME = 'printtrack-v6';
+const CACHE_NAME = 'printtrack-v8';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -45,30 +45,59 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ── Fetch (Network-First for HTML/JS to ensure instant updates) ──
+// ── Fetch Strategy (Robust Offline & Query-Param Aware) ──
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  if (event.request.url.includes('googleapis.com')) return;
-  if (event.request.url.includes('fcm.googleapis.com')) return;
+  
+  const url = new URL(event.request.url);
 
-  // Network-First for HTML and JS files
-  if (event.request.url.endsWith('.html') || event.request.url.endsWith('.js') || event.request.url.includes('/api/')) {
+  // Skip external Google / Firebase endpoints
+  if (url.hostname.includes('googleapis.com') || url.hostname.includes('google.com')) return;
+
+  // Never cache API calls — pass straight to network
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/.netlify/functions/')) {
+    return;
+  }
+
+  // HTML Navigation Requests (Network-First with clean cache fallback)
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/') {
     event.respondWith(
-      fetch(event.request).then((networkResponse) => {
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          // Fallback to cache without query string if exact URL not cached
+          return (await caches.match(event.request)) || 
+                 (await caches.match(url.pathname)) || 
+                 (await caches.match('./index.html')) || 
+                 (await caches.match('./app.html'));
+        })
+    );
+    return;
+  }
+
+  // Static Assets (JS, CSS, Images, Manifest) — Stale-While-Revalidate / Cache-First with Safe Fallback
+  event.respondWith(
+    caches.match(event.request).then(async (cachedResponse) => {
+      if (cachedResponse) return cachedResponse;
+      try {
+        const networkResponse = await fetch(event.request);
         if (networkResponse && networkResponse.status === 200) {
           const clone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return networkResponse;
-      }).catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  // Cache-First for static assets (images, fonts, css)
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return cachedResponse || fetch(event.request);
+      } catch (err) {
+        // Safe fallback without throwing uncaught promise rejection
+        const fallback = await caches.match(url.pathname);
+        if (fallback) return fallback;
+        throw err;
+      }
     })
   );
 });

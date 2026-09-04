@@ -742,8 +742,10 @@ function handleCounterSelectChange() {
   const titleEl = document.getElementById("counter-history-title");
   const tbody = document.getElementById("counter-history-body");
   const noHist = document.getElementById("no-counter-history");
+  const confirmCard = document.getElementById("selected-printer-confirm-card");
 
   if (!selectedCounter) {
+    if (confirmCard) confirmCard.style.display = "none";
     if (titleEl) titleEl.textContent = "Counter History";
     if (tbody) tbody.innerHTML = "";
     if (noHist) {
@@ -753,29 +755,59 @@ function handleCounterSelectChange() {
     return;
   }
 
-  if (titleEl) titleEl.textContent = `History — ${selectedCounter}`;
+  // 1. Find Printer details from allPrinterItems
+  const printerObj = (allPrinterItems || []).find(p => p.fullCounter === selectedCounter || p.counterNo === selectedCounter) || {};
+  const hospName = (printerObj.hospital || "ALL").toUpperCase();
+  const counterName = printerObj.counterName || "General Counter";
+  const serialNo = printerObj.serialNo || "—";
 
-  // 1. Filter history for selected counter using exact matcher
+  // 2. Filter history for selected counter using exact matcher
   const counterRows = allDailyRows.filter(r => {
     const c = r["counter Number"] || r["Counter Number"] || r["Counter"] || "";
     return isExactCounterMatch(c, selectedCounter);
   });
 
-  // 2. Auto-set Opening Reading from LATEST entry of selected counter (Column K / Closing Reading)
-  const openingEl = document.getElementById("opening-reading");
-  if (openingEl) {
-    let foundPrevClosing = "";
-    if (counterRows.length > 0) {
-      // counterRows are ordered latest first (from loadHistory reverse)
-      for (const entry of counterRows) {
-        const val = entry["Closing Reading"] || entry["Closing"] || entry["closing"] || "";
-        if (val !== "" && !isNaN(val)) {
-          foundPrevClosing = String(val).trim();
-          break; // latest entry found
-        }
+  // 3. Auto-set Opening Reading and Balance from LATEST entry of selected counter
+  let foundPrevClosing = "0";
+  let foundPrevBalance = "0";
+  if (counterRows.length > 0) {
+    for (const entry of counterRows) {
+      const val = entry["Closing Reading"] || entry["Closing"] || entry["closing"] || "";
+      if (val !== "" && !isNaN(val)) {
+        foundPrevClosing = String(val).trim();
+        foundPrevBalance = String(entry["BALANCE"] || entry["balance"] || "0").trim();
+        break;
       }
     }
-    openingEl.value = foundPrevClosing !== "" ? foundPrevClosing : "0";
+  }
+
+  // 4. Populate and display the Prominent Confirmation Card
+  if (confirmCard) {
+    const hospBadge = document.getElementById("spc-hosp");
+    const title = document.getElementById("spc-counter-title");
+    const sub = document.getElementById("spc-counter-sub");
+    const sEl = document.getElementById("spc-serial");
+    const lastEl = document.getElementById("spc-last-reading");
+    const balEl = document.getElementById("spc-balance");
+
+    if (hospBadge) {
+      hospBadge.textContent = `${hospName} HOSPITAL`;
+      hospBadge.className = `spc-hosp-badge ${hospName.toLowerCase()}`;
+    }
+    if (title) title.textContent = selectedCounter;
+    if (sub) sub.textContent = counterName;
+    if (sEl) sEl.textContent = serialNo;
+    if (lastEl) lastEl.textContent = `${foundPrevClosing} Pages`;
+    if (balEl) balEl.textContent = `${foundPrevBalance} Sheets`;
+
+    confirmCard.style.display = "block";
+  }
+
+  if (titleEl) titleEl.textContent = `History — ${selectedCounter}`;
+
+  const openingEl = document.getElementById("opening-reading");
+  if (openingEl) {
+    openingEl.value = foundPrevClosing;
     calcBalance();
     validateReadings();
   }
@@ -837,16 +869,37 @@ function isHospitalVisible(hospitalName) {
   return userAllowedHospitals.some(h => cleanHosp.includes(h.toUpperCase()));
 }
 
-// ── Hospital Switcher Management ──────────────────────────
+// ── Hospital Switcher Management (Auto-Filter Default by User Hospital Mapping) ──
 function initHospitalState() {
-  const email = currentUser?.email || "";
-  const mapped = getUserHospital(email);
-  if (mapped === "ALL" || isSuperAdmin(email)) {
+  const email = (currentUser?.email || "").toLowerCase().trim();
+  const isSuper = isSuperAdmin(email);
+
+  // 1. Resolve user allowed hospitals from authenticated profile
+  if (isSuper) {
     userAllowedHospitals = ["ALL"];
+  } else if (Array.isArray(currentUser?.hospitals) && currentUser.hospitals.length > 0) {
+    userAllowedHospitals = currentUser.hospitals.map(h => String(h).trim().toUpperCase()).filter(Boolean);
   } else {
+    const mapped = getUserHospital(email);
     userAllowedHospitals = mapped.split(",").map(h => h.trim().toUpperCase()).filter(Boolean);
   }
-  activeSelectedHospital = userAllowedHospitals.length === 1 ? userAllowedHospitals[0] : "ALL";
+
+  // 2. Set default active selected hospital based on user mapping
+  if (userAllowedHospitals.length === 1 && userAllowedHospitals[0] !== "ALL") {
+    activeSelectedHospital = userAllowedHospitals[0]; // Auto-lock to operator's assigned hospital (e.g. "MDM")
+  } else if (userAllowedHospitals.includes("ALL") || isSuper) {
+    activeSelectedHospital = "ALL"; // SuperAdmins or Multi-hospital supervisors default to ALL with switcher
+  } else if (userAllowedHospitals.length > 0) {
+    activeSelectedHospital = userAllowedHospitals[0];
+  } else {
+    activeSelectedHospital = "ALL";
+  }
+
+  // 3. Sync all sub-modules (Printers, Stock, Employees) to user's default mapped hospital
+  activePrinterHospitalFilter = activeSelectedHospital;
+  activeStockHospitalFilter = activeSelectedHospital;
+  activeEmployeeHospitalFilter = activeSelectedHospital;
+
   updateHeaderHospitalBadge();
 }
 
@@ -1789,11 +1842,26 @@ function populateHeader(user) {
 
   if (dropNameEl)  dropNameEl.textContent  = user.name || "User";
   if (dropEmailEl) dropEmailEl.textContent = user.email || "";
-  const isSuper = isSuperAdmin(user.email || "");
+  const isSuper = isSuperAdmin(user.email || "") || user.isSuperAdmin === true;
+  const userRole = (user.role || (isSuper ? "SuperAdmin" : "Operator")).toUpperCase();
+
   const badgeEl = document.getElementById("superadmin-badge");
   if (badgeEl) {
-    badgeEl.style.display = isSuper ? "inline-flex" : "none";
+    badgeEl.style.display = "inline-flex";
+    if (isSuper) {
+      badgeEl.textContent = "⚡ ADMIN";
+      badgeEl.style.background = "linear-gradient(135deg, #7c3aed, #ec4899)";
+    } else {
+      badgeEl.textContent = `👤 ${userRole}`;
+      badgeEl.style.background = "#0284c7";
+    }
   }
+
+  // Guard Broadcast Push & Admin Center Nav buttons (Only SuperAdmin)
+  const pushNavBtn = document.getElementById("nav-notif-dropdown");
+  const adminNavBtn = document.getElementById("nav-admin-center-dropdown");
+  if (pushNavBtn) pushNavBtn.style.display = isSuper ? "flex" : "none";
+  if (adminNavBtn) adminNavBtn.style.display = isSuper ? "flex" : "none";
 
   if (user.photo) {
     if (photoEl) { photoEl.src = user.photo; photoEl.style.display = "block"; }
@@ -1943,7 +2011,7 @@ function renderEmployeesList() {
           <div class="emp-details-grid">
             <div class="emp-detail-row"><span>📧 Email:</span> <strong style="color:var(--text); word-break:break-all;">${escapeHtml(emp.email)}</strong></div>
             <div class="emp-detail-row"><span>📞 Phone:</span> <strong style="color:var(--text);">${escapeHtml(emp.phone || '+91 94140 XXXXX')}</strong></div>
-            <div class="emp-detail-row"><span>🆔 Access:</span> <span><span class="badge" style="background:#f1f5f9; color:#475569;">${escapeHtml(emp.memberType || 'Both')}</span> <span class="badge" style="${isLoginBlocked ? 'background:rgba(239,68,68,0.1); color:#dc2626;' : 'background:rgba(16,185,129,0.1); color:#059669;'}">${isLoginBlocked ? '🔴 No Login' : '🟢 Login OK'}</span></span></div>
+            <div class="emp-detail-row"><span>🆔 Access:</span> <span><span class="badge" style="background:#f1f5f9; color:#475569;">${escapeHtml(emp.memberType || 'Staff')}</span> <span class="badge" style="${isLoginBlocked ? 'background:rgba(239,68,68,0.1); color:#dc2626;' : 'background:rgba(16,185,129,0.1); color:#059669; font-weight:700;'}">${escapeHtml(emp.accessReason || (isLoginBlocked ? '🔴 Access Disabled' : '🟢 Login Active'))}</span></span></div>
           </div>
         </div>
 
@@ -1959,6 +2027,9 @@ function renderEmployeesList() {
 
           ${userIsSuper ? `
           <div class="emp-btn-group-right">
+            <button type="button" class="arrow-btn" style="width: auto; padding: 4px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; color: #15803d; background: rgba(22, 163, 74, 0.1);" title="Reset Password" onclick="openAdminResetPwdModal('${escapeHtml(emp.name)}', '${escapeHtml(emp.email)}', '${escapeHtml(emp.phone)}')">
+              🔑
+            </button>
             <button type="button" class="arrow-btn" style="width: auto; padding: 4px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; color: #0284c7; background: rgba(2, 132, 199, 0.1);" title="Edit Member" onclick="openEditEmployeeModalById('${escapeHtml(emp.id)}')">
               ✏️
             </button>
@@ -1973,82 +2044,182 @@ function renderEmployeesList() {
   }).join("");
 }
 
-// ── Open Digital ID Card Modal ──
+// ── Open Digital ID Card Offcanvas Drawer ──
+let activeIdCardEmployee = null;
+
 function openEmployeeIdCardById(empId) {
   const emp = allEmployeeItems.find(e => e.id === empId);
   if (!emp) return;
-  openIdCardModal(emp.name, emp.email, emp.phone, emp.hospital, emp.role, emp.id, emp.memberType, emp.loginAllowed);
+  activeIdCardEmployee = emp;
+  openIdCardOffcanvas(emp);
 }
 
-function generateSvgBarcode(code) {
-  const clean = (code || "SNMC-EMP").toUpperCase().replace(/[^A-Z0-9-]/g, "");
-  let rects = "";
-  let currentX = 10;
-  const height = 30;
-
-  for (let i = 0; i < clean.length; i++) {
-    const charCode = clean.charCodeAt(i);
-    const w1 = ((charCode % 3) + 1) * 1.5;
-    const w2 = (((charCode >> 1) % 2) + 1) * 1.2;
-    rects += `<rect x="${currentX.toFixed(1)}" y="2" width="${w1.toFixed(1)}" height="${height}" fill="#0f172a" />`;
-    currentX += w1 + 1.5;
-    rects += `<rect x="${currentX.toFixed(1)}" y="2" width="${w2.toFixed(1)}" height="${height}" fill="#0f172a" />`;
-    currentX += w2 + 2;
-  }
-
-  return rects;
-}
-
-function openIdCardModal(name, email, phone, hospital, role, id, memberType, loginAllowed) {
-  const modal = document.getElementById("id-card-modal");
+function openIdCardOffcanvas(empOrName, email, phone, hospital, role, id, memberType, loginAllowed, photoUrl) {
+  const offcanvas = document.getElementById("id-card-offcanvas");
   const nameEl = document.getElementById("idc-name");
-  const emailEl = document.getElementById("idc-email");
   const phoneEl = document.getElementById("idc-phone");
   const hospEl = document.getElementById("idc-hospital");
   const roleEl = document.getElementById("idc-role");
   const idEl = document.getElementById("idc-id");
   const avatarEl = document.getElementById("idc-avatar");
-  const statusEl = document.getElementById("idc-status");
-  const accessEl = document.getElementById("idc-access");
-  const barcodeSvg = document.getElementById("idc-barcode-svg");
-  const barcodeText = document.getElementById("idc-barcode-text");
+  const photoImg = document.getElementById("idc-photo-img");
 
-  if (modal) modal.style.display = "flex";
-  if (nameEl) nameEl.textContent = name || "Employee Name";
-  if (emailEl) emailEl.textContent = email || "user@gmail.com";
-  if (phoneEl) phoneEl.textContent = phone || "+91 94140 XXXXX";
-  if (hospEl) hospEl.textContent = `${hospital || 'MDM'} HOSPITAL`;
-  
-  if (roleEl) {
-    const safeRole = (role || "Operator").trim();
-    roleEl.textContent = safeRole.toUpperCase();
-    roleEl.className = "id-card-role-pill " + safeRole.toLowerCase();
+  let emp = {};
+  if (empOrName && typeof empOrName === "object") {
+    emp = empOrName;
+  } else {
+    emp = { name: empOrName, email, phone, hospital, role, id, memberType, loginAllowed, photoUrl };
   }
 
-  const empId = id || "SNMC-EMP-100";
-  if (idEl) idEl.textContent = empId;
-  if (barcodeText) barcodeText.textContent = empId;
-  if (barcodeSvg) barcodeSvg.innerHTML = generateSvgBarcode(empId);
+  // Derive dynamic real display name (fallback to email prefix if name is empty)
+  const realName = (emp.name && emp.name.trim()) 
+    ? emp.name.trim() 
+    : (emp.email ? emp.email.split("@")[0].replace(/[._]/g, " ") : "EMPLOYEE");
 
-  const initials = (name || email || "OP").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+  const realRole = (emp.role && emp.role.trim()) ? emp.role.trim() : "OPERATOR";
+  const realPhone = (emp.phone && emp.phone.trim()) ? emp.phone.trim() : "—";
+
+  // Derive Office value: if mapped to SNMC or hospital, format as "Reporting Office Hospital"
+  let rawHosp = (emp.hospital && emp.hospital.trim()) ? emp.hospital.trim().toUpperCase() : "MDM";
+  let realOffice = rawHosp;
+  if (rawHosp === "MDM" || rawHosp === "MGH" || rawHosp === "UMMED" || rawHosp === "UMAID" || rawHosp === "SNMC") {
+    if (!rawHosp.includes("HOSPITAL")) {
+      realOffice = `${rawHosp} Hospital`;
+    }
+  } else if (!realOffice.toLowerCase().includes("hospital") && !realOffice.toLowerCase().includes("office") && realOffice !== "ALL") {
+    realOffice = `${realOffice} Hospital`;
+  }
+
+  // Generate dynamic clean Employee ID (e.g. SMSPL20240101)
+  let numericPart = String(emp.id || "").replace(/[^0-9]/g, "");
+  if (!numericPart || numericPart === "0") {
+    numericPart = "101";
+  }
+  const empId = `SMSPL2024${numericPart.padStart(4, "0")}`;
+
+  if (offcanvas) offcanvas.style.display = "flex";
+  if (nameEl) nameEl.textContent = realName.toUpperCase();
+  if (phoneEl) phoneEl.textContent = realPhone;
+  if (hospEl) hospEl.textContent = realOffice;
+  if (roleEl) roleEl.textContent = realRole.toUpperCase();
+  if (idEl) idEl.textContent = empId;
+
+  const initials = realName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "EM";
   if (avatarEl) avatarEl.textContent = initials;
 
-  const isBlocked = (loginAllowed === "NO" || loginAllowed === false);
-  if (statusEl) {
-    statusEl.textContent = isBlocked ? "RESTRICTED" : "VERIFIED ACTIVE";
-    statusEl.style.color = isBlocked ? "#f87171" : "#34d399";
-    statusEl.style.borderColor = isBlocked ? "rgba(248,113,113,0.4)" : "rgba(52,211,153,0.4)";
-  }
-
-  if (accessEl) {
-    accessEl.textContent = `${memberType || 'Both'} (${isBlocked ? 'No Login' : 'Login OK'})`;
+  if (photoUrl && photoUrl.trim() !== "") {
+    if (photoImg) {
+      photoImg.src = photoUrl.trim();
+      photoImg.style.display = "block";
+    }
+    if (avatarEl) avatarEl.style.display = "none";
+  } else {
+    if (photoImg) photoImg.style.display = "none";
+    if (avatarEl) avatarEl.style.display = "flex";
   }
 }
 
-function closeIdCardModal(e) {
-  if (e && e.target !== e.currentTarget) return;
-  const modal = document.getElementById("id-card-modal");
-  if (modal) modal.style.display = "none";
+function closeIdCardOffcanvas(e) {
+  if (e && e.target !== e.currentTarget && !e.target.classList.contains("modal-close-btn")) return;
+  const offcanvas = document.getElementById("id-card-offcanvas");
+  if (offcanvas) offcanvas.style.display = "none";
+}
+
+// ── Photo Upload to Google Drive via Client Compression ──────
+function triggerPhotoUpload() {
+  const fileInp = document.getElementById("id-card-photo-file");
+  if (fileInp) {
+    fileInp.value = "";
+    fileInp.click();
+  }
+}
+
+async function handlePhotoFileSelected(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  if (!activeIdCardEmployee) {
+    showToast("Please select an employee card first.", "warn");
+    return;
+  }
+
+  showToast("📷 Optimizing and uploading photo to Google Drive...", "info");
+
+  try {
+    // 1. Client-Side Image Compression using Canvas (max 800x800)
+    const base64Data = await compressImageToJpeg(file, 800, 0.85);
+
+    // 2. Call uploadEmployeePhoto endpoint
+    const res = await sheetsRequest("uploadEmployeePhoto", {
+      method: "POST",
+      body: JSON.stringify({
+        email: activeIdCardEmployee.email,
+        base64Data: base64Data,
+        mimeType: "image/jpeg"
+      })
+    });
+
+    if (res && res.photoUrl) {
+      activeIdCardEmployee.photoUrl = res.photoUrl;
+
+      // Update in allEmployeeItems
+      const idx = allEmployeeItems.findIndex(emp => emp.email.toLowerCase() === activeIdCardEmployee.email.toLowerCase());
+      if (idx !== -1) {
+        allEmployeeItems[idx].photoUrl = res.photoUrl;
+      }
+
+      // Update Live UI
+      const photoImg = document.getElementById("idc-photo-img");
+      const avatarEl = document.getElementById("idc-avatar");
+      if (photoImg) {
+        photoImg.src = res.photoUrl;
+        photoImg.style.display = "block";
+      }
+      if (avatarEl) avatarEl.style.display = "none";
+
+      showToast("✅ Profile photo uploaded to Google Drive & ID card updated!", "success");
+    }
+  } catch (err) {
+    showToast("Photo upload failed: " + err.message, "error");
+  }
+}
+
+function compressImageToJpeg(file, maxDimension, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDimension) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(dataUrl);
+      };
+      img.onerror = reject;
+      img.src = event.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 function printIdCard() {
@@ -2216,6 +2387,152 @@ async function handleDeleteEmployee(empId, email, rowIndex) {
   }
 }
 
+// ── SuperAdmin Password Management Handlers ──
+function openAdminResetPwdModal(name, email, phone) {
+  const modal = document.getElementById("admin-reset-pwd-modal");
+  const nameEl = document.getElementById("admin-reset-emp-name");
+  const emailEl = document.getElementById("admin-reset-emp-email");
+  const phoneEl = document.getElementById("admin-reset-emp-phone");
+  const targetEmailInp = document.getElementById("admin-reset-target-email");
+  const targetPhoneInp = document.getElementById("admin-reset-target-phone");
+  const quickBtn = document.getElementById("btn-quick-mobile-pwd");
+  const customPwdInp = document.getElementById("admin-new-custom-pwd");
+
+  const cleanPhone = String(phone || "").replace(/\D/g, "").slice(-10);
+
+  if (nameEl) nameEl.textContent = name || email || "Employee";
+  if (emailEl) emailEl.textContent = email;
+  if (phoneEl) phoneEl.textContent = cleanPhone || (phone || "Not set");
+  if (targetEmailInp) targetEmailInp.value = email;
+  if (targetPhoneInp) targetPhoneInp.value = cleanPhone;
+  if (customPwdInp) customPwdInp.value = "";
+
+  if (quickBtn) {
+    if (cleanPhone && cleanPhone.length === 10) {
+      quickBtn.disabled = false;
+      quickBtn.innerHTML = `⚡ Set Default to Registered Mobile (${cleanPhone})`;
+      quickBtn.style.opacity = "1";
+    } else {
+      quickBtn.disabled = true;
+      quickBtn.innerHTML = `⚠️ No 10-Digit Mobile Registered`;
+      quickBtn.style.opacity = "0.6";
+    }
+  }
+
+  if (modal) modal.style.display = "flex";
+}
+
+function closeAdminResetPwdModal(e) {
+  if (e && e.target !== e.currentTarget && !e.target.classList.contains("modal-close")) return;
+  const modal = document.getElementById("admin-reset-pwd-modal");
+  if (modal) modal.style.display = "none";
+}
+
+async function handleQuickResetToMobile() {
+  const email = document.getElementById("admin-reset-target-email")?.value;
+  const phone = document.getElementById("admin-reset-target-phone")?.value;
+  const btn = document.getElementById("btn-quick-mobile-pwd");
+
+  if (!email) {
+    showToast("Employee email is missing.", "error");
+    return;
+  }
+  if (!phone || phone.length !== 10) {
+    showToast("A valid 10-digit mobile number is required to set default password.", "error");
+    return;
+  }
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner"></span> Updating Neon DB...`;
+    }
+
+    const token = typeof getAuthToken === "function" ? await getAuthToken() : (localStorage.getItem("smspl_auth_token") || "");
+    const base = (typeof getApiBaseUrl === "function") ? getApiBaseUrl() : "";
+    const res = await fetch(`${base}/.netlify/functions/auth?action=adminResetEmployeePassword`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        email: email,
+        resetToMobile: true,
+        phone: phone
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to reset password");
+    }
+
+    showToast(`✅ Password for ${email} reset to registered mobile (${phone})!`, "success");
+    closeAdminResetPwdModal();
+  } catch (err) {
+    showToast(`Failed: ${err.message}`, "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `⚡ Set Default to Registered Mobile (${phone})`;
+    }
+  }
+}
+
+async function handleAdminCustomPasswordSubmit(e) {
+  if (e) e.preventDefault();
+  const email = document.getElementById("admin-reset-target-email")?.value;
+  const newPassword = document.getElementById("admin-new-custom-pwd")?.value;
+  const saveBtn = document.getElementById("admin-save-custom-pwd-btn");
+
+  if (!email || !newPassword) {
+    showToast("Email and new password are required.", "error");
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    showToast("Password must be at least 6 characters.", "warn");
+    return;
+  }
+
+  try {
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = `<span class="spinner"></span> Saving...`;
+    }
+
+    const token = typeof getAuthToken === "function" ? await getAuthToken() : (localStorage.getItem("smspl_auth_token") || "");
+    const base = (typeof getApiBaseUrl === "function") ? getApiBaseUrl() : "";
+    const res = await fetch(`${base}/.netlify/functions/auth?action=adminResetEmployeePassword`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        email: email,
+        newPassword: newPassword
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to set custom password");
+    }
+
+    showToast(`✅ Custom password for ${email} updated in Neon DB!`, "success");
+    closeAdminResetPwdModal();
+  } catch (err) {
+    showToast(`Failed: ${err.message}`, "error");
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = `💾 Save Password`;
+    }
+  }
+}
+
 function copyContactDetails(event, name, phone, email, hospital) {
   if (event) event.stopPropagation();
   const text = `👤 ${name}\n🏥 Hospital: ${hospital}\n📞 Phone: ${phone}\n📧 Email: ${email}`;
@@ -2255,3 +2572,198 @@ function exportEmployeesToExcel() {
   XLSX.writeFile(workbook, `SNMC_Employee_Directory_${new Date().toISOString().slice(0, 10)}.xlsx`);
   showToast(`📊 Exported ${filtered.length} members to Excel!`, "success");
 }
+
+// ── MY PROFILE & SETTINGS MODAL HANDLERS ──
+async function openProfileModal() {
+  const modal = document.getElementById("profile-modal");
+  if (!modal) return;
+
+  const user = currentUser || getStoredUser() || {};
+  const isSuper = typeof isSuperAdmin === "function" && isSuperAdmin(user.email || "");
+
+  const nameEl = document.getElementById("prof-modal-name");
+  const emailEl = document.getElementById("prof-modal-email");
+  const roleEl = document.getElementById("prof-modal-role");
+  const officeEl = document.getElementById("prof-modal-office");
+  const phoneEl = document.getElementById("prof-modal-phone");
+  const initEl = document.getElementById("prof-modal-initials");
+  const photoEl = document.getElementById("prof-modal-photo");
+  const gBtn = document.getElementById("btn-connect-google");
+  const gLabel = document.getElementById("connect-google-label");
+  const superBox = document.getElementById("superadmin-settings-box");
+  const superToggle = document.getElementById("toggle-google-login-chk");
+  const slider = document.getElementById("toggle-slider");
+
+  if (nameEl) nameEl.textContent = user.name || "User";
+  if (emailEl) emailEl.textContent = user.email || "-";
+  if (roleEl) roleEl.textContent = user.role || (isSuper ? "SuperAdmin" : "Operator");
+  if (officeEl) officeEl.textContent = user.office || (Array.isArray(user.hospitals) ? user.hospitals.join(", ") : "MDM");
+  if (phoneEl) phoneEl.textContent = user.phone || "-";
+
+  const initial = (user.name || user.email || "U").charAt(0).toUpperCase();
+  if (user.photo) {
+    if (photoEl) { photoEl.src = user.photo; photoEl.style.display = "block"; }
+    if (initEl) { initEl.style.display = "none"; }
+  } else {
+    if (photoEl) { photoEl.style.display = "none"; }
+    if (initEl) { initEl.textContent = initial; initEl.style.display = "inline-flex"; }
+  }
+
+  // Google Connection Status
+  if (user.googleLinked || user.uid) {
+    if (gLabel) gLabel.textContent = "✅ Google Account Connected";
+    if (gBtn) {
+      gBtn.style.background = "#dcfce7";
+      gBtn.style.borderColor = "#86efac";
+      gBtn.style.color = "#166534";
+    }
+  } else {
+    if (gLabel) gLabel.textContent = "Connect Google Account";
+    if (gBtn) {
+      gBtn.style.background = "#ffffff";
+      gBtn.style.borderColor = "#cbd5e1";
+      gBtn.style.color = "#1e293b";
+    }
+  }
+
+  // SuperAdmin Settings Box
+  if (isSuper) {
+    if (superBox) superBox.style.display = "block";
+    try {
+      const isEnabled = typeof fetchGoogleAuthStatus === "function" ? await fetchGoogleAuthStatus() : false;
+      if (superToggle) superToggle.checked = isEnabled;
+      if (slider) slider.style.backgroundColor = isEnabled ? "#7c3aed" : "#cbd5e1";
+    } catch (_) {}
+  } else {
+    if (superBox) superBox.style.display = "none";
+  }
+
+  modal.style.display = "flex";
+}
+
+function closeProfileModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  const modal = document.getElementById("profile-modal");
+  if (modal) modal.style.display = "none";
+}
+
+async function handleLinkGoogleAccount() {
+  try {
+    showToast("Connecting Google Account via Firebase...", "info");
+    const res = await linkGoogleAccountInProfile();
+    showToast("🎉 Google Account connected successfully!", "success");
+    openProfileModal(); // Refresh modal
+  } catch (err) {
+    showToast("Failed to connect Google account: " + err.message, "error");
+  }
+}
+
+async function handleToggleGoogleLogin(enabled) {
+  const slider = document.getElementById("toggle-slider");
+  try {
+    showToast(`${enabled ? 'Enabling' : 'Disabling'} Google login on welcome screen...`, "info");
+    await setGoogleAuthToggle(enabled);
+    if (slider) slider.style.backgroundColor = enabled ? "#7c3aed" : "#cbd5e1";
+    showToast(`Google Sign-In is now ${enabled ? 'ENABLED' : 'DISABLED'} on login screen.`, "success");
+  } catch (err) {
+    showToast("Failed to update setting: " + err.message, "error");
+    const toggle = document.getElementById("toggle-google-login-chk");
+    if (toggle) toggle.checked = !enabled;
+  }
+}
+
+// ── SUPERADMIN DEDICATED CONTROL CENTER MODULE ──
+async function loadAdminCenterPage() {
+  const user = currentUser || getStoredUser() || {};
+  const isSuper = typeof isSuperAdmin === "function" && isSuperAdmin(user.email || "");
+  if (!isSuper) {
+    showToast("Forbidden: SuperAdmin access required.", "error");
+    showTab("dashboard");
+    return;
+  }
+
+  // 1. Fetch live Google Sign-In Status from Neon DB
+  const toggleChk = document.getElementById("admin-toggle-google-chk");
+  const slider = document.getElementById("admin-toggle-slider");
+  const statusLbl = document.getElementById("admin-google-status-lbl");
+
+  try {
+    const isEnabled = typeof fetchGoogleAuthStatus === "function" ? await fetchGoogleAuthStatus() : false;
+    if (toggleChk) toggleChk.checked = isEnabled;
+    if (slider) slider.style.backgroundColor = isEnabled ? "#7c3aed" : "#cbd5e1";
+    if (statusLbl) statusLbl.innerHTML = isEnabled 
+      ? `<strong style="color:#7c3aed;">🟢 Active:</strong> Users can sign in via Google &amp; Password`
+      : `<strong style="color:#64748b;">🔒 Disabled:</strong> Email &amp; Password only (Neon DB)`;
+  } catch (_) {}
+
+  // 2. Fetch all employees to render allowlist audit
+  const tbody = document.getElementById("admin-audit-table-body");
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:16px;"><span class="spinner"></span> Auditing manpower sheet...</td></tr>`;
+  }
+
+  try {
+    const res = await sheetsRequest("getEmployees");
+    const emps = (res && res.employees) ? res.employees : [];
+    renderAdminAuditTable(emps);
+  } catch (err) {
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:16px;">Failed to load audit: ${escapeHtml(err.message)}</td></tr>`;
+    }
+  }
+}
+
+function renderAdminAuditTable(emps) {
+  const tbody = document.getElementById("admin-audit-table-body");
+  if (!tbody) return;
+
+  if (!emps || !emps.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:16px; color:var(--text-muted);">No records found in manpower sheet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = emps.map(e => {
+    const isAllowed = e.loginAllowed === "YES";
+    const badgeColor = isAllowed ? "background:#dcfce7; color:#15803d;" : "background:#fee2e2; color:#b91c1c;";
+    return `
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 8px 10px;">
+          <div style="font-weight:700; color:#0f172a;">${escapeHtml(e.name)}</div>
+          <div style="font-size:0.7rem; color:#64748b;">${escapeHtml(e.email)}</div>
+        </td>
+        <td style="padding: 8px 10px;"><span class="badge" style="background:#eff6ff; color:#1e40af;">${escapeHtml(e.hospital)}</span></td>
+        <td style="padding: 8px 10px;">${escapeHtml(e.project || '—')}</td>
+        <td style="padding: 8px 10px;">${escapeHtml(e.status || '—')}</td>
+        <td style="padding: 8px 10px;">
+          <span class="badge" style="${badgeColor} font-weight:700;">${escapeHtml(e.accessReason || (isAllowed ? '🟢 Allowed' : '🔴 Blocked'))}</span>
+        </td>
+        <td style="padding: 8px 10px; text-align: right;">
+          <button type="button" class="arrow-btn" style="width:auto; padding:3px 8px; border-radius:10px; font-size:0.7rem; font-weight:700; color:#15803d; background:rgba(22,163,74,0.1);" onclick="openAdminResetPwdModal('${escapeHtml(e.name)}', '${escapeHtml(e.email)}', '${escapeHtml(e.phone)}')">
+            🔑 Reset
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+async function handleAdminCenterToggleGoogle(enabled) {
+  const slider = document.getElementById("admin-toggle-slider");
+  const statusLbl = document.getElementById("admin-google-status-lbl");
+  try {
+    showToast(`${enabled ? 'Enabling' : 'Disabling'} Google login on welcome screen...`, "info");
+    await setGoogleAuthToggle(enabled);
+    if (slider) slider.style.backgroundColor = enabled ? "#7c3aed" : "#cbd5e1";
+    if (statusLbl) {
+      statusLbl.innerHTML = enabled 
+        ? `<strong style="color:#7c3aed;">🟢 Active:</strong> Users can sign in via Google &amp; Password`
+        : `<strong style="color:#64748b;">🔒 Disabled:</strong> Email &amp; Password only (Neon DB)`;
+    }
+    showToast(`Google Sign-In is now ${enabled ? 'ENABLED' : 'DISABLED'} on login screen.`, "success");
+  } catch (err) {
+    showToast("Failed to update setting: " + err.message, "error");
+    const toggle = document.getElementById("admin-toggle-google-chk");
+    if (toggle) toggle.checked = !enabled;
+  }
+}
+

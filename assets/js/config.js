@@ -30,11 +30,38 @@ const APP_CONFIG = {
       "softtech.lovejeet@gmail.com",
       "softtech2009@gmail.com",
       "softtech.solar@gmail.com"
-    ],
-    vapidKey: "BLLZlYIB8broqTykqcvk0vrESTxqhLTpqUNrRzMA1GSBWrmB37RSP-a-golMWDA7it0mru0wNVK-FGTZX15D3hA"
+    ]
   },
-  // Backend API Service: Use relative Netlify Functions on Netlify, or Render API when on localhost/standalone
-  apiBaseUrl: (typeof window !== "undefined" && window.location.origin.includes("netlify.app")) ? "" : "https://snmcbackend.onrender.com"
+  // Dynamic Environment & Host Aware API Base URL Resolver
+  get apiBaseUrl() {
+    if (typeof window === "undefined") return "";
+    
+    // 1. Explicit window override (e.g. from server/env injection)
+    if (typeof window.__API_BASE_URL__ === "string") {
+      return window.__API_BASE_URL__;
+    }
+
+    const host = window.location.hostname || "";
+    const port = window.location.port || "";
+    const origin = window.location.origin || "";
+
+    // 2. Netlify Production Web App
+    if (origin.includes("netlify.app") || host.endsWith("netlify.app")) {
+      return "";
+    }
+
+    // 3. Local Development (Browser on Localhost / 127.0.0.1)
+    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
+      if (port === "8080" || port === "8888") {
+        return "";
+      }
+      // If accessing via Apache (port 80 or default), route API calls to local dev server
+      return "http://localhost:8080";
+    }
+
+    // 4. Default Production Cloud Backend
+    return "https://snmc-smspl.netlify.app";
+  }
 };
 
 // Google OAuth Scope for Sheets access

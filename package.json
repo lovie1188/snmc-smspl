@@ -6,7 +6,10 @@
     "build": "node -e \"const fs=require('fs'); fs.rmSync('www',{recursive:true,force:true}); fs.mkdirSync('www'); ['index.html','app.html','manifest.json','sw.js'].forEach(f=>{if(fs.existsSync(f)) fs.copyFileSync(f,'www/'+f)}); fs.cpSync('assets','www/assets',{recursive:true}); console.log('www bundle created successfully');\""
   },
   "dependencies": {
-    "google-auth-library": "^9.0.0"
+    "bcryptjs": "^3.0.3",
+    "google-auth-library": "^9.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "@capacitor/android": "^8.5.0",
