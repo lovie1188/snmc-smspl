@@ -906,6 +906,95 @@
           </div>
         </div>
 
+        <!-- Section 1B: Granular Admin Role Permission Matrix -->
+        <div style="margin-top: 16px; background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 16px; padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+            <div style="font-size: 0.9rem; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 6px;">
+              <span>🛡️ Admin Role Granular Permission Matrix</span>
+            </div>
+            <button type="button" class="btn-native-submit" id="btn-save-admin-perms" onclick="handleSaveAdminPermissions()" style="width: auto; padding: 5px 14px; font-size: 0.74rem; background: #16a34a; border-radius: 12px; font-weight: 700;">
+              💾 Save Permissions
+            </button>
+          </div>
+          <div style="font-size: 0.74rem; color: #15803d; margin-bottom: 12px; line-height: 1.4;">
+            Control precisely what <strong>Admin</strong> users can <strong>View, Add, Edit &amp; Delete</strong> across modules. SuperAdmin retains sole authority to grant or revoke these rights.
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; font-size: 0.76rem;">
+            <!-- Daily Entries -->
+            <label style="display: flex; align-items: center; gap: 8px; background: #ffffff; padding: 10px 12px; border-radius: 10px; border: 1px solid #dcfce7; cursor: pointer;">
+              <input type="checkbox" id="perm-can-add-entry" style="width: 16px; height: 16px; accent-color: #16a34a;">
+              <div>
+                <strong style="display: block; color: #0f172a;">New Daily Entry</strong>
+                <span style="font-size: 0.68rem; color: #64748b;">Can submit meter &amp; paper readings</span>
+              </div>
+            </label>
+
+            <!-- Edit History -->
+            <label style="display: flex; align-items: center; gap: 8px; background: #ffffff; padding: 10px 12px; border-radius: 10px; border: 1px solid #dcfce7; cursor: pointer;">
+              <input type="checkbox" id="perm-can-edit-history" style="width: 16px; height: 16px; accent-color: #16a34a;">
+              <div>
+                <strong style="display: block; color: #0f172a;">Edit Daily Records</strong>
+                <span style="font-size: 0.68rem; color: #64748b;">Can modify past counter readings</span>
+              </div>
+            </label>
+
+            <!-- Delete History -->
+            <label style="display: flex; align-items: center; gap: 8px; background: #ffffff; padding: 10px 12px; border-radius: 10px; border: 1px solid #dcfce7; cursor: pointer;">
+              <input type="checkbox" id="perm-can-delete-history" style="width: 16px; height: 16px; accent-color: #dc2626;">
+              <div>
+                <strong style="display: block; color: #b91c1c;">Delete Daily Records</strong>
+                <span style="font-size: 0.68rem; color: #64748b;">Can delete sheet rows</span>
+              </div>
+            </label>
+
+            <!-- Add Stock -->
+            <label style="display: flex; align-items: center; gap: 8px; background: #ffffff; padding: 10px 12px; border-radius: 10px; border: 1px solid #dcfce7; cursor: pointer;">
+              <input type="checkbox" id="perm-can-add-stock" style="width: 16px; height: 16px; accent-color: #16a34a;">
+              <div>
+                <strong style="display: block; color: #0f172a;">Add Paper Stock</strong>
+                <span style="font-size: 0.68rem; color: #64748b;">Can enter received paper invoices</span>
+              </div>
+            </label>
+
+            <!-- Export Excel -->
+            <label style="display: flex; align-items: center; gap: 8px; background: #ffffff; padding: 10px 12px; border-radius: 10px; border: 1px solid #dcfce7; cursor: pointer;">
+              <input type="checkbox" id="perm-can-export-excel" style="width: 16px; height: 16px; accent-color: #16a34a;">
+              <div>
+                <strong style="display: block; color: #0f172a;">Export to Excel</strong>
+                <span style="font-size: 0.68rem; color: #64748b;">Can export data spreadsheets</span>
+              </div>
+            </label>
+
+            <!-- Manage Staff -->
+            <label style="display: flex; align-items: center; gap: 8px; background: #ffffff; padding: 10px 12px; border-radius: 10px; border: 1px solid #dcfce7; cursor: pointer;">
+              <input type="checkbox" id="perm-can-manage-employees" style="width: 16px; height: 16px; accent-color: #16a34a;">
+              <div>
+                <strong style="display: block; color: #0f172a;">Manage Staff &amp; Photos</strong>
+                <span style="font-size: 0.68rem; color: #64748b;">Can add/edit staff directory &amp; ID photos</span>
+              </div>
+            </label>
+
+            <!-- Delete Staff -->
+            <label style="display: flex; align-items: center; gap: 8px; background: #ffffff; padding: 10px 12px; border-radius: 10px; border: 1px solid #dcfce7; cursor: pointer;">
+              <input type="checkbox" id="perm-can-delete-employees" style="width: 16px; height: 16px; accent-color: #dc2626;">
+              <div>
+                <strong style="display: block; color: #b91c1c;">Delete Staff Members</strong>
+                <span style="font-size: 0.68rem; color: #64748b;">Can remove members from directory</span>
+              </div>
+            </label>
+
+            <!-- Broadcast Push -->
+            <label style="display: flex; align-items: center; gap: 8px; background: #ffffff; padding: 10px 12px; border-radius: 10px; border: 1px solid #dcfce7; cursor: pointer;">
+              <input type="checkbox" id="perm-can-send-broadcast" style="width: 16px; height: 16px; accent-color: #7c3aed;">
+              <div>
+                <strong style="display: block; color: #6b21a8;">Broadcast Push Alerts</strong>
+                <span style="font-size: 0.68rem; color: #64748b;">Can send push alerts to app users</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
         <!-- Section 2: Allowlist & User Access Live Audit Table -->
         <div style="margin-top: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
@@ -1335,14 +1424,14 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   
-  <script src="assets/js/config.js?v=16"></script>
-  <script src="assets/js/schema.js?v=16"></script>
-  <script src="assets/js/auth.js?v=16"></script>
-  <script src="assets/js/sheets.js?v=16"></script>
-  <script src="assets/js/db.js?v=16"></script>
-  <script src="assets/js/notifications.js?v=16"></script>
-  <script src="assets/js/admob.js?v=16"></script>
-  <script src="assets/js/app.js?v=16"></script>
+  <script src="assets/js/config.js?v=20"></script>
+  <script src="assets/js/schema.js?v=20"></script>
+  <script src="assets/js/auth.js?v=20"></script>
+  <script src="assets/js/sheets.js?v=20"></script>
+  <script src="assets/js/db.js?v=20"></script>
+  <script src="assets/js/notifications.js?v=20"></script>
+  <script src="assets/js/admob.js?v=20"></script>
+  <script src="assets/js/app.js?v=20"></script>
 
   <script>
     function toggleUserDropdown(e) {

@@ -50,16 +50,50 @@ const MANPOWER_RANGE = "A1:AD45";
 
 const GOOGLE_DRIVE_PHOTO_FOLDER_ID = "129N1_3z_802vJ-9I5nH9jMmSBinpbzGY";
 // Server-authoritative SuperAdmin list (override per environment via SUPER_ADMIN_EMAILS).
-const SUPER_ADMINS = (process.env.SUPER_ADMIN_EMAILS || "softtech.lovejeet@gmail.com,softtech2009@gmail.com")
+const SUPER_ADMINS = (process.env.SUPER_ADMIN_EMAILS || "softtech.lovejeet@gmail.com")
   .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "gen-lang-client-0070625213";
 const FIREBASE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
 const { createVerify } = require("crypto");
 const { JWT } = require("google-auth-library");
+const { Client: PgClient } = require("pg");
+
+const NEON_DB_URL = process.env.NEON_DATABASE_URL || "postgresql://neondb_owner:npg_0urCjOWDdp9f@ep-long-violet-az1arbtf-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
 
 let firebaseCertCache = { expiresAt: 0, certs: null };
 let sheetsJwtClient = null;
 let fcmJwtClient = null;
+
+let adminPermsCache = { data: null, expiresAt: 0 };
+async function getAdminPermissionsCached() {
+  const now = Date.now();
+  if (adminPermsCache.data && adminPermsCache.expiresAt > now) {
+    return adminPermsCache.data;
+  }
+  let perms = {
+    can_add_entry: true,
+    can_edit_history: false,
+    can_delete_history: false,
+    can_add_stock: true,
+    can_export_excel: true,
+    can_manage_employees: false,
+    can_delete_employees: false,
+    can_send_broadcast: false
+  };
+  try {
+    const pg = new PgClient({ connectionString: NEON_DB_URL });
+    await pg.connect();
+    const res = await pg.query("SELECT setting_value FROM app_settings WHERE setting_key = 'snmc_admin_permissions' LIMIT 1;");
+    await pg.end();
+    if (res.rows.length > 0 && res.rows[0].setting_value) {
+      perms = { ...perms, ...JSON.parse(res.rows[0].setting_value) };
+    }
+  } catch (err) {
+    console.warn("[Backend] Error fetching admin permissions from Neon DB:", err.message);
+  }
+  adminPermsCache = { data: perms, expiresAt: now + 30000 }; // 30s cache
+  return perms;
+}
 
 function jsonResponse(statusCode, headers, body) {
   return { statusCode, headers, body: JSON.stringify(body) };
@@ -477,17 +511,19 @@ async function getUserHospitalPermissions(email) {
           const name = nameIdx !== -1 ? String(row[nameIdx] || "").trim() : "";
 
           // Access criteria: Active status AND (SNMC project or Director/SuperAdmin)
-          const isSuper = role.toLowerCase().includes("director") || role.toLowerCase().includes("superadmin") || hospStr === "ALL";
-          const isProjectAllowed = isSuper || !project || project === "SNMC";
+          const isSuper = SUPER_ADMINS.includes(cleanEmail) || role.toLowerCase().includes("superadmin");
+          const isDirector = cleanEmail === "softtech2009@gmail.com" || role.toLowerCase().includes("director");
+          const isProjectAllowed = isSuper || isDirector || !project || project === "SNMC";
           const isStatusActive = status === "ACTIVE" || status === "YES" || status === "1" || status === "TRUE" || !status; // default allow if active/unspecified
           
-          const isLoginAllowed = isSuper || (isProjectAllowed && isStatusActive);
-          const hospitals = (hospStr === "ALL" || isSuper) ? ["ALL"] : hospStr.split(",").map(h => h.trim()).filter(Boolean);
+          const isLoginAllowed = isSuper || isDirector || (isProjectAllowed && isStatusActive);
+          const hospitals = (hospStr === "ALL" || isSuper || isDirector) ? ["ALL"] : hospStr.split(",").map(h => h.trim()).filter(Boolean);
 
           return { 
             hospitals: hospitals.length ? hospitals : ["ALL"], 
             isSuperAdmin: isSuper, 
-            isAll: hospitals.includes("ALL") || isSuper, 
+            isDirector: isDirector,
+            isAll: hospitals.includes("ALL") || isSuper || isDirector, 
             isLoginAllowed, 
             memberType: role, 
             role, 
@@ -598,6 +634,9 @@ exports.handler = async function (event, context) {
     // ── Enforce Server-Side User Hospital Permissions ──
     const userPerms = await getUserHospitalPermissions(userEmail);
     const { hospitals: allowedHospitals, isAll: hasAllAccess, isSuperAdmin: userIsSuperAdmin } = userPerms;
+    const userIsDirector = userPerms.isDirector || claims.isDirector || String(claims.role || "").toLowerCase() === "director";
+    const userIsAdmin = !userIsSuperAdmin && !userIsDirector && (String(userPerms.role || "").toLowerCase() === "admin" || String(claims.role || "").toLowerCase() === "admin");
+    const adminPermissions = userIsAdmin ? await getAdminPermissionsCached() : null;
 
     // ── 1. Fetch Printer Details (Server-Side Filtered by User Hospital) ──
     if (action === "printerdetails" && event.httpMethod === "GET") {
@@ -694,6 +733,10 @@ exports.handler = async function (event, context) {
 
     // ── 3. Append Daily Entry (Server-Side Verified Authorization) ──
     if (action === "appendDailyEntry" && event.httpMethod === "POST") {
+      if (userIsAdmin && adminPermissions && !adminPermissions.can_add_entry) {
+        return jsonResponse(403, headers, { error: "Forbidden: Admin role has not been granted permission to submit new daily entries." });
+      }
+
       const payload = JSON.parse(event.body || "{}");
       const row = payload.row || [];
 
@@ -826,7 +869,8 @@ exports.handler = async function (event, context) {
     // ── 8. Server-side push broadcast ──
     if (action === "broadcastNotification" && event.httpMethod === "POST") {
       const allowedSenders = await readAllowedSendersFromSheet();
-      const canBroadcast = userIsSuperAdmin || allowedSenders.includes(userEmail);
+      const adminCanBroadcast = userIsAdmin && adminPermissions && adminPermissions.can_send_broadcast;
+      const canBroadcast = userIsSuperAdmin || adminCanBroadcast || allowedSenders.includes(userEmail);
       if (!canBroadcast) {
         const err = new Error("You are not authorized to broadcast notifications.");
         err.statusCode = 403;
@@ -973,8 +1017,9 @@ exports.handler = async function (event, context) {
 
     // ── 11. Add New Employee / Team Member to Manpower Google Sheet ──
     if (action === "addEmployee" && event.httpMethod === "POST") {
-      if (!userIsSuperAdmin) {
-        const err = new Error("Forbidden: SuperAdmin access required to add team members.");
+      const canManageStaff = userIsSuperAdmin || (userIsAdmin && adminPermissions && adminPermissions.can_manage_employees);
+      if (!canManageStaff) {
+        const err = new Error("Forbidden: SuperAdmin or authorized Admin access required to add team members.");
         err.statusCode = 403;
         throw err;
       }
@@ -1014,8 +1059,9 @@ exports.handler = async function (event, context) {
 
     // ── 12. Update Existing Employee / Team Member in Manpower Google Sheet ──
     if (action === "updateEmployee" && event.httpMethod === "POST") {
-      if (!userIsSuperAdmin) {
-        const err = new Error("Forbidden: SuperAdmin access required to update team members.");
+      const canManageStaff = userIsSuperAdmin || (userIsAdmin && adminPermissions && adminPermissions.can_manage_employees);
+      if (!canManageStaff) {
+        const err = new Error("Forbidden: SuperAdmin or authorized Admin access required to update team members.");
         err.statusCode = 403;
         throw err;
       }
@@ -1082,8 +1128,9 @@ exports.handler = async function (event, context) {
 
     // ── 13. Delete / Clear Employee from Manpower Google Sheet ──
     if (action === "deleteEmployee" && event.httpMethod === "POST") {
-      if (!userIsSuperAdmin) {
-        const err = new Error("Forbidden: SuperAdmin access required to delete team members.");
+      const canDeleteStaff = userIsSuperAdmin || (userIsAdmin && adminPermissions && adminPermissions.can_delete_employees);
+      if (!canDeleteStaff) {
+        const err = new Error("Forbidden: SuperAdmin or authorized Admin access required to delete team members.");
         err.statusCode = 403;
         throw err;
       }

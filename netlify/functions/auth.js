@@ -39,7 +39,7 @@ const { JWT } = require("google-auth-library");
 
 const NEON_DB_URL = process.env.NEON_DATABASE_URL || "postgresql://neondb_owner:npg_0urCjOWDdp9f@ep-long-violet-az1arbtf-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
 const JWT_SECRET = process.env.JWT_SECRET || "SMSPL@PrintTrackJWTSecret2026";
-const SUPER_ADMINS = (process.env.SUPER_ADMIN_EMAILS || "softtech.lovejeet@gmail.com,softtech2009@gmail.com")
+const SUPER_ADMINS = (process.env.SUPER_ADMIN_EMAILS || "softtech.lovejeet@gmail.com")
   .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "gen-lang-client-0070625213";
 const FIREBASE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
@@ -130,10 +130,11 @@ async function lookupManpowerRecord(identifier) {
 
     if (matches) {
       const primaryEmail = offEmail || email || `${empId.toLowerCase()}@softtechseva.com`;
-      const isSuper = SUPER_ADMINS.includes(primaryEmail) || designation.toLowerCase().includes("director") || designation.toLowerCase().includes("superadmin");
-      const isProjectAllowed = isSuper || !project || project === "SNMC";
+      const isSuper = SUPER_ADMINS.includes(primaryEmail) || designation.toLowerCase().includes("superadmin");
+      const isDirector = primaryEmail === "softtech2009@gmail.com" || designation.toLowerCase().includes("director");
+      const isProjectAllowed = isSuper || isDirector || !project || project === "SNMC";
       const isStatusActive = status === "ACTIVE" || status === "YES" || status === "1" || status === "TRUE" || !status;
-      const isAllowed = isSuper || (isProjectAllowed && isStatusActive);
+      const isAllowed = isSuper || isDirector || (isProjectAllowed && isStatusActive);
 
       return {
         empId,
@@ -146,7 +147,8 @@ async function lookupManpowerRecord(identifier) {
         project,
         status,
         isAllowed,
-        isSuperAdmin: isSuper
+        isSuperAdmin: isSuper,
+        isDirector: isDirector
       };
     }
   }
@@ -341,6 +343,69 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { success: true, googleAuthEnabled: enable, message: `Google Sign-in is now ${enable ? "ENABLED" : "DISABLED"} on login screen.` });
     }
 
+    // ── 2B. Action: getAdminPermissions (Fetch Granular Admin Role Permissions) ──
+    if (action === "getAdminPermissions" && event.httpMethod === "GET") {
+      try {
+        const rows = await queryNeon(`SELECT setting_value FROM app_settings WHERE setting_key = 'snmc_admin_permissions' LIMIT 1;`);
+        let perms = {
+          can_add_entry: true,
+          can_edit_history: false,
+          can_delete_history: false,
+          can_add_stock: true,
+          can_export_excel: true,
+          can_manage_employees: false,
+          can_delete_employees: false,
+          can_send_broadcast: false
+        };
+        if (rows.length > 0 && rows[0].setting_value) {
+          try {
+            perms = { ...perms, ...JSON.parse(rows[0].setting_value) };
+          } catch (_) {}
+        }
+        return jsonResponse(200, headers, { success: true, permissions: perms });
+      } catch (e) {
+        return jsonResponse(200, headers, { 
+          success: true, 
+          permissions: {
+            can_add_entry: true,
+            can_edit_history: false,
+            can_delete_history: false,
+            can_add_stock: true,
+            can_export_excel: true,
+            can_manage_employees: false,
+            can_delete_employees: false,
+            can_send_broadcast: false
+          }
+        });
+      }
+    }
+
+    // ── 2C. Action: saveAdminPermissions (SuperAdmin Only: Save Granular Admin Permissions) ──
+    if (action === "saveAdminPermissions" && event.httpMethod === "POST") {
+      const authUser = verifyAuthToken(event.headers.authorization || event.headers.Authorization);
+      const isSuper = authUser && (SUPER_ADMINS.includes(authUser.email.toLowerCase()) || authUser.role === "SuperAdmin" || authUser.role === "superadmin");
+      
+      if (!isSuper) {
+        return jsonResponse(403, headers, { success: false, error: "Forbidden: SuperAdmin access required to modify admin permissions." });
+      }
+
+      const payload = JSON.parse(event.body || "{}");
+      const permissions = payload.permissions || {};
+      const valStr = JSON.stringify(permissions);
+
+      try {
+        const existing = await queryNeon(`SELECT id FROM app_settings WHERE setting_key = 'snmc_admin_permissions' LIMIT 1;`);
+        if (existing.length > 0) {
+          await queryNeon(`UPDATE app_settings SET setting_value = $1, updated_at = NOW() WHERE setting_key = 'snmc_admin_permissions';`, [valStr]);
+        } else {
+          await queryNeon(`INSERT INTO app_settings (setting_key, setting_value, created_at, updated_at) VALUES ('snmc_admin_permissions', $1, NOW(), NOW());`, [valStr]);
+        }
+        return jsonResponse(200, headers, { success: true, permissions, message: "Admin role permissions saved successfully!" });
+      } catch (err) {
+        return jsonResponse(500, headers, { success: false, error: "Failed to save permissions: " + err.message });
+      }
+    }
+
     // ── 3. Action: login (Direct Email/Username + Password authentication via Neon DB) ──
     if (action === "login" && event.httpMethod === "POST") {
       const payload = JSON.parse(event.body || "{}");
@@ -405,9 +470,10 @@ exports.handler = async function (event, context) {
         user = inserted[0];
       }
 
-      const isSuper = SUPER_ADMINS.includes(user.email.toLowerCase()) || user.role_name === "superadmin" || user.role_name === "director";
+      const isSuper = SUPER_ADMINS.includes(user.email.toLowerCase()) || user.role_name === "superadmin";
+      const isDirector = user.email.toLowerCase() === "softtech2009@gmail.com" || user.role_name === "director" || (user.name && user.name.toLowerCase().includes("sangidan"));
 
-      if (user.is_active !== 1 && !isSuper) {
+      if (user.is_active !== 1 && !isSuper && !isDirector) {
         return jsonResponse(403, headers, { success: false, error: "Account is inactive. Please contact SuperAdmin." });
       }
 
@@ -435,8 +501,8 @@ exports.handler = async function (event, context) {
       }
 
       // Generate App JWT Token
-      const userRole = isSuper ? "SuperAdmin" : (user.role_name === "admin" ? "Admin" : "Operator");
-      const userHospitals = isSuper ? ["ALL"] : [user.office_name || "MDM"];
+      const userRole = isSuper ? "SuperAdmin" : (isDirector ? "Director" : (user.role_name === "admin" ? "Admin" : "Operator"));
+      const userHospitals = (isSuper || isDirector) ? ["ALL"] : [user.office_name || "MDM"];
       const displayName = user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username;
 
       const token = jwt.sign(
@@ -447,7 +513,8 @@ exports.handler = async function (event, context) {
           name: displayName,
           role: userRole,
           hospitals: userHospitals,
-          isSuperAdmin: isSuper
+          isSuperAdmin: isSuper,
+          isDirector: isDirector
         },
         JWT_SECRET,
         { expiresIn: "30d" }
@@ -463,10 +530,11 @@ exports.handler = async function (event, context) {
           name: displayName,
           role: userRole,
           hospitals: userHospitals,
-          office: user.office_name || "MDM",
+          office: (isSuper || isDirector) ? "ALL" : (user.office_name || "MDM"),
           phone: user.phone || user.mobile || "",
           photo: user.avatar || "",
           isSuperAdmin: isSuper,
+          isDirector: isDirector,
           googleLinked: !!user.firebase_uid
         }
       });

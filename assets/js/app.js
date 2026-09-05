@@ -648,6 +648,15 @@ function filterHistoryTable() {
 
 // ── Export History to Excel (.xlsx) ───────────────────────
 function exportHistoryToExcel() {
+  const user = currentUser || getStoredUser() || {};
+  const isSuper = typeof isSuperAdmin === "function" && isSuperAdmin(user.email || "");
+  const isDirect = typeof isDirector === "function" && isDirector(user.email || "");
+  const userIsAdmin = !isSuper && !isDirect && (String(user.role || "").toLowerCase() === "admin");
+  if (userIsAdmin && activeAdminPermissions && !activeAdminPermissions.can_export_excel) {
+    showToast("🚫 Permission Denied: Admin role is not permitted to export Excel data.", "error");
+    return;
+  }
+
   if (!allDailyRows.length) {
     showToast("No history data to export.", "warn");
     return;
@@ -1148,6 +1157,16 @@ async function submitEntry(event) {
   event.preventDefault();
 
   // 1. Check Real-Time Validation Constraints
+  const user = currentUser || getStoredUser() || {};
+  const isSuper = isSuperAdmin(user.email || "") || user.isSuperAdmin === true;
+  const isDirect = (typeof isDirector === "function" && isDirector(user.email || "")) || user.isDirector === true || String(user.role || "").toLowerCase() === "director";
+  const userIsAdmin = !isSuper && !isDirect && (String(user.role || "").toLowerCase() === "admin");
+
+  if (userIsAdmin && activeAdminPermissions && !activeAdminPermissions.can_add_entry) {
+    showToast("🚫 Permission Denied: Admin role is not permitted to submit daily entries.", "error");
+    return;
+  }
+
   if (!validateReadings()) {
     showToast("⚠️ Closing Reading cannot be less than Opening Reading!", "warn");
     return;
@@ -1270,6 +1289,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     currentUser = auth.user;
+    // Preload live granular admin permissions from Neon DB
+    if (typeof loadAdminPermissionsMatrix === "function") {
+      await loadAdminPermissionsMatrix();
+    }
     populateHeader(currentUser);
     initHospitalState();
 
@@ -1520,6 +1543,15 @@ async function sharePrintersData() {
 }
 
 function exportPrintersToExcel() {
+  const user = currentUser || getStoredUser() || {};
+  const isSuper = typeof isSuperAdmin === "function" && isSuperAdmin(user.email || "");
+  const isDirect = typeof isDirector === "function" && isDirector(user.email || "");
+  const userIsAdmin = !isSuper && !isDirect && (String(user.role || "").toLowerCase() === "admin");
+  if (userIsAdmin && activeAdminPermissions && !activeAdminPermissions.can_export_excel) {
+    showToast("🚫 Permission Denied: Admin role is not permitted to export Excel data.", "error");
+    return;
+  }
+
   if (typeof XLSX === "undefined") {
     showToast("Excel export library loading... please retry", "error");
     return;
@@ -1812,6 +1844,15 @@ function renderStockList() {
 }
 
 function exportStockToExcel() {
+  const user = currentUser || getStoredUser() || {};
+  const isSuper = typeof isSuperAdmin === "function" && isSuperAdmin(user.email || "");
+  const isDirect = typeof isDirector === "function" && isDirector(user.email || "");
+  const userIsAdmin = !isSuper && !isDirect && (String(user.role || "").toLowerCase() === "admin");
+  if (userIsAdmin && activeAdminPermissions && !activeAdminPermissions.can_export_excel) {
+    showToast("🚫 Permission Denied: Admin role is not permitted to export Excel data.", "error");
+    return;
+  }
+
   if (!allStockRows.length) {
     showToast("No stock data to export.", "warn");
     return;
@@ -1843,25 +1884,34 @@ function populateHeader(user) {
   if (dropNameEl)  dropNameEl.textContent  = user.name || "User";
   if (dropEmailEl) dropEmailEl.textContent = user.email || "";
   const isSuper = isSuperAdmin(user.email || "") || user.isSuperAdmin === true;
-  const userRole = (user.role || (isSuper ? "SuperAdmin" : "Operator")).toUpperCase();
+  const isDirect = (typeof isDirector === "function" && isDirector(user.email || "")) || user.isDirector === true || String(user.role || "").toLowerCase() === "director";
+  const userRole = (user.role || (isSuper ? "SuperAdmin" : (isDirect ? "Director" : "Operator"))).toUpperCase();
 
   const badgeEl = document.getElementById("superadmin-badge");
   if (badgeEl) {
     badgeEl.style.display = "inline-flex";
     if (isSuper) {
-      badgeEl.textContent = "⚡ ADMIN";
+      badgeEl.textContent = "⚡ SUPERADMIN";
       badgeEl.style.background = "linear-gradient(135deg, #7c3aed, #ec4899)";
+    } else if (isDirect) {
+      badgeEl.textContent = "👑 DIRECTOR";
+      badgeEl.style.background = "linear-gradient(135deg, #f59e0b, #d97706)";
     } else {
       badgeEl.textContent = `👤 ${userRole}`;
       badgeEl.style.background = "#0284c7";
     }
   }
 
-  // Guard Broadcast Push & Admin Center Nav buttons (Only SuperAdmin)
+  // Guard Broadcast Push & Admin Center Nav buttons
   const pushNavBtn = document.getElementById("nav-notif-dropdown");
   const adminNavBtn = document.getElementById("nav-admin-center-dropdown");
-  if (pushNavBtn) pushNavBtn.style.display = isSuper ? "flex" : "none";
+  const userIsAdmin = !isSuper && !isDirect && (String(user.role || "").toLowerCase() === "admin");
+  const canBroadcast = isSuper || (userIsAdmin && activeAdminPermissions.can_send_broadcast);
+  if (pushNavBtn) pushNavBtn.style.display = canBroadcast ? "flex" : "none";
   if (adminNavBtn) adminNavBtn.style.display = isSuper ? "flex" : "none";
+
+  // Guard Excel Export Buttons across UI
+  applyExcelExportPermissions();
 
   if (user.photo) {
     if (photoEl) { photoEl.src = user.photo; photoEl.style.display = "block"; }
@@ -1960,9 +2010,12 @@ function renderEmployeesList() {
   const addBtn = document.getElementById("add-employee-top-btn");
   const searchVal = document.getElementById("employee-search-input")?.value?.toLowerCase().trim() || "";
   const userIsSuper = typeof isSuperAdmin === "function" && isSuperAdmin(currentUser?.email || "");
+  const userIsAdmin = (currentUser && String(currentUser.role || "").toLowerCase() === "admin");
+  const canManageStaff = userIsSuper || (userIsAdmin && activeAdminPermissions.can_manage_employees);
+  const canDeleteStaff = userIsSuper || (userIsAdmin && activeAdminPermissions.can_delete_employees);
 
   if (addBtn) {
-    addBtn.style.display = userIsSuper ? "inline-flex" : "none";
+    addBtn.style.display = canManageStaff ? "inline-flex" : "none";
   }
 
   if (!container) return;
@@ -2025,19 +2078,25 @@ function renderEmployeesList() {
             </button>
           </div>
 
-          ${userIsSuper ? `
           <div class="emp-btn-group-right">
+            ${userIsSuper ? `
             <button type="button" class="arrow-btn" style="width: auto; padding: 4px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; color: #15803d; background: rgba(22, 163, 74, 0.1);" title="Reset Password" onclick="openAdminResetPwdModal('${escapeHtml(emp.name)}', '${escapeHtml(emp.email)}', '${escapeHtml(emp.phone)}')">
               🔑
             </button>
+            ` : ''}
+
+            ${canManageStaff ? `
             <button type="button" class="arrow-btn" style="width: auto; padding: 4px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; color: #0284c7; background: rgba(2, 132, 199, 0.1);" title="Edit Member" onclick="openEditEmployeeModalById('${escapeHtml(emp.id)}')">
               ✏️
             </button>
+            ` : ''}
+
+            ${canDeleteStaff ? `
             <button type="button" class="arrow-btn" style="width: auto; padding: 4px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; color: #dc2626; background: rgba(239, 68, 68, 0.1);" title="Delete Member" onclick="handleDeleteEmployee('${escapeHtml(emp.id)}', '${escapeHtml(emp.email)}', ${emp.rowIndex || 0})">
               🗑️
             </button>
+            ` : ''}
           </div>
-          ` : ''}
         </div>
       </div>
     `;
@@ -2543,6 +2602,15 @@ function copyContactDetails(event, name, phone, email, hospital) {
 }
 
 function exportEmployeesToExcel() {
+  const user = currentUser || getStoredUser() || {};
+  const isSuper = typeof isSuperAdmin === "function" && isSuperAdmin(user.email || "");
+  const isDirect = typeof isDirector === "function" && isDirector(user.email || "");
+  const userIsAdmin = !isSuper && !isDirect && (String(user.role || "").toLowerCase() === "admin");
+  if (userIsAdmin && activeAdminPermissions && !activeAdminPermissions.can_export_excel) {
+    showToast("🚫 Permission Denied: Admin role is not permitted to export Excel data.", "error");
+    return;
+  }
+
   if (typeof XLSX === "undefined") {
     showToast("Excel export library loading...", "error");
     return;
@@ -2696,7 +2764,10 @@ async function loadAdminCenterPage() {
       : `<strong style="color:#64748b;">🔒 Disabled:</strong> Email &amp; Password only (Neon DB)`;
   } catch (_) {}
 
-  // 2. Fetch all employees to render allowlist audit
+  // 2. Fetch live Admin Granular Permissions from Neon DB
+  await loadAdminPermissionsMatrix();
+
+  // 3. Fetch all employees to render allowlist audit
   const tbody = document.getElementById("admin-audit-table-body");
   if (tbody) {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:16px;"><span class="spinner"></span> Auditing manpower sheet...</td></tr>`;
@@ -2709,6 +2780,109 @@ async function loadAdminCenterPage() {
   } catch (err) {
     if (tbody) {
       tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:16px;">Failed to load audit: ${escapeHtml(err.message)}</td></tr>`;
+    }
+  }
+}
+
+let activeAdminPermissions = {
+  can_add_entry: true,
+  can_edit_history: false,
+  can_delete_history: false,
+  can_add_stock: true,
+  can_export_excel: true,
+  can_manage_employees: false,
+  can_delete_employees: false,
+  can_send_broadcast: false
+};
+
+function applyExcelExportPermissions() {
+  const user = currentUser || getStoredUser() || {};
+  const isSuper = typeof isSuperAdmin === "function" && isSuperAdmin(user.email || "");
+  const isDirect = typeof isDirector === "function" && isDirector(user.email || "");
+  const userIsAdmin = !isSuper && !isDirect && (String(user.role || "").toLowerCase() === "admin");
+  const allowExcel = isSuper || isDirect || !userIsAdmin || (activeAdminPermissions && activeAdminPermissions.can_export_excel);
+
+  // Selector for all Excel export buttons across the application
+  const excelBtns = document.querySelectorAll(
+    'button[onclick*="exportHistoryToExcel"], button[onclick*="exportPrintersToExcel"], button[onclick*="exportStockToExcel"], button[onclick*="exportEmployeesToExcel"]'
+  );
+  excelBtns.forEach(btn => {
+    btn.style.display = allowExcel ? "inline-flex" : "none";
+  });
+}
+
+async function loadAdminPermissionsMatrix() {
+  try {
+    const base = (typeof getApiBaseUrl === "function") ? getApiBaseUrl() : "";
+    const res = await fetch(`${base}/.netlify/functions/auth?action=getAdminPermissions`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.permissions) {
+        activeAdminPermissions = { ...activeAdminPermissions, ...data.permissions };
+      }
+    }
+  } catch (e) {
+    console.warn("Could not fetch admin permissions:", e.message);
+  }
+
+  // Populate checkboxes if on admin tab
+  const keys = [
+    "can_add_entry", "can_edit_history", "can_delete_history", 
+    "can_add_stock", "can_export_excel", "can_manage_employees", 
+    "can_delete_employees", "can_send_broadcast"
+  ];
+  keys.forEach(k => {
+    const el = document.getElementById(`perm-${k.replace(/_/g, '-')}`);
+    if (el) el.checked = !!activeAdminPermissions[k];
+  });
+
+  applyExcelExportPermissions();
+}
+
+async function handleSaveAdminPermissions() {
+  const btn = document.getElementById("btn-save-admin-perms");
+  const keys = [
+    "can_add_entry", "can_edit_history", "can_delete_history", 
+    "can_add_stock", "can_export_excel", "can_manage_employees", 
+    "can_delete_employees", "can_send_broadcast"
+  ];
+  const perms = {};
+  keys.forEach(k => {
+    const el = document.getElementById(`perm-${k.replace(/_/g, '-')}`);
+    perms[k] = el ? el.checked : false;
+  });
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner"></span> Saving...`;
+    }
+
+    const token = typeof getAuthToken === "function" ? await getAuthToken() : (localStorage.getItem("smspl_auth_token") || "");
+    const base = (typeof getApiBaseUrl === "function") ? getApiBaseUrl() : "";
+    const res = await fetch(`${base}/.netlify/functions/auth?action=saveAdminPermissions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ permissions: perms })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Failed to save permissions.");
+    }
+
+    activeAdminPermissions = perms;
+    applyExcelExportPermissions();
+    showToast("✅ Admin Role Permissions saved to Neon DB!", "success");
+  } catch (err) {
+    showToast(`Failed: ${err.message}`, "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `💾 Save Permissions`;
     }
   }
 }

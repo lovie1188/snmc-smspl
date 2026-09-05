@@ -27,9 +27,10 @@ const APP_CONFIG = {
   },
   notifications: {
     superAdmins: [
-      "softtech.lovejeet@gmail.com",
-      "softtech2009@gmail.com",
-      "softtech.solar@gmail.com"
+      "softtech.lovejeet@gmail.com"
+    ],
+    directors: [
+      "softtech2009@gmail.com"
     ]
   },
   // Dynamic Environment & Host Aware API Base URL Resolver
@@ -50,16 +51,12 @@ const APP_CONFIG = {
       return "";
     }
 
-    // 3. Local Development (Browser on Localhost / 127.0.0.1)
-    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
-      if (port === "8080" || port === "8888") {
-        return "";
-      }
-      // If accessing via Apache (port 80 or default), route API calls to local dev server
-      return "http://localhost:8080";
+    // 3. Local Development (Running under Netlify CLI dev server port 8888 or 8080)
+    if ((host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") && (port === "8080" || port === "8888")) {
+      return "";
     }
 
-    // 4. Default Production Cloud Backend
+    // 4. Default Production Cloud Backend (Used when testing on Apache/XAMPP or LAN)
     return "https://snmc-smspl.netlify.app";
   }
 };
@@ -71,23 +68,34 @@ const SHEETS_API_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
 let cachedAllowedSenders = [];
 
 // User-to-Hospital Mappings (Customizable / Configurable)
-// SuperAdmins always have 'ALL' access with interactive switcher.
+// SuperAdmins & Directors always have 'ALL' access with interactive switcher.
 const USER_HOSPITAL_MAP = {
   "softtech.lovejeet@gmail.com": "ALL",
   "softtech2009@gmail.com": "ALL",
   "softtech.solar@gmail.com": "ALL"
 };
 
-// Helper: Check if current user is SuperAdmin
+// Helper: Check if current user is technical SuperAdmin (Root Admin)
 function isSuperAdmin(email) {
-  return APP_CONFIG.notifications.superAdmins.includes((email || '').toLowerCase());
+  return (APP_CONFIG.notifications.superAdmins || []).includes((email || '').toLowerCase());
+}
+
+// Helper: Check if current user is Director (Executive Oversight)
+function isDirector(email) {
+  const clean = (email || '').toLowerCase();
+  return (APP_CONFIG.notifications.directors || []).includes(clean) || clean === "softtech2009@gmail.com";
+}
+
+// Helper: Check if user has ALL Hospital oversight access (SuperAdmin or Director)
+function isExecutiveUser(email) {
+  return isSuperAdmin(email) || isDirector(email);
 }
 
 // Helper: Get mapped hospital for a user (MDM, MGH, UMMED, or ALL)
 function getUserHospital(email) {
   if (!email) return "ALL";
   const cleanEmail = email.toLowerCase().trim();
-  if (isSuperAdmin(cleanEmail)) return "ALL";
+  if (isSuperAdmin(cleanEmail) || isDirector(cleanEmail)) return "ALL";
   
   // Check local mapping or return assigned
   return USER_HOSPITAL_MAP[cleanEmail] || "ALL";
