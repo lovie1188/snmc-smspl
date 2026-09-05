@@ -7,7 +7,7 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#f8fafc">
   <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
-  <link rel="stylesheet" href="assets/css/app.css?v=15">
+  <link rel="stylesheet" href="assets/css/app.css?v=21">
 
   <style>
     /* ── SuperAdmin Notification Panel ── */
@@ -403,8 +403,11 @@
     <!-- TAB 1: NEW ENTRY FORM -->
     <section id="tab-entry" class="tab-panel">
       <div class="skynex-card">
-        <div class="skynex-card-title">
+        <div class="skynex-card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
           <div style="font-size: 1rem; font-weight: 800;">Daily Reading &amp; Rim Entry</div>
+          <button type="button" class="btn-scan-trigger" onclick="openScannerModal()" title="Scan Printer Display & Auto Fill">
+            <span style="font-size: 1.05rem;">📷</span> <span>Scan Display</span>
+          </button>
         </div>
 
         <form id="entry-form" onsubmit="submitEntry(event)">
@@ -498,20 +501,33 @@
             </div>
 
             <div class="form-group">
-              <label>Closing Reading <span class="req">*</span></label>
-              <input type="number" class="native-input" id="closing-reading" placeholder="Enter Current Reading" min="0" required oninput="calcBalance(); validateReadings();">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="margin-bottom:0;">Closing Reading <span class="req">*</span></label>
+                <button type="button" class="btn-input-scan" onclick="openScannerModal()" title="Scan Display">
+                  📷 Scan
+                </button>
+              </div>
+              <input type="number" class="native-input" id="closing-reading" placeholder="Enter Current Reading" min="0" required oninput="calcBalance(); validateReadings();" style="margin-top:4px;">
             </div>
           </div>
 
           <!-- Real-Time Validation Alert Message -->
-          <div id="reading-validation-error" class="validation-message">
+          <div id="reading-validation-error" class="validation-message" style="display:none; color:#ef4444; background:#fef2f2; border:1px solid #fecaca; padding:8px 12px; border-radius:8px; font-size:0.8rem; font-weight:700; margin:8px 0;">
             ⚠️ Closing Reading cannot be less than Opening Reading!
           </div>
 
-          <!-- Column H: BALANCE -->
-          <div class="form-group" style="margin-top: 10px;">
-            <label>Paper Balance (Opening - Closing)</label>
-            <input type="number" class="native-input" id="paper-balance" readonly placeholder="Auto Calculated">
+          <!-- Real-Time Calculation Grid: Prints Made (Closing - Opening) & Paper Balance -->
+          <div class="form-row" style="margin-top: 10px;">
+            <div class="form-group">
+              <label>Net Prints (Closing − Opening)</label>
+              <input type="number" class="native-input" id="net-prints-calc" readonly placeholder="0 Pages" style="background:#f8fafc; font-weight:700; color:#0284c7;">
+            </div>
+
+            <!-- Column H: BALANCE (Opening - Closing as per existing Sheet formula) -->
+            <div class="form-group">
+              <label>Paper Balance (Opening − Closing)</label>
+              <input type="number" class="native-input" id="paper-balance" readonly placeholder="Auto Calculated" style="background:#f8fafc; font-weight:700;">
+            </div>
           </div>
 
           <!-- Column I: REMARK -->
@@ -1417,21 +1433,90 @@
     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
 
+  <!-- Scanner Viewfinder Modal -->
+  <div id="scanner-modal" class="scanner-modal-backdrop" style="display:none;">
+    <div class="scanner-modal-card">
+      <div class="scanner-header">
+        <div class="scanner-title-box">
+          <span style="font-size:1.15rem;">📷</span>
+          <div>
+            <div class="scanner-title">Scan Printer Display</div>
+            <div class="scanner-sub">Align LCD reading &amp; serial within guide box</div>
+          </div>
+        </div>
+        <button type="button" class="scanner-close-btn" onclick="closeScannerModal()">✕</button>
+      </div>
+
+      <!-- Viewfinder Area -->
+      <div class="scanner-viewfinder-wrap">
+        <video id="scanner-video" playsinline autoplay muted></video>
+        <canvas id="scanner-canvas" style="display:none;"></canvas>
+        
+        <!-- Target Box Overlay -->
+        <div class="scanner-target-box">
+          <div class="scanner-corner tl"></div>
+          <div class="scanner-corner tr"></div>
+          <div class="scanner-corner bl"></div>
+          <div class="scanner-corner br"></div>
+          <div class="scanner-laser-line"></div>
+          <div class="scanner-guide-text">ALIGN LCD &amp; SERIAL NO. HERE</div>
+        </div>
+
+        <!-- Scanning overlay animation & status -->
+        <div id="scanner-busy-overlay" class="scanner-busy-overlay" style="display:none;">
+          <div class="scanner-spinner"></div>
+          <div id="ocr-status-text" style="font-weight:700; font-size:0.88rem; color:#ffffff; margin-top:8px;">Analyzing Image...</div>
+        </div>
+      </div>
+
+      <!-- Viewfinder Controls -->
+      <div class="scanner-controls-bar">
+        <label class="btn-scanner-action gallery-pick-btn" title="Upload photo from gallery">
+          📁 Gallery
+          <input type="file" id="scanner-file-input" accept="image/*" style="display:none;" onchange="handleScannerFileUpload(event)">
+        </label>
+        
+        <button type="button" class="btn-scanner-capture" id="scanner-capture-btn" onclick="captureAndProcessScan()">
+          <div class="capture-inner-ring"></div>
+        </button>
+
+        <button type="button" class="btn-scanner-action switch-cam-btn" onclick="toggleCameraFacing()" title="Switch Front/Back Camera">
+          🔄 Flip
+        </button>
+      </div>
+
+      <!-- Scan Result Confirmation Banner inside Modal -->
+      <div id="scanner-result-bar" class="scanner-result-bar" style="display:none;">
+        <div class="sresult-row">
+          <span class="sresult-pill" id="sresult-counter-pill">Counter: —</span>
+          <span class="sresult-pill" id="sresult-reading-pill">Closing: —</span>
+        </div>
+        <button type="button" class="btn-apply-scan" onclick="applyScanResultToForm()">
+          ⚡ Auto-Fill &amp; Continue
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- SheetJS & jsPDF for Excel & PDF Export -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Tesseract.js OCR Engine -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
   <!-- Scripts -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   
-  <script src="assets/js/config.js?v=20"></script>
-  <script src="assets/js/schema.js?v=20"></script>
-  <script src="assets/js/auth.js?v=20"></script>
-  <script src="assets/js/sheets.js?v=20"></script>
-  <script src="assets/js/db.js?v=20"></script>
-  <script src="assets/js/notifications.js?v=20"></script>
-  <script src="assets/js/admob.js?v=20"></script>
-  <script src="assets/js/app.js?v=20"></script>
+  <script src="assets/js/config.js?v=21"></script>
+  <script src="assets/js/schema.js?v=21"></script>
+  <script src="assets/js/auth.js?v=21"></script>
+  <script src="assets/js/sheets.js?v=21"></script>
+  <script src="assets/js/db.js?v=21"></script>
+  <script src="assets/js/notifications.js?v=21"></script>
+  <script src="assets/js/admob.js?v=21"></script>
+  <script src="assets/js/ocr.js?v=21"></script>
+  <script src="assets/js/app.js?v=21"></script>
 
   <script>
     function toggleUserDropdown(e) {

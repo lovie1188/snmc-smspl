@@ -49,12 +49,19 @@ function validateReadings() {
   const errorMsgEl = document.getElementById("reading-validation-error");
   const submitBtn = document.getElementById("submit-btn");
 
-  const opening = parseFloat(openingInput?.value || 0);
-  const closing = parseFloat(closingInput?.value || 0);
+  const openingVal = openingInput?.value?.trim() || "";
+  const closingVal = closingInput?.value?.trim() || "";
 
-  if (closingInput && closingInput.value !== "" && closing < opening) {
-    closingInput.classList.add("input-error");
-    if (errorMsgEl) errorMsgEl.style.display = "block";
+  const opening = parseFloat(openingVal || 0);
+  const closing = parseFloat(closingVal || 0);
+
+  // If closing reading is entered and is strictly less than opening reading
+  if (closingVal !== "" && closing < opening) {
+    if (closingInput) closingInput.classList.add("input-error");
+    if (errorMsgEl) {
+      errorMsgEl.textContent = `⚠️ Closing Reading (${closing}) cannot be less than Opening Reading (${opening})!`;
+      errorMsgEl.style.display = "block";
+    }
     if (submitBtn) submitBtn.disabled = true;
     return false;
   } else {
@@ -706,11 +713,29 @@ function toggleIssueReceiveFields() {
   calcBalance();
 }
 
-// ── Calculate BALANCE (Column J - Column K) ─────────────────
+// ── Calculate BALANCE & NET PRINTS DIFFERENCE ─────────────────
 function calcBalance() {
-  const opening = parseFloat(document.getElementById("opening-reading")?.value || 0);
-  const closing = parseFloat(document.getElementById("closing-reading")?.value || 0);
+  const openingInput = document.getElementById("opening-reading");
+  const closingInput = document.getElementById("closing-reading");
+
+  const openingVal = openingInput?.value?.trim() || "";
+  const closingVal = closingInput?.value?.trim() || "";
+
+  const opening = parseFloat(openingVal || 0);
+  const closing = parseFloat(closingVal || 0);
   
+  // 1. Net Prints Calculation: (Closing - Opening)
+  const netPrintsEl = document.getElementById("net-prints-calc");
+  if (netPrintsEl) {
+    if (closingVal !== "" && !isNaN(closing) && !isNaN(opening)) {
+      const net = closing - opening;
+      netPrintsEl.value = net >= 0 ? net : 0;
+    } else {
+      netPrintsEl.value = 0;
+    }
+  }
+
+  // 2. Paper Balance (Opening - Closing as per Google Sheets Column H formula)
   const balEl = document.getElementById("paper-balance");
   if (balEl) {
     const diff = opening - closing;
@@ -2939,5 +2964,248 @@ async function handleAdminCenterToggleGoogle(enabled) {
     const toggle = document.getElementById("admin-toggle-google-chk");
     if (toggle) toggle.checked = !enabled;
   }
+}
+
+
+// ══════════════════════════════════════════════════════════
+// ── SMART SCANNER (CAMERA & OCR AUTO-FILL) ──────────────
+// ══════════════════════════════════════════════════════════
+
+let scannerStream = null;
+let currentCameraFacing = "environment"; // default to rear camera on mobile
+let scannedDataPending = null;
+
+async function openScannerModal() {
+  const modal = document.getElementById("scanner-modal");
+  const resultBar = document.getElementById("scanner-result-bar");
+  const busy = document.getElementById("scanner-busy-overlay");
+  
+  if (resultBar) resultBar.style.display = "none";
+  if (busy) busy.style.display = "none";
+  scannedDataPending = null;
+
+  if (modal) modal.style.display = "flex";
+
+  await startCameraStream();
+}
+
+function closeScannerModal() {
+  stopCameraStream();
+  const modal = document.getElementById("scanner-modal");
+  if (modal) modal.style.display = "none";
+  scannedDataPending = null;
+}
+
+async function startCameraStream() {
+  stopCameraStream();
+  const video = document.getElementById("scanner-video");
+  if (!video) return;
+
+  try {
+    const constraints = {
+      video: {
+        facingMode: { ideal: currentCameraFacing },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    };
+    scannerStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = scannerStream;
+    await video.play();
+  } catch (err) {
+    console.warn("[Scanner] Camera stream direct start failed:", err);
+    // Try fallback without constraints
+    try {
+      scannerStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      video.srcObject = scannerStream;
+      await video.play();
+    } catch (fallbackErr) {
+      console.warn("[Scanner] No camera access:", fallbackErr);
+      showToast("Camera access unavailable. Please use the 📁 Gallery button to upload a photo.", "info");
+    }
+  }
+}
+
+function stopCameraStream() {
+  if (scannerStream) {
+    scannerStream.getTracks().forEach(t => t.stop());
+    scannerStream = null;
+  }
+  const video = document.getElementById("scanner-video");
+  if (video) video.srcObject = null;
+}
+
+async function toggleCameraFacing() {
+  currentCameraFacing = (currentCameraFacing === "environment") ? "user" : "environment";
+  await startCameraStream();
+}
+
+async function handleScannerFileUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const busy = document.getElementById("scanner-busy-overlay");
+  const statusEl = document.getElementById("ocr-status-text");
+  if (busy) busy.style.display = "flex";
+  if (statusEl) statusEl.textContent = "Loading selected image...";
+
+  try {
+    const img = new Image();
+    img.onload = async () => {
+      URL.revokeObjectURL(img.src);
+      await processImageForOcr(img);
+    };
+    img.onerror = () => {
+      if (busy) busy.style.display = "none";
+      showToast("Could not load image file.", "error");
+    };
+    img.src = URL.createObjectURL(file);
+  } catch (err) {
+    if (busy) busy.style.display = "none";
+    showToast("Error reading file: " + err.message, "error");
+  } finally {
+    event.target.value = "";
+  }
+}
+
+async function captureAndProcessScan() {
+  const video = document.getElementById("scanner-video");
+  const canvas = document.getElementById("scanner-canvas");
+  if (!video || !video.videoWidth) {
+    showToast("Camera is not ready. You can also pick a photo via 📁 Gallery.", "warn");
+    return;
+  }
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  await processImageForOcr(canvas);
+}
+
+async function processImageForOcr(sourceElement) {
+  const busy = document.getElementById("scanner-busy-overlay");
+  const statusEl = document.getElementById("ocr-status-text");
+  const resultBar = document.getElementById("scanner-result-bar");
+  const counterPill = document.getElementById("sresult-counter-pill");
+  const readingPill = document.getElementById("sresult-reading-pill");
+
+  if (busy) busy.style.display = "flex";
+  if (statusEl) statusEl.textContent = "Scanning printer display...";
+  if (resultBar) resultBar.style.display = "none";
+
+  try {
+    if (!window.OCR_ENGINE) {
+      throw new Error("OCR Engine is not initialized.");
+    }
+    const result = await window.OCR_ENGINE.recognize(sourceElement);
+    console.log("[OCR] Scan result:", result);
+
+    if (!result.closingReading && !result.serialNo && !result.counterMarker) {
+      if (busy) busy.style.display = "none";
+      showToast("Could not clearly detect reading or serial. Please align closer and retry.", "warn");
+      return;
+    }
+
+    scannedDataPending = result;
+
+    // Resolve Counter Item from serialNo or counterMarker
+    const matchedPrinter = findMatchingPrinter(result.serialNo, result.counterMarker);
+    if (matchedPrinter) {
+      scannedDataPending.matchedPrinter = matchedPrinter;
+    }
+
+    if (counterPill) {
+      counterPill.textContent = matchedPrinter 
+        ? `Printer: ${matchedPrinter.fullCounter}` 
+        : (result.serialNo ? `S/N: ${result.serialNo}` : (result.counterMarker ? `Marker: #${result.counterMarker}` : `Counter: Unknown`));
+    }
+    if (readingPill) {
+      readingPill.textContent = result.closingReading ? `Reading: ${result.closingReading}` : "Reading: Not Detected";
+    }
+
+    if (busy) busy.style.display = "none";
+    if (resultBar) resultBar.style.display = "flex";
+
+    // Vibrate phone if supported
+    if (navigator.vibrate) navigator.vibrate(100);
+
+  } catch (err) {
+    console.error("[OCR] Processing error:", err);
+    if (busy) busy.style.display = "none";
+    showToast("Scan analysis failed: " + err.message, "error");
+  }
+}
+
+/**
+ * Searches allPrinterItems to match scanned serialNo or counterMarker
+ */
+function findMatchingPrinter(serialNo, counterMarker) {
+  if (!allPrinterItems || !allPrinterItems.length) return null;
+
+  // 1. Try exact or partial serial match
+  if (serialNo) {
+    const cleanScanSerial = serialNo.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    const match = allPrinterItems.find(p => {
+      if (!p.serialNo) return false;
+      const cleanPrinterSerial = p.serialNo.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+      return cleanPrinterSerial === cleanScanSerial || cleanPrinterSerial.includes(cleanScanSerial) || cleanScanSerial.includes(cleanPrinterSerial);
+    });
+    if (match) return match;
+  }
+
+  // 2. Try counter marker match (e.g. "32")
+  if (counterMarker) {
+    const targetMarkerNum = parseInt(counterMarker, 10);
+    const match = allPrinterItems.find(p => {
+      const pNum = parseInt((p.counterNo || "").replace(/[^0-9]/g, ""), 10);
+      return pNum === targetMarkerNum;
+    });
+    if (match) return match;
+  }
+
+  return null;
+}
+
+/**
+ * Applies scanned values directly to entry form
+ */
+function applyScanResultToForm() {
+  if (!scannedDataPending) {
+    closeScannerModal();
+    return;
+  }
+
+  const { closingReading, matchedPrinter } = scannedDataPending;
+
+  // 1. If printer found, select it
+  if (matchedPrinter) {
+    const row1 = matchedPrinter.fullCounter;
+    const row2 = [matchedPrinter.counterName, matchedPrinter.hospital ? `(${matchedPrinter.hospital})` : ""].filter(Boolean).join(" ");
+    selectCounterOption(matchedPrinter.fullCounter, row1, row2);
+  }
+
+  // 2. Set closing reading if present
+  if (closingReading !== null && closingReading !== undefined) {
+    const closingInput = document.getElementById("closing-reading");
+    if (closingInput) {
+      closingInput.value = closingReading;
+      calcBalance();
+      const isValid = validateReadings();
+      if (!isValid) {
+        const opening = parseFloat(document.getElementById("opening-reading")?.value || 0);
+        showToast(`⚠️ Warning: Scanned closing reading (${closingReading}) is less than opening reading (${opening})! Please check display.`, "error");
+      }
+    }
+  }
+
+  closeScannerModal();
+
+  // 3. User feedback
+  const counterText = matchedPrinter ? matchedPrinter.fullCounter : "Printer";
+  const readingText = (closingReading !== null && closingReading !== undefined) ? `Closing: ${closingReading}` : "";
+  showToast(`✅ Auto-filled from scan: ${counterText} | ${readingText}`, "success");
 }
 
