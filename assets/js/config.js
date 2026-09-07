@@ -56,7 +56,12 @@ const APP_CONFIG = {
       return "";
     }
 
-    // 4. Default Production Cloud Backend (Used when testing on Apache/XAMPP or LAN)
+    // 4. Local Development on XAMPP / Apache: route to local Node backend on port 8080 if available
+    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
+      return "http://localhost:8080";
+    }
+
+    // 5. Default Production Cloud Backend
     return "https://snmc-smspl.netlify.app";
   }
 };

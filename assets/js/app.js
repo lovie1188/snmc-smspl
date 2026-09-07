@@ -1329,6 +1329,12 @@ async function submitEntry(event) {
     if (pickerLabel) pickerLabel.innerHTML = `<span style="color: var(--text-muted);">— Select Counter No. —</span>`;
     const confirmCard = document.getElementById("selected-printer-confirm-card");
     if (confirmCard) confirmCard.style.display = "none";
+    
+    // Clear scanned and adjusted image state
+    scannedDataPending = null;
+    adjusterSourceImage = null;
+    if (typeof resetAdjuster === "function") resetAdjuster();
+
     if (typeof goToWizardStep === "function" && currentEntryMode === "wizard") {
       goToWizardStep(1);
     }
@@ -3173,8 +3179,21 @@ function goToWizardStep(stepNum) {
     }
   }
 
-  // 3. Camera lifecycle
+  // 3. Camera and Viewfinder lifecycle
   if (stepNum === 1) {
+    // Reset any leftover adjuster or photo view to ensure camera and action buttons are visible
+    const adjCard = document.getElementById("wizard-adjuster-container");
+    const camContainer = document.getElementById("wizard-camera-container");
+    const scanActions = document.getElementById("wizard-scan-actions");
+    const skipWrap = document.getElementById("wizard-skip-wrap");
+    const busyOverlay = document.getElementById("wizard-busy-overlay");
+
+    if (adjCard) adjCard.style.display = "none";
+    if (camContainer) camContainer.style.display = "block";
+    if (scanActions) scanActions.style.display = "flex";
+    if (skipWrap) skipWrap.style.display = "block";
+    if (busyOverlay) busyOverlay.style.display = "none";
+
     startWizardCamera();
   } else {
     stopWizardCamera();
@@ -3758,21 +3777,49 @@ async function processWizardImageOcr(sourceElement, dataUrl) {
 }
 
 /**
+ * Returns from Step 2 back to Adjuster view in Step 1 without losing photo
+ */
+function returnToAdjusterStep() {
+  goToWizardStep(1);
+  if (adjusterSourceImage) {
+    const camContainer = document.getElementById("wizard-camera-container");
+    const scanActions = document.getElementById("wizard-scan-actions");
+    const skipWrap = document.getElementById("wizard-skip-wrap");
+    const adjCard = document.getElementById("wizard-adjuster-container");
+
+    if (camContainer) camContainer.style.display = "none";
+    if (scanActions) scanActions.style.display = "none";
+    if (skipWrap) skipWrap.style.display = "none";
+    if (adjCard) adjCard.style.display = "block";
+    renderAdjusterCanvas();
+  }
+}
+
+/**
  * Step 2: Confirms extracted printer & reading, auto-applies and advances to Step 3
  */
 function confirmStep2AndProceed() {
   if (scannedDataPending) {
-    const { closingReading, matchedPrinter } = scannedDataPending;
+    let { closingReading, matchedPrinter, serialNo, counterMarker } = scannedDataPending;
+
+    // Fallback match if not matched earlier
+    if (!matchedPrinter) {
+      matchedPrinter = findMatchingPrinter(serialNo, counterMarker);
+      if (matchedPrinter) {
+        scannedDataPending.matchedPrinter = matchedPrinter;
+      }
+    }
 
     // Pre-select counter in Step 3 if matched
     if (matchedPrinter) {
-      const row1 = matchedPrinter.fullCounter;
-      const row2 = [matchedPrinter.counterName, matchedPrinter.hospital ? `(${matchedPrinter.hospital})` : ""].filter(Boolean).join(" ");
-      selectCounterOption(matchedPrinter.fullCounter, row1, row2);
+      const val = matchedPrinter.fullCounter || matchedPrinter.value || matchedPrinter.counterNo;
+      const row1 = matchedPrinter.row1 || matchedPrinter.fullCounter || val;
+      const row2 = matchedPrinter.row2 || [matchedPrinter.counterName, matchedPrinter.hospital ? `(${matchedPrinter.hospital})` : ""].filter(Boolean).join(" ");
+      selectCounterOption(val, row1, row2);
     }
 
-    // Pre-fill closing reading in Step 4
-    if (closingReading !== null && closingReading !== undefined) {
+    // Pre-fill closing reading into Step 4
+    if (closingReading !== null && closingReading !== undefined && closingReading !== "") {
       const closingInput = document.getElementById("closing-reading");
       if (closingInput) {
         closingInput.value = closingReading;
@@ -3825,6 +3872,15 @@ function proceedToStep4() {
 
   // Ensure Opening Reading is refreshed from latest entry
   handleCounterSelectChange();
+
+  // Ensure scanned closing reading is preserved if present
+  if (scannedDataPending && scannedDataPending.closingReading !== null && scannedDataPending.closingReading !== undefined) {
+    const closingInput = document.getElementById("closing-reading");
+    if (closingInput && (!closingInput.value || closingInput.value === "0")) {
+      closingInput.value = scannedDataPending.closingReading;
+    }
+  }
+
   calcBalance();
   validateReadings();
 
@@ -3835,27 +3891,41 @@ function proceedToStep4() {
  * Searches allPrinterItems to match scanned serialNo or counterMarker
  */
 function findMatchingPrinter(serialNo, counterMarker) {
-  if (!allPrinterItems || !allPrinterItems.length) return null;
+  const pool = (allPrinterItems && allPrinterItems.length) ? allPrinterItems : (counterPickerData && counterPickerData.length ? counterPickerData : []);
+  if (!pool.length) return null;
 
   // 1. Exact or partial serial match
   if (serialNo) {
-    const cleanScanSerial = serialNo.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-    const match = allPrinterItems.find(p => {
-      if (!p.serialNo) return false;
-      const cleanPrinterSerial = p.serialNo.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-      return cleanPrinterSerial === cleanScanSerial || cleanPrinterSerial.includes(cleanScanSerial) || cleanScanSerial.includes(cleanPrinterSerial);
-    });
-    if (match) return match;
+    const cleanScanSerial = String(serialNo).replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    if (cleanScanSerial) {
+      const match = pool.find(p => {
+        const s = p.serialNo || (p.value && p.value.split("-")[1]) || "";
+        if (!s) return false;
+        const cleanPrinterSerial = String(s).replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+        return cleanPrinterSerial === cleanScanSerial || 
+               cleanPrinterSerial.includes(cleanScanSerial) || 
+               cleanScanSerial.includes(cleanPrinterSerial);
+      });
+      if (match) return match;
+    }
   }
 
-  // 2. Counter marker match (e.g. "32")
+  // 2. Counter marker number match (e.g. marker: "16", "#16", "Counter 16")
   if (counterMarker) {
-    const targetMarkerNum = parseInt(counterMarker, 10);
-    const match = allPrinterItems.find(p => {
-      const pNum = parseInt((p.counterNo || "").replace(/[^0-9]/g, ""), 10);
-      return pNum === targetMarkerNum;
-    });
-    if (match) return match;
+    const markerDigits = String(counterMarker).replace(/[^0-9]/g, "");
+    if (markerDigits) {
+      const targetMarkerNum = parseInt(markerDigits, 10);
+      const match = pool.find(p => {
+        const cText = p.counterNo || p.value || p.fullCounter || "";
+        const digits = cText.replace(/[^0-9]/g, "");
+        if (digits) {
+          const pNum = parseInt(digits, 10);
+          return pNum === targetMarkerNum;
+        }
+        return false;
+      });
+      if (match) return match;
+    }
   }
 
   return null;
