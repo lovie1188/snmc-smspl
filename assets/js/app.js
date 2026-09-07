@@ -2837,6 +2837,9 @@ async function loadAdminCenterPage() {
   // 2. Fetch live Admin Granular Permissions from Neon DB
   await loadAdminPermissionsMatrix();
 
+  // 2B. Fetch live Scanner OCR Engine Setting from Server/Neon DB
+  await loadAdminOcrMethodSetting();
+
   // 3. Fetch all employees to render allowlist audit
   const tbody = document.getElementById("admin-audit-table-body");
   if (tbody) {
@@ -2851,6 +2854,68 @@ async function loadAdminCenterPage() {
     if (tbody) {
       tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:16px;">Failed to load audit: ${escapeHtml(err.message)}</td></tr>`;
     }
+  }
+}
+
+async function loadAdminOcrMethodSetting() {
+  const radioVision = document.getElementById("radio-method-vision");
+  const radioTess = document.getElementById("radio-method-tesseract");
+  const statusLbl = document.getElementById("admin-ocr-status-lbl");
+  const lblVision = document.getElementById("lbl-method-vision");
+  const lblTess = document.getElementById("lbl-method-tesseract");
+
+  try {
+    const res = await sheetsRequest("getScannerSettings");
+    const method = (res && res.ocrMethod === "tesseract") ? "tesseract" : "vision";
+    if (radioVision) radioVision.checked = (method === "vision");
+    if (radioTess) radioTess.checked = (method === "tesseract");
+
+    if (lblVision && lblTess) {
+      lblVision.style.borderColor = (method === "vision") ? "#0284c7" : "#cbd5e1";
+      lblTess.style.borderColor = (method === "tesseract") ? "#0284c7" : "#cbd5e1";
+    }
+
+    if (statusLbl) {
+      statusLbl.innerHTML = `Current Active Method: <strong style="color:${method === 'vision' ? '#0284c7' : '#475569'};">${method === 'vision' ? 'AI Vision (Method 2 ⚡)' : 'JS OCR (Method 1 - Tesseract)'}</strong>`;
+    }
+
+    if (window.OCR_ENGINE && typeof window.OCR_ENGINE.setMethod === "function") {
+      window.OCR_ENGINE.setMethod(method);
+    }
+  } catch (err) {
+    console.warn("Could not load OCR setting:", err.message);
+  }
+}
+
+async function handleOcrMethodChange(method) {
+  const chosen = (method === "tesseract") ? "tesseract" : "vision";
+  const statusLbl = document.getElementById("admin-ocr-status-lbl");
+  const lblVision = document.getElementById("lbl-method-vision");
+  const lblTess = document.getElementById("lbl-method-tesseract");
+
+  try {
+    showToast(`Updating Scanner Engine to ${chosen.toUpperCase()}...`, "info");
+    const res = await sheetsRequest("saveScannerSettings", {
+      method: "POST",
+      body: JSON.stringify({ ocrMethod: chosen })
+    });
+
+    if (lblVision && lblTess) {
+      lblVision.style.borderColor = (chosen === "vision") ? "#0284c7" : "#cbd5e1";
+      lblTess.style.borderColor = (chosen === "tesseract") ? "#0284c7" : "#cbd5e1";
+    }
+
+    if (statusLbl) {
+      statusLbl.innerHTML = `Current Active Method: <strong style="color:${chosen === 'vision' ? '#0284c7' : '#475569'};">${chosen === 'vision' ? 'AI Vision (Method 2 ⚡)' : 'JS OCR (Method 1 - Tesseract)'}</strong>`;
+    }
+
+    if (window.OCR_ENGINE && typeof window.OCR_ENGINE.setMethod === "function") {
+      window.OCR_ENGINE.setMethod(chosen);
+    }
+
+    showToast(`Scanner Engine successfully updated to ${chosen.toUpperCase()}!`, "success");
+  } catch (err) {
+    showToast("Failed to update scanner setting: " + err.message, "error");
   }
 }
 
@@ -3667,9 +3732,10 @@ async function processWizardImageOcr(sourceElement, dataUrl) {
     }
 
     if (readingValEl) {
-      if (result.closingReading) {
+      const isVision = result.method === "vision";
+      if (result.closingReading !== null && result.closingReading !== undefined) {
         readingValEl.innerHTML = `<strong style="font-size:1.4rem; color:#0284c7;">${result.closingReading}</strong> <span style="font-size:0.82rem; color:var(--text-muted);">Pages</span>`;
-        if (readingSubEl) readingSubEl.textContent = "Extracted from LCD Total Count";
+        if (readingSubEl) readingSubEl.textContent = isVision ? "✨ Extracted via AI Vision" : "Extracted from LCD Total Count (JS OCR)";
       } else {
         readingValEl.innerHTML = `<span style="color:#f59e0b; font-size:1.1rem;">⚠️ Not Detected</span>`;
         if (readingSubEl) readingSubEl.textContent = "Enter closing reading manually in Step 4";

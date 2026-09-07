@@ -1,14 +1,117 @@
 /**
- * SNMC PrintTrack - OCR Scanner Engine (assets/js/ocr.js)
- * High-speed client-side LCD & Marker extraction using Tesseract.js
+ * SNMC PrintTrack - OCR & AI Vision Scanner Engine (assets/js/ocr.js)
+ * Supports Method 2 (Cloud AI Vision via Gemini) & Method 1 (Client Tesseract.js)
  */
 
 const OCR_ENGINE = {
   isInitialized: false,
   worker: null,
   initPromise: null,
+  activeMethod: "vision", // Default to Method 2: AI Vision
 
-  async init() {
+  async getActiveMethod() {
+    // Check cached or server-authoritative OCR setting
+    try {
+      if (window.__SNMC_OCR_METHOD__) {
+        this.activeMethod = window.__SNMC_OCR_METHOD__;
+        return this.activeMethod;
+      }
+      if (typeof sheetsRequest === "function") {
+        const res = await sheetsRequest("getScannerSettings");
+        if (res && res.ocrMethod) {
+          this.activeMethod = res.ocrMethod;
+          window.__SNMC_OCR_METHOD__ = res.ocrMethod;
+          return this.activeMethod;
+        }
+      }
+    } catch (_) {}
+    return this.activeMethod;
+  },
+
+  setMethod(method) {
+    this.activeMethod = (method === "tesseract") ? "tesseract" : "vision";
+    window.__SNMC_OCR_METHOD__ = this.activeMethod;
+  },
+
+  /**
+   * Main recognize dispatcher: routes to AI Vision (Method 2) or Tesseract (Method 1)
+   */
+  async recognize(imageSource) {
+    const method = await this.getActiveMethod();
+    console.log(`[OCR_ENGINE] Using Scanner Method: ${method.toUpperCase()}`);
+
+    if (method === "vision") {
+      return await this.recognizeWithVision(imageSource);
+    } else {
+      return await this.recognizeWithTesseract(imageSource);
+    }
+  },
+
+  /**
+   * Method 2: AI Vision via Backend Gemini Proxy
+   */
+  async recognizeWithVision(imageSource) {
+    const statusEl = document.getElementById("ocr-status-text") || document.getElementById("wizard-ocr-status");
+    if (statusEl) statusEl.textContent = "AI Vision: Analyzing display & labels...";
+
+    let base64Data = "";
+    if (imageSource instanceof HTMLCanvasElement) {
+      base64Data = imageSource.toDataURL("image/jpeg", 0.90);
+    } else if (typeof imageSource === "string" && imageSource.startsWith("data:")) {
+      base64Data = imageSource;
+    } else if (imageSource instanceof HTMLImageElement) {
+      const c = document.createElement("canvas");
+      c.width = imageSource.naturalWidth || imageSource.width;
+      c.height = imageSource.naturalHeight || imageSource.height;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(imageSource, 0, 0);
+      base64Data = c.toDataURL("image/jpeg", 0.90);
+    } else {
+      throw new Error("Unsupported image format for AI Vision.");
+    }
+
+    if (typeof sheetsRequest !== "function") {
+      throw new Error("sheetsRequest client is not available.");
+    }
+
+    if (statusEl) statusEl.textContent = "AI Vision: Processing meter & serial...";
+
+    const res = await sheetsRequest("visionScan", {
+      method: "POST",
+      body: JSON.stringify({
+        image: base64Data,
+        mimeType: "image/jpeg"
+      })
+    });
+
+    if (!res || !res.success || !res.data) {
+      throw new Error((res && res.error) || "AI Vision returned invalid response.");
+    }
+
+    const aiData = res.data;
+    let closingReading = null;
+    if (aiData.closingReading !== null && aiData.closingReading !== undefined) {
+      const n = parseInt(aiData.closingReading, 10);
+      if (!isNaN(n) && n >= 0) closingReading = n;
+    }
+
+    let serialNo = aiData.serialNo ? String(aiData.serialNo).trim() : null;
+    let counterMarker = aiData.counterMarker ? String(aiData.counterMarker).trim().replace(/[^0-9]/g, "") : null;
+
+    return {
+      closingReading,
+      serialNo,
+      counterMarker,
+      confidence: aiData.confidence || 0.9,
+      notes: aiData.notes || "",
+      method: "vision"
+    };
+  },
+
+  /**
+   * Method 1: Client-Side JS OCR (Tesseract.js)
+   */
+  async initTesseract() {
     if (this.isInitialized && this.worker) return true;
     if (this.initPromise) return this.initPromise;
 
@@ -23,11 +126,11 @@ const OCR_ENGINE = {
           corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core-simd-lstm.wasm.js",
           logger: m => {
             if (m && m.status) {
-              const statusEl = document.getElementById("ocr-status-text");
+              const statusEl = document.getElementById("ocr-status-text") || document.getElementById("wizard-ocr-status");
               if (statusEl) {
                 if (m.status === "recognizing text") {
                   const pct = Math.round((m.progress || 0) * 100);
-                  statusEl.textContent = `Reading display... ${pct}%`;
+                  statusEl.textContent = `Tesseract reading display... ${pct}%`;
                 } else if (m.status === "loading tesseract core") {
                   statusEl.textContent = "Loading OCR core...";
                 } else if (m.status === "loading language traineddata") {
@@ -58,9 +161,6 @@ const OCR_ENGINE = {
     return this.initPromise;
   },
 
-  /**
-   * Preprocesses canvas for LCD dot-matrix / segment contrast
-   */
   preprocessCanvas(sourceCanvas) {
     const w = sourceCanvas.width;
     const h = sourceCanvas.height;
@@ -93,13 +193,10 @@ const OCR_ENGINE = {
     return processedCanvas;
   },
 
-  /**
-   * Recognizes text from image/canvas/dataURL/Blob
-   */
-  async recognize(imageSource) {
-    const ready = await this.init();
+  async recognizeWithTesseract(imageSource) {
+    const ready = await this.initTesseract();
     if (!ready) {
-      throw new Error("OCR engine could not be initialized");
+      throw new Error("Tesseract engine could not be initialized.");
     }
 
     let targetSource = imageSource;
@@ -108,12 +205,11 @@ const OCR_ENGINE = {
     }
 
     const { data: { text } } = await this.worker.recognize(targetSource);
-    return this.parsePrinterData(text);
+    const parsed = this.parsePrinterData(text);
+    parsed.method = "tesseract";
+    return parsed;
   },
 
-  /**
-   * Parses raw OCR text into structured values
-   */
   parsePrinterData(rawText) {
     if (!rawText) return { closingReading: null, serialNo: null, counterMarker: null, rawText: "" };
     
@@ -122,29 +218,41 @@ const OCR_ENGINE = {
     let serialNo = null;
     let counterMarker = null;
 
-    // 1. Check for LCD reading: "TOTAL COUNT : 017606" or "017606"
-    const countPatterns = [
-      /(?:TOTAL\s*COUNT|TOTAL\s*PAGE|T0TAL\s*COUNT|COUNT)\s*[:=]?\s*0*([0-9]{2,8})/i,
-      /(?:TOTAL|COUNT)\s*[:=]?\s*([0-9]{3,8})/i,
-      /\b0*([0-9]{4,7})\b/g
+    const labeledPatterns = [
+      /(?:T[O0o]TA[L1I|]\s*C[O0o]UNT|T[O0o]TA[L1I|]\s*C[O0o]UN|T[O0o]TAL|C[O0o]UNT)\s*[:=.\s]?\s*0*([0-9OIl]{1,8})\b/i,
+      /(?:T[O0o]TA[L1I|]\s*PA[G6]E|PA[G6]E\s*C[O0o]UNT)\s*[:=.\s]?\s*0*([0-9OIl]{1,8})\b/i,
+      /(?:COUNT|TOTAL)\s*[:=.\s]?\s*0*([0-9OIl]{1,8})\b/i
     ];
 
-    for (const pat of countPatterns) {
-      if (pat.global) {
-        const matches = text.match(pat);
-        if (matches && matches.length) {
-          for (const m of matches) {
-            const numVal = parseInt(m.trim(), 10);
-            if (numVal > 0 && numVal < 10000000 && (!serialNo || !serialNo.includes(m.trim()))) {
-              if (!closingReading) closingReading = numVal;
-            }
-          }
+    for (const pat of labeledPatterns) {
+      const m = text.match(pat);
+      if (m && m[1]) {
+        const cleanDigits = m[1].trim().replace(/[O]/gi, "0").replace(/[Il|]/g, "1");
+        const num = parseInt(cleanDigits, 10);
+        if (!isNaN(num) && num >= 0) {
+          closingReading = num;
+          break;
         }
-      } else {
-        const m = text.match(pat);
-        if (m && m[1]) {
-          const num = parseInt(m[1].trim(), 10);
-          if (!isNaN(num) && num > 0) {
+      }
+    }
+
+    if (closingReading === null) {
+      const formattedMeter = text.match(/\b0+([0-9OIl]{1,6})\b/);
+      if (formattedMeter && formattedMeter[1]) {
+        const cleanDigits = formattedMeter[1].trim().replace(/[O]/gi, "0").replace(/[Il|]/g, "1");
+        const num = parseInt(cleanDigits, 10);
+        if (!isNaN(num) && num >= 0) {
+          closingReading = num;
+        }
+      }
+    }
+
+    if (closingReading === null) {
+      const genericMatches = text.match(/\b([0-9]{4,7})\b/g);
+      if (genericMatches) {
+        for (const gm of genericMatches) {
+          const num = parseInt(gm.trim(), 10);
+          if (!isNaN(num) && (!serialNo || !serialNo.includes(gm.trim()))) {
             closingReading = num;
             break;
           }
@@ -152,8 +260,6 @@ const OCR_ENGINE = {
       }
     }
 
-    // 2. Check for Serial No: e.g. "AcN 3041234129", "ACN 3041234129", "AN 3041234129", "ACN3041234129"
-    // Note: OCR recognized 'AN 3041234129' or 'ACN 3041234129'
     const serialPatterns = [
       /(?:A[C\s]?N|ACN|SCN|AG\s*N)[\s.:_-]*([0-9]{8,12})/i,
       /(?:A[C\s]?N|ACN)[\s.:_-]*(304[\s\/-]?[0-9]{6,8})/i,
@@ -173,7 +279,6 @@ const OCR_ENGINE = {
       }
     }
 
-    // 3. Check for Counter circle/marker number (e.g. circled "16", "(16)", "16", "NO. 16", "COUNTER 16")
     const markerPatterns = [
       /(?:COUNTER|NO|NO\.|C|#)[\s.:#-]*([0-9]{1,3})\b/i,
       /\(([0-9]{1,3})\)/,
@@ -184,7 +289,6 @@ const OCR_ENGINE = {
       const m = text.match(pat);
       if (m && m[1]) {
         const parsed = parseInt(m[1].trim(), 10);
-        // Ensure not part of the large reading or serial digits
         if (!isNaN(parsed) && parsed >= 1 && parsed <= 150) {
           if (!closingReading || parsed !== closingReading) {
             counterMarker = String(parsed);

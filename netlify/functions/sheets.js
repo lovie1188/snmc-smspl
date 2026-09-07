@@ -58,6 +58,101 @@ const { createVerify } = require("crypto");
 const { JWT } = require("google-auth-library");
 const { Client: PgClient } = require("pg");
 
+/**
+ * Calls Gemini Vision API with base64 image data
+ */
+async function callGeminiVision(base64Image, mimeType = "image/jpeg") {
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_SHEETS_API_KEY || "";
+  if (!geminiKey) {
+    throw new Error("No Gemini API key configured in server environment.");
+  }
+
+  // Strip prefix data URL if present
+  let rawBase64 = base64Image;
+  if (base64Image.includes(",")) {
+    rawBase64 = base64Image.split(",")[1];
+  }
+
+  const promptText = `You are a medical hospital printer scanner system for SNMC PrintTrack.
+Analyze this photo of a printer LCD display panel and stickers/labels.
+Task:
+1. Extract "closingReading": the printer's total meter/page reading count (often labeled "TOTAL COUNT", "TOTAL PAGE", "PAGE COUNT", or shown as a 4-8 digit number e.g. 017606, 000120, 15420). If not clearly visible or unreadable, return null. Return as an integer number.
+2. Extract "serialNo": the printer serial number (commonly starting with "ACN", "304", or alphanumeric on HP/Canon label). If not found, return null.
+3. Extract "counterMarker": any counter sticker or circle marker number (e.g., circled "16", "#16", "COUNTER 16"). Return as a string or null.
+4. Provide "confidence": number between 0.0 and 1.0.
+
+Return ONLY a valid, raw JSON object without markdown fences, with exactly these keys:
+{
+  "closingReading": <integer or null>,
+  "serialNo": <string or null>,
+  "counterMarker": <string or null>,
+  "confidence": <number>,
+  "notes": <short string note>
+}`;
+
+  const payload = {
+    contents: [
+      {
+        parts: [
+          { text: promptText },
+          {
+            inline_data: {
+              mime_type: mimeType || "image/jpeg",
+              data: rawBase64
+            }
+          }
+        ]
+      }
+    ],
+    generationConfig: {
+      temperature: 0.1,
+      response_mime_type: "application/json"
+    }
+  };
+
+  // Model fallback chain: gemini-2.5-flash, gemini-flash-latest, gemini-1.5-flash, gemini-2.0-flash
+  const models = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-1.5-flash", "gemini-2.0-flash"];
+  let lastError = null;
+
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        console.warn(`[Gemini Vision] Model ${model} returned HTTP ${resp.status}:`, errText);
+        lastError = new Error(`Gemini ${model} HTTP ${resp.status}: ${errText}`);
+        continue;
+      }
+
+      const resData = await resp.json();
+      const rawCandidateText = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      if (!rawCandidateText) {
+        lastError = new Error("Empty response from Gemini Vision.");
+        continue;
+      }
+
+      // Parse JSON
+      let cleaned = rawCandidateText.trim();
+      if (cleaned.startsWith("```")) {
+        cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+      }
+      const parsed = JSON.parse(cleaned);
+      return parsed;
+    } catch (e) {
+      console.warn(`[Gemini Vision] Model ${model} attempt failed:`, e.message);
+      lastError = e;
+    }
+  }
+
+  throw lastError || new Error("Gemini Vision processing failed across all models.");
+}
+
 const NEON_DB_URL = process.env.NEON_DATABASE_URL || "postgresql://neondb_owner:npg_0urCjOWDdp9f@ep-long-violet-az1arbtf-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
 
 let firebaseCertCache = { expiresAt: 0, certs: null };
@@ -1214,6 +1309,63 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { ok: true, photoUrl: cleanDataUrl, email: targetEmail });
     }
 
+    // ── 15. Action: getScannerSettings (SuperAdmin & App Scanner Config) ──
+    if (action === "getScannerSettings" && event.httpMethod === "GET") {
+      let ocrMethod = (process.env.OCR_METHOD || "vision").toLowerCase().trim();
+      try {
+        const rows = await queryNeon(`SELECT setting_value FROM app_settings WHERE setting_key = 'snmc_ocr_method' LIMIT 1;`);
+        if (rows.length > 0 && rows[0].setting_value) {
+          ocrMethod = String(rows[0].setting_value).toLowerCase().trim();
+        }
+      } catch (_) {}
+      return jsonResponse(200, headers, { success: true, ocrMethod, hasGeminiKey: !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_SHEETS_API_KEY) });
+    }
+
+    // ── 16. Action: saveScannerSettings (SuperAdmin Only) ──
+    if (action === "saveScannerSettings" && event.httpMethod === "POST") {
+      if (!userIsSuperAdmin) {
+        return jsonResponse(403, headers, { success: false, error: "Forbidden: SuperAdmin access required." });
+      }
+      const payload = JSON.parse(event.body || "{}");
+      const chosenMethod = (payload.ocrMethod === "tesseract") ? "tesseract" : "vision";
+      try {
+        const existing = await queryNeon(`SELECT id FROM app_settings WHERE setting_key = 'snmc_ocr_method' LIMIT 1;`);
+        if (existing.length > 0) {
+          await queryNeon(`UPDATE app_settings SET setting_value = $1, updated_at = NOW() WHERE setting_key = 'snmc_ocr_method';`, [chosenMethod]);
+        } else {
+          await queryNeon(`INSERT INTO app_settings (setting_key, setting_value, created_at, updated_at) VALUES ('snmc_ocr_method', $1, NOW(), NOW());`, [chosenMethod]);
+        }
+        return jsonResponse(200, headers, { success: true, ocrMethod: chosenMethod, message: `Scanner OCR Method updated to "${chosenMethod.toUpperCase()}".` });
+      } catch (e) {
+        return jsonResponse(500, headers, { success: false, error: "Failed to persist setting: " + e.message });
+      }
+    }
+
+    // ── 17. Action: visionScan (Gemini AI Vision Extraction Proxy) ──
+    if (action === "visionScan" && event.httpMethod === "POST") {
+      const payload = JSON.parse(event.body || "{}");
+      const base64Image = payload.image || payload.base64Data || "";
+      const mimeType = payload.mimeType || "image/jpeg";
+
+      if (!base64Image) {
+        return jsonResponse(400, headers, { success: false, error: "No image payload provided for AI Vision." });
+      }
+
+      try {
+        const aiResult = await callGeminiVision(base64Image, mimeType);
+        return jsonResponse(200, headers, {
+          success: true,
+          method: "vision",
+          data: aiResult
+        });
+      } catch (vErr) {
+        console.error("[Vision Scan Error]:", vErr.message);
+        return jsonResponse(502, headers, {
+          success: false,
+          error: "AI Vision analysis failed: " + vErr.message
+        });
+      }
+    }
 
     return {
       statusCode: 400,

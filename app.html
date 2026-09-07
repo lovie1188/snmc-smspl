@@ -7,7 +7,7 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#f8fafc">
   <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
-  <link rel="stylesheet" href="assets/css/app.css?v=27">
+  <link rel="stylesheet" href="assets/css/app.css?v=31">
 
   <style>
     /* ── SuperAdmin Notification Panel ── */
@@ -470,7 +470,7 @@
               <div class="step-description">Point camera at printer LCD reading and handwritten serial number, or choose a photo from your gallery.</div>
             </div>
 
-            <!-- In-Place Camera Viewfinder Box -->
+            <!-- In-Place Camera Viewfinder Box with Embedded Controls -->
             <div class="wizard-camera-container" id="wizard-camera-container">
               <video id="wizard-video" playsinline autoplay muted></video>
               <canvas id="wizard-canvas" style="display:none;"></canvas>
@@ -482,6 +482,22 @@
                 <div class="scanner-corner br"></div>
                 <div class="scanner-laser-line"></div>
                 <div class="scanner-guide-text">ALIGN LCD &amp; SERIAL NUMBER</div>
+              </div>
+
+              <!-- Camera Controls (Floating Inside Viewfinder) -->
+              <div class="wizard-scan-actions" id="wizard-scan-actions">
+                <label class="btn-wizard-sub" title="Upload from phone gallery">
+                  📁 Pick Gallery Photo
+                  <input type="file" id="wizard-file-input" accept="image/*" style="display:none;" onchange="handleWizardFileUpload(event)">
+                </label>
+
+                <button type="button" class="btn-scanner-capture" onclick="captureWizardPhoto()" title="Snap photo">
+                  <div class="capture-inner-ring"></div>
+                </button>
+
+                <button type="button" class="btn-wizard-sub" onclick="toggleCameraFacing()" title="Switch camera">
+                  🔄 Flip Cam
+                </button>
               </div>
 
               <!-- Spinner while processing OCR -->
@@ -566,28 +582,13 @@
                 <button type="button" class="btn-adjuster-retake" onclick="cancelAdjusterAndRetake()">
                   📸 Retake Photo
                 </button>
-                <button type="button" class="btn-adjuster-scan" onclick="applyAdjusterCropAndScan()">
-                  ⚡ Read Display (OCR) ➔
+                <button type="button" class="btn-adjuster-scan" id="btn-apply-adjuster-scan" onclick="applyAdjusterCropAndScan()">
+                  ⚡ Smart Scan Display ➔
                 </button>
               </div>
             </div>
 
-            <!-- Camera Controls (Hidden when Adjuster is open) -->
-            <div class="wizard-scan-actions" id="wizard-scan-actions">
-              <label class="btn-wizard-sub" title="Upload from phone gallery">
-                📁 Pick Gallery Photo
-                <input type="file" id="wizard-file-input" accept="image/*" style="display:none;" onchange="handleWizardFileUpload(event)">
-              </label>
-
-              <button type="button" class="btn-scanner-capture" onclick="captureWizardPhoto()" title="Snap photo">
-                <div class="capture-inner-ring"></div>
-              </button>
-
-              <button type="button" class="btn-wizard-sub" onclick="toggleCameraFacing()" title="Switch camera">
-                🔄 Flip Cam
-              </button>
-            </div>
-
+            <!-- Skip Link -->
             <div class="wizard-skip-link-wrap" id="wizard-skip-wrap">
               <button type="button" class="btn-link-skip" onclick="skipWizardToManual()">
                 ✍️ Skip scanning &amp; enter printer manually ➔
@@ -629,9 +630,12 @@
             </div>
 
             <!-- Wizard Navigation Buttons -->
-            <div class="wizard-nav-bar">
-              <button type="button" class="btn-wizard-prev" onclick="goToWizardStep(1)">
-                ⬅️ Previous (Retake)
+            <div class="wizard-nav-bar" style="justify-content:space-between;">
+              <button type="button" class="btn-wizard-prev" onclick="returnToAdjusterStep()" title="Back to Adjuster without losing photo">
+                ⬅️ Back to Adjuster
+              </button>
+              <button type="button" class="btn-wizard-prev" style="background:#fef2f2; color:#ef4444; border-color:#fecaca;" onclick="goToWizardStep(1)" title="Discard and take a new photo">
+                📸 Retake Photo
               </button>
               <button type="button" class="btn-wizard-next" onclick="confirmStep2AndProceed()">
                 Confirm &amp; Next ➡️
@@ -1174,6 +1178,37 @@
               <input type="checkbox" id="admin-toggle-google-chk" onchange="handleAdminCenterToggleGoogle(this.checked)" style="opacity:0; width:0; height:0;">
               <span style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#cbd5e1; transition:.3s; border-radius:24px;" id="admin-toggle-slider"></span>
             </label>
+          </div>
+        </div>
+
+        <!-- Section 1A: Scanner Engine Configuration (AI Vision vs JS OCR) -->
+        <div style="margin-top: 16px; background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 16px; padding: 16px;">
+          <div style="font-size: 0.88rem; font-weight: 800; color: #0284c7; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+            <span>🤖 Scanner Engine &amp; OCR Method</span>
+          </div>
+          <div style="font-size: 0.76rem; color: #475569; margin-bottom: 12px; line-height: 1.4;">
+            Choose whether the mobile camera scanner uses <strong>Method 2: Gemini AI Vision (Recommended)</strong> or <strong>Method 1: Client JS OCR (Tesseract.js)</strong>. This setting is synced directly to the server environment.
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <label id="lbl-method-vision" style="display: flex; flex-direction: column; gap: 4px; background: #ffffff; padding: 12px; border-radius: 12px; border: 2px solid #0284c7; cursor: pointer;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="radio" name="ocrMethodRadio" value="vision" id="radio-method-vision" onchange="handleOcrMethodChange('vision')" checked style="accent-color: #0284c7;">
+                <strong style="color: #0284c7; font-size: 0.82rem;">Method 2: AI Vision ⚡</strong>
+              </div>
+              <span style="font-size: 0.68rem; color: #64748b; margin-left: 24px;">Cloud Gemini Vision API. Superior dot-matrix &amp; sticker recognition. Zero client load.</span>
+            </label>
+
+            <label id="lbl-method-tesseract" style="display: flex; flex-direction: column; gap: 4px; background: #ffffff; padding: 12px; border-radius: 12px; border: 1.5px solid #cbd5e1; cursor: pointer;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="radio" name="ocrMethodRadio" value="tesseract" id="radio-method-tesseract" onchange="handleOcrMethodChange('tesseract')" style="accent-color: #0284c7;">
+                <strong style="color: #475569; font-size: 0.82rem;">Method 1: JS OCR</strong>
+              </div>
+              <span style="font-size: 0.68rem; color: #64748b; margin-left: 24px;">Client-side Tesseract.js WASM engine. Runs locally in browser.</span>
+            </label>
+          </div>
+          <div style="margin-top: 8px; font-size: 0.72rem; color: #0369a1;" id="admin-ocr-status-lbl">
+            Current Active Method: <strong>AI Vision (Method 2)</strong>
           </div>
         </div>
 
@@ -1789,15 +1824,15 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   
-  <script src="assets/js/config.js?v=27"></script>
-  <script src="assets/js/schema.js?v=27"></script>
-  <script src="assets/js/auth.js?v=27"></script>
-  <script src="assets/js/sheets.js?v=27"></script>
-  <script src="assets/js/db.js?v=27"></script>
-  <script src="assets/js/notifications.js?v=27"></script>
-  <script src="assets/js/admob.js?v=27"></script>
-  <script src="assets/js/ocr.js?v=27"></script>
-  <script src="assets/js/app.js?v=27"></script>
+  <script src="assets/js/config.js?v=32"></script>
+  <script src="assets/js/schema.js?v=32"></script>
+  <script src="assets/js/auth.js?v=32"></script>
+  <script src="assets/js/sheets.js?v=32"></script>
+  <script src="assets/js/db.js?v=32"></script>
+  <script src="assets/js/notifications.js?v=32"></script>
+  <script src="assets/js/admob.js?v=32"></script>
+  <script src="assets/js/ocr.js?v=32"></script>
+  <script src="assets/js/app.js?v=32"></script>
 
   <script>
     function toggleUserDropdown(e) {

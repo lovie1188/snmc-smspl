@@ -2161,30 +2161,38 @@ body {
 }
 
 .wizard-scan-actions {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 14px;
+  z-index: 15;
+  pointer-events: auto;
 }
 .btn-wizard-sub {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1.5px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 10px 14px;
-  font-size: 0.78rem;
+  background: rgba(15, 23, 42, 0.68);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 0.74rem;
   font-weight: 700;
-  color: var(--text);
+  color: #ffffff;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   transition: all 0.15s ease;
 }
 .btn-wizard-sub:hover {
-  background: #ffffff;
-  border-color: var(--primary);
+  background: rgba(15, 23, 42, 0.88);
+  border-color: #38bdf8;
+  color: #38bdf8;
 }
 
 .wizard-skip-link-wrap {
