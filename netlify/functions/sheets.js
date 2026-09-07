@@ -110,8 +110,8 @@ Return ONLY a valid, raw JSON object without markdown fences, with exactly these
     }
   };
 
-  // Model fallback chain: gemini-2.5-flash, gemini-flash-latest, gemini-1.5-flash, gemini-2.0-flash
-  const models = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-1.5-flash", "gemini-2.0-flash"];
+  // Active model fallback chain verified for this API key:
+  const models = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-2.5-flash"];
   let lastError = null;
 
   for (const model of models) {
