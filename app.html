@@ -7,7 +7,7 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#f8fafc">
   <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
-  <link rel="stylesheet" href="assets/css/app.css?v=22">
+  <link rel="stylesheet" href="assets/css/app.css?v=23">
 
   <style>
     /* ── SuperAdmin Notification Panel ── */
@@ -402,143 +402,319 @@
 
     <!-- TAB 1: NEW ENTRY FORM -->
     <section id="tab-entry" class="tab-panel">
-      <div class="skynex-card">
-        <div class="skynex-card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <div style="font-size: 1rem; font-weight: 800;">Daily Reading &amp; Rim Entry</div>
-          <button type="button" class="btn-scan-trigger" onclick="openScannerModal()" title="Scan Printer Display & Auto Fill">
-            <span style="font-size: 1.05rem;">📷</span> <span>Scan Display</span>
-          </button>
+      <!-- TAB 1: SMART GUIDED ENTRY WIZARD & DIRECT FORM -->
+      <div class="skynex-card wizard-card">
+        
+        <!-- Header Mode Switcher: Guided Wizard vs Direct Form -->
+        <div class="wizard-top-bar">
+          <div>
+            <div class="wizard-header-title">Daily Reading &amp; Rim Entry</div>
+            <div class="wizard-header-sub">Guided smart entry with display verification</div>
+          </div>
+          <div class="wizard-mode-pills">
+            <button type="button" class="wizard-mode-pill active" id="btn-mode-wizard" onclick="setEntryMode('wizard')">
+              📷 Guided Wizard
+            </button>
+            <button type="button" class="wizard-mode-pill" id="btn-mode-manual" onclick="setEntryMode('manual')">
+              ✍️ Direct Form
+            </button>
+          </div>
+        </div>
+
+        <!-- ── PROGRESS STEPPER BAR (Wizard Mode) ── -->
+        <div class="wizard-stepper-wrap" id="wizard-stepper-wrap">
+          <div class="wizard-step-node active" id="step-node-1" onclick="goToWizardStep(1)">
+            <div class="step-num">1</div>
+            <div class="step-lbl">Scan / Photo</div>
+          </div>
+          <div class="step-line" id="step-line-1"></div>
+          <div class="wizard-step-node" id="step-node-2" onclick="goToWizardStep(2)">
+            <div class="step-num">2</div>
+            <div class="step-lbl">Verify Data</div>
+          </div>
+          <div class="step-line" id="step-line-2"></div>
+          <div class="wizard-step-node" id="step-node-3" onclick="goToWizardStep(3)">
+            <div class="step-num">3</div>
+            <div class="step-lbl">Stock &amp; Rims</div>
+          </div>
+          <div class="step-line" id="step-line-3"></div>
+          <div class="wizard-step-node" id="step-node-4" onclick="goToWizardStep(4)">
+            <div class="step-num">4</div>
+            <div class="step-lbl">Meter &amp; Save</div>
+          </div>
         </div>
 
         <form id="entry-form" onsubmit="submitEntry(event)">
           
-          <!-- Column C: Entry Date (Visible for SuperAdmins to choose back-date, hidden for normal operators) -->
-          <div class="form-group" id="entry-date-group" style="display: none;">
+          <!-- Column C: Entry Date (Visible for SuperAdmins) -->
+          <div class="form-group" id="entry-date-group" style="display: none; margin-bottom:12px;">
             <label>Entry Date <span class="req">*</span></label>
             <input type="date" id="entry-date-input" class="native-input" style="background:#ffffff; font-weight:600;">
           </div>
 
-          <!-- Column D: Counter Number Dropdown with 2-Row Mobile-Optimized Picker -->
-          <div class="form-group">
-            <label>Counter Number <span class="req">*</span></label>
-            
-            <!-- Hidden real input for form submission -->
-            <input type="hidden" id="counter-select" name="counter" required>
+          <!-- Hidden input for real counter selection -->
+          <input type="hidden" id="counter-select" name="counter" required>
+
+          <!-- ═════════════════════════════════════════════════════════ -->
+          <!-- ── WIZARD STEP 1: SCAN DISPLAY OR UPLOAD PHOTO ────────── -->
+          <!-- ═════════════════════════════════════════════════════════ -->
+          <div class="wizard-step-panel active" id="wizard-panel-1">
+            <div class="step-intro-box">
+              <div class="step-badge">STEP 1 OF 4</div>
+              <div class="step-heading">Scan Printer Display &amp; Marker</div>
+              <div class="step-description">Point camera at printer LCD reading and handwritten serial number, or choose a photo from your gallery.</div>
+            </div>
+
+            <!-- In-Place Camera Viewfinder Box -->
+            <div class="wizard-camera-container">
+              <video id="wizard-video" playsinline autoplay muted></video>
+              <canvas id="wizard-canvas" style="display:none;"></canvas>
+              
+              <div class="wizard-target-overlay">
+                <div class="scanner-corner tl"></div>
+                <div class="scanner-corner tr"></div>
+                <div class="scanner-corner bl"></div>
+                <div class="scanner-corner br"></div>
+                <div class="scanner-laser-line"></div>
+                <div class="scanner-guide-text">ALIGN LCD &amp; SERIAL NUMBER</div>
+              </div>
+
+              <!-- Spinner while processing OCR -->
+              <div id="wizard-busy-overlay" class="scanner-busy-overlay" style="display:none;">
+                <div class="scanner-spinner"></div>
+                <div id="wizard-ocr-status" style="font-weight:700; font-size:0.92rem; color:#ffffff; margin-top:10px;">Reading Display...</div>
+                <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">Enhancing digits &amp; serial number</div>
+              </div>
+            </div>
+
+            <!-- Camera Controls -->
+            <div class="wizard-scan-actions">
+              <label class="btn-wizard-sub" title="Upload from phone gallery">
+                📁 Pick Gallery Photo
+                <input type="file" id="wizard-file-input" accept="image/*" style="display:none;" onchange="handleWizardFileUpload(event)">
+              </label>
+
+              <button type="button" class="btn-scanner-capture" onclick="captureWizardPhoto()" title="Snap photo">
+                <div class="capture-inner-ring"></div>
+              </button>
+
+              <button type="button" class="btn-wizard-sub" onclick="toggleCameraFacing()" title="Switch camera">
+                🔄 Flip Cam
+              </button>
+            </div>
+
+            <div class="wizard-skip-link-wrap">
+              <button type="button" class="btn-link-skip" onclick="skipWizardToManual()">
+                ✍️ Skip scanning &amp; enter printer manually ➔
+              </button>
+            </div>
+          </div>
+
+
+          <!-- ═════════════════════════════════════════════════════════ -->
+          <!-- ── WIZARD STEP 2: VERIFICATION SLIDE (Confirm Read) ───── -->
+          <!-- ═════════════════════════════════════════════════════════ -->
+          <div class="wizard-step-panel" id="wizard-panel-2" style="display:none;">
+            <div class="step-intro-box">
+              <div class="step-badge">STEP 2 OF 4</div>
+              <div class="step-heading">Verify Captured Display &amp; Reading</div>
+              <div class="step-description">Verify the extracted printer serial number and closing meter count before continuing.</div>
+            </div>
+
+            <div class="verify-slide-card">
+              <!-- Captured Photo Preview -->
+              <div class="verify-photo-box">
+                <img id="verify-preview-img" alt="Captured display photo">
+              </div>
+
+              <!-- Extracted Data Comparison Grid -->
+              <div class="verify-data-grid">
+                <div class="vdata-card">
+                  <div class="vdata-label">IDENTIFIED PRINTER / COUNTER</div>
+                  <div class="vdata-val" id="verify-counter-val">—</div>
+                  <div class="vdata-sub" id="verify-counter-sub">Matched from printer directory</div>
+                </div>
+
+                <div class="vdata-card highlight">
+                  <div class="vdata-label">METER READING (CLOSING)</div>
+                  <div class="vdata-val big" id="verify-reading-val">—</div>
+                  <div class="vdata-sub" id="verify-reading-sub">Extracted from TOTAL COUNT</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Wizard Navigation Buttons -->
+            <div class="wizard-nav-bar">
+              <button type="button" class="btn-wizard-prev" onclick="goToWizardStep(1)">
+                ⬅️ Previous (Retake)
+              </button>
+              <button type="button" class="btn-wizard-next" onclick="confirmStep2AndProceed()">
+                Confirm &amp; Next ➡️
+              </button>
+            </div>
+          </div>
+
+
+          <!-- ═════════════════════════════════════════════════════════ -->
+          <!-- ── WIZARD STEP 3: PRINTER & CONDITIONAL STOCK / RIMS ──── -->
+          <!-- ═════════════════════════════════════════════════════════ -->
+          <div class="wizard-step-panel" id="wizard-panel-3" style="display:none;">
+            <div class="step-intro-box">
+              <div class="step-badge">STEP 3 OF 4</div>
+              <div class="step-heading">Printer &amp; Paper Allocation</div>
+              <div class="step-description">Confirm counter assignment and record paper supply if issued today.</div>
+            </div>
 
             <!-- Custom 2-Row Selector Trigger Button -->
-            <div class="counter-picker-trigger" id="counter-picker-btn" onclick="openCounterPickerModal()">
-              <div class="picker-placeholder" id="counter-picker-label">
-                <span style="color: var(--text-muted);">— Select Counter No. —</span>
-              </div>
-              <div class="picker-arrow">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-              </div>
-            </div>
-
-            <!-- Prominent Selected Printer Confirmation Highlight Card (High Visual Verification) -->
-            <div id="selected-printer-confirm-card" class="selected-printer-confirm-card" style="display:none;">
-              <div class="spc-header">
-                <div class="spc-badge-wrap">
-                  <span class="spc-hosp-badge" id="spc-hosp">MDM HOSPITAL</span>
-                  <span class="spc-status-badge">🟢 VERIFIED COUNTER</span>
+            <div class="form-group">
+              <label>Counter Number <span class="req">*</span></label>
+              <div class="counter-picker-trigger" id="counter-picker-btn" onclick="openCounterPickerModal()">
+                <div class="picker-placeholder" id="counter-picker-label">
+                  <span style="color: var(--text-muted);">— Select Counter No. —</span>
                 </div>
-                <button type="button" class="spc-change-btn" onclick="openCounterPickerModal()">🔄 Change</button>
-              </div>
-              <div class="spc-main-info">
-                <div class="spc-icon">🖨️</div>
-                <div class="spc-details">
-                  <div class="spc-counter-title" id="spc-counter-title">Counter 01</div>
-                  <div class="spc-counter-sub" id="spc-counter-sub">OPD Registration • Ground Floor</div>
+                <div class="picker-arrow">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
                 </div>
               </div>
-              <!-- Prominent Centered Machine S/N Highlight Banner -->
-              <div class="spc-serial-banner">
-                <span class="spc-serial-lbl">MACHINE SERIAL NO. (S/N)</span>
-                <div class="spc-serial-val" id="spc-serial">—</div>
-              </div>
 
-              <div class="spc-meta-grid">
-                <div class="spc-meta-item">
-                  <span class="spc-meta-lbl">LAST CLOSING READING</span>
-                  <strong class="spc-meta-val highlight" id="spc-last-reading">0 Pages</strong>
+              <!-- Prominent Selected Printer Confirmation Highlight Card -->
+              <div id="selected-printer-confirm-card" class="selected-printer-confirm-card" style="display:none; margin-top:8px;">
+                <div class="spc-header">
+                  <div class="spc-badge-wrap">
+                    <span class="spc-hosp-badge" id="spc-hosp">MDM HOSPITAL</span>
+                    <span class="spc-status-badge">🟢 VERIFIED COUNTER</span>
+                  </div>
+                  <button type="button" class="spc-change-btn" onclick="openCounterPickerModal()">🔄 Change</button>
                 </div>
-                <div class="spc-meta-item">
-                  <span class="spc-meta-lbl">CURRENT PAPER BALANCE</span>
-                  <strong class="spc-meta-val" id="spc-balance">0 Sheets</strong>
+                <div class="spc-main-info">
+                  <div class="spc-icon">🖨️</div>
+                  <div class="spc-details">
+                    <div class="spc-counter-title" id="spc-counter-title">Counter 01</div>
+                    <div class="spc-counter-sub" id="spc-counter-sub">OPD Registration • Ground Floor</div>
+                  </div>
+                </div>
+                <div class="spc-serial-banner">
+                  <span class="spc-serial-lbl">MACHINE SERIAL NO. (S/N)</span>
+                  <div class="spc-serial-val" id="spc-serial">—</div>
+                </div>
+                <div class="spc-meta-grid">
+                  <div class="spc-meta-item">
+                    <span class="spc-meta-lbl">LAST CLOSING READING</span>
+                    <strong class="spc-meta-val highlight" id="spc-last-reading">0 Pages</strong>
+                  </div>
+                  <div class="spc-meta-item">
+                    <span class="spc-meta-lbl">CURRENT PAPER BALANCE</span>
+                    <strong class="spc-meta-val" id="spc-balance">0 Sheets</strong>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Column G: ISSUE / RECEIVE (Default: ISSUE) -->
-          <div class="form-group">
-            <label>ISSUE / RECEIVE Type <span class="req">*</span></label>
-            <select class="native-select" id="issue-receive-select" required onchange="toggleIssueReceiveFields()">
-              <option value="ISSUE" selected>ISSUE</option>
-              <option value="RECEIVE">RECEIVE</option>
-              <option value="None">None</option>
-            </select>
-          </div>
+            <!-- Conditional Rim Issue Checkbox Toggle -->
+            <div class="rim-issue-toggle-card">
+              <label class="rim-checkbox-label">
+                <input type="checkbox" id="chk-toggle-rim" onchange="handleRimCheckboxChange(this.checked)">
+                <div class="rim-checkbox-custom"></div>
+                <div>
+                  <div class="rim-toggle-title">📦 Issue or Receive Paper Stock Today?</div>
+                  <div class="rim-toggle-sub">Check this only if paper rims were supplied or returned at this counter</div>
+                </div>
+              </label>
 
-          <!-- Column E & F: Paper Recieved & Paper Issued -->
-          <div class="form-row">
-            <div class="form-group" id="group-paper-recieved" style="display:none;">
-              <label>Paper Recieved</label>
-              <input type="number" class="native-input" id="paper-recieved" placeholder="0" min="0" step="1" oninput="calcBalance()">
-            </div>
+              <!-- Conditional fields (Hidden until checked) -->
+              <div id="rim-inputs-collapsible" class="rim-collapsible-content" style="display:none;">
+                <div class="form-group" style="margin-top:12px;">
+                  <label>Transaction Type <span class="req">*</span></label>
+                  <select class="native-select" id="issue-receive-select" onchange="toggleIssueReceiveFields()">
+                    <option value="ISSUE" selected>ISSUE (Paper Given to Counter)</option>
+                    <option value="RECEIVE">RECEIVE (Stock In)</option>
+                    <option value="None">None</option>
+                  </select>
+                </div>
 
-            <div class="form-group" id="group-paper-issued">
-              <label>Paper Issued</label>
-              <input type="number" class="native-input" id="paper-issued" placeholder="0" min="0" step="1" oninput="calcBalance()">
-            </div>
-          </div>
+                <div class="form-row">
+                  <div class="form-group" id="group-paper-recieved" style="display:none;">
+                    <label>Paper Recieved (Sheets)</label>
+                    <input type="number" class="native-input" id="paper-recieved" placeholder="0" min="0" step="1" oninput="calcBalance()">
+                  </div>
 
-          <!-- Column J & K: Opening & Closing Reading -->
-          <div class="form-row">
-            <div class="form-group">
-              <label>Opening Reading</label>
-              <input type="number" class="native-input" id="opening-reading" placeholder="Auto Calculated" min="0" oninput="calcBalance(); validateReadings();">
-            </div>
-
-            <div class="form-group">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <label style="margin-bottom:0;">Closing Reading <span class="req">*</span></label>
-                <button type="button" class="btn-input-scan" onclick="openScannerModal()" title="Scan Display">
-                  📷 Scan
-                </button>
+                  <div class="form-group" id="group-paper-issued">
+                    <label>Paper Issued (Sheets)</label>
+                    <input type="number" class="native-input" id="paper-issued" placeholder="0" min="0" step="1" oninput="calcBalance()">
+                  </div>
+                </div>
               </div>
-              <input type="number" class="native-input" id="closing-reading" placeholder="Enter Current Reading" min="0" required oninput="calcBalance(); validateReadings();" style="margin-top:4px;">
+            </div>
+
+            <!-- Wizard Navigation Buttons -->
+            <div class="wizard-nav-bar">
+              <button type="button" class="btn-wizard-prev" onclick="goToWizardStep(2)">
+                ⬅️ Previous
+              </button>
+              <button type="button" class="btn-wizard-next" onclick="proceedToStep4()">
+                Next: Meter Readings ➡️
+              </button>
             </div>
           </div>
 
-          <!-- Real-Time Validation Alert Message -->
-          <div id="reading-validation-error" class="validation-message" style="display:none; color:#ef4444; background:#fef2f2; border:1px solid #fecaca; padding:8px 12px; border-radius:8px; font-size:0.8rem; font-weight:700; margin:8px 0;">
-            ⚠️ Closing Reading cannot be less than Opening Reading!
-          </div>
 
-          <!-- Real-Time Calculation Grid: Prints Made (Closing - Opening) & Paper Balance -->
-          <div class="form-row" style="margin-top: 10px;">
-            <div class="form-group">
-              <label>Net Prints (Closing − Opening)</label>
-              <input type="number" class="native-input" id="net-prints-calc" readonly placeholder="0 Pages" style="background:#f8fafc; font-weight:700; color:#0284c7;">
+          <!-- ═════════════════════════════════════════════════════════ -->
+          <!-- ── WIZARD STEP 4: METER READINGS & FINAL SUBMIT ───────── -->
+          <!-- ═════════════════════════════════════════════════════════ -->
+          <div class="wizard-step-panel" id="wizard-panel-4" style="display:none;">
+            <div class="step-intro-box">
+              <div class="step-badge">STEP 4 OF 4</div>
+              <div class="step-heading">Meter Reading &amp; Balance Verification</div>
+              <div class="step-description">Opening reading is auto-fetched from previous history. Verify the calculated net pages printed.</div>
             </div>
 
-            <!-- Column H: BALANCE (Opening - Closing as per existing Sheet formula) -->
-            <div class="form-group">
-              <label>Paper Balance (Opening − Closing)</label>
-              <input type="number" class="native-input" id="paper-balance" readonly placeholder="Auto Calculated" style="background:#f8fafc; font-weight:700;">
+            <!-- Column J & K: Opening & Closing Reading -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>Opening Reading <span style="font-size:0.7rem; color:var(--text-muted);">(Last Entry)</span></label>
+                <input type="number" class="native-input" id="opening-reading" placeholder="Auto Calculated" min="0" oninput="calcBalance(); validateReadings();" style="background:#f1f5f9; font-weight:700;">
+              </div>
+
+              <div class="form-group">
+                <label>Closing Reading <span class="req">*</span></label>
+                <input type="number" class="native-input" id="closing-reading" placeholder="Enter Current Reading" min="0" required oninput="calcBalance(); validateReadings();" style="font-weight:800; font-size:1.05rem; color:#0284c7;">
+              </div>
+            </div>
+
+            <!-- Real-Time Validation Alert Message -->
+            <div id="reading-validation-error" class="validation-message" style="display:none; color:#ef4444; background:#fef2f2; border:1px solid #fecaca; padding:10px 14px; border-radius:10px; font-size:0.82rem; font-weight:700; margin:10px 0;">
+              ⚠️ Closing Reading cannot be less than Opening Reading!
+            </div>
+
+            <!-- Real-Time Calculation Grid: Prints Made & Paper Balance -->
+            <div class="form-row" style="margin-top: 10px;">
+              <div class="form-group">
+                <label>Net Prints (Closing − Opening)</label>
+                <input type="number" class="native-input" id="net-prints-calc" readonly placeholder="0 Pages" style="background:#f8fafc; font-weight:800; font-size:1.1rem; color:#10b981;">
+              </div>
+
+              <div class="form-group">
+                <label>Paper Balance (Opening − Closing)</label>
+                <input type="number" class="native-input" id="paper-balance" readonly placeholder="Auto Calculated" style="background:#f8fafc; font-weight:700;">
+              </div>
+            </div>
+
+            <!-- Column I: REMARK -->
+            <div class="form-group" style="margin-top:10px;">
+              <label>Remark (Optional)</label>
+              <textarea class="native-textarea" id="remark" rows="2" placeholder="Add any notes/remarks..."></textarea>
+            </div>
+
+            <!-- Wizard Navigation Buttons -->
+            <div class="wizard-nav-bar">
+              <button type="button" class="btn-wizard-prev" onclick="goToWizardStep(3)">
+                ⬅️ Previous
+              </button>
+              <button type="submit" class="btn-native-submit" id="submit-btn" style="flex:1;">
+                🚀 Save Daily Entry
+              </button>
             </div>
           </div>
-
-          <!-- Column I: REMARK -->
-          <div class="form-group">
-            <label>Remark</label>
-            <textarea class="native-textarea" id="remark" rows="2" placeholder="Add any notes/remarks..."></textarea>
-          </div>
-
-          <button type="submit" class="btn-native-submit" id="submit-btn">
-            Save Entry
-          </button>
 
         </form>
 
@@ -1534,15 +1710,15 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   
-  <script src="assets/js/config.js?v=22"></script>
-  <script src="assets/js/schema.js?v=22"></script>
-  <script src="assets/js/auth.js?v=22"></script>
-  <script src="assets/js/sheets.js?v=22"></script>
-  <script src="assets/js/db.js?v=22"></script>
-  <script src="assets/js/notifications.js?v=22"></script>
-  <script src="assets/js/admob.js?v=22"></script>
-  <script src="assets/js/ocr.js?v=22"></script>
-  <script src="assets/js/app.js?v=22"></script>
+  <script src="assets/js/config.js?v=23"></script>
+  <script src="assets/js/schema.js?v=23"></script>
+  <script src="assets/js/auth.js?v=23"></script>
+  <script src="assets/js/sheets.js?v=23"></script>
+  <script src="assets/js/db.js?v=23"></script>
+  <script src="assets/js/notifications.js?v=23"></script>
+  <script src="assets/js/admob.js?v=23"></script>
+  <script src="assets/js/ocr.js?v=23"></script>
+  <script src="assets/js/app.js?v=23"></script>
 
   <script>
     function toggleUserDropdown(e) {

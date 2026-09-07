@@ -1288,6 +1288,21 @@ async function submitEntry(event) {
 
     document.getElementById("entry-form").reset();
     toggleIssueReceiveFields();
+    
+    // Reset guided wizard state if in wizard mode
+    const chkRim = document.getElementById("chk-toggle-rim");
+    if (chkRim) {
+      chkRim.checked = false;
+      handleRimCheckboxChange(false);
+    }
+    const pickerLabel = document.getElementById("counter-picker-label");
+    if (pickerLabel) pickerLabel.innerHTML = `<span style="color: var(--text-muted);">— Select Counter No. —</span>`;
+    const confirmCard = document.getElementById("selected-printer-confirm-card");
+    if (confirmCard) confirmCard.style.display = "none";
+    if (typeof goToWizardStep === "function" && currentEntryMode === "wizard") {
+      goToWizardStep(1);
+    }
+    
     await loadHistory();
 
   } catch (err) {
@@ -2968,67 +2983,135 @@ async function handleAdminCenterToggleGoogle(enabled) {
 
 
 // ══════════════════════════════════════════════════════════
-// ── SMART SCANNER (FULLSCREEN CAMERA & OCR AUTO-FILL) ───
+// ── SMART GUIDED WIZARD & SCANNER CONTROLLER ────────────
 // ══════════════════════════════════════════════════════════
 
-let scannerStream = null;
+let currentWizardStep = 1;
+let currentEntryMode = "wizard"; // "wizard" or "manual"
+let wizardStream = null;
 let currentCameraFacing = "environment"; // default to rear camera on mobile
 let scannedDataPending = null;
 let lastCapturedDataUrl = null;
 
-async function openScannerModal() {
-  const modal = document.getElementById("scanner-modal");
-  const resultBar = document.getElementById("scanner-result-bar");
-  const busy = document.getElementById("scanner-busy-overlay");
-  const controls = document.getElementById("scanner-controls-bar");
-  const targetBox = document.getElementById("scanner-target-box");
-  const previewImg = document.getElementById("scanner-preview-img");
-  const video = document.getElementById("scanner-video");
-  
-  if (resultBar) resultBar.style.display = "none";
-  if (busy) busy.style.display = "none";
-  if (controls) controls.style.display = "flex";
-  if (targetBox) targetBox.style.display = "flex";
-  if (previewImg) previewImg.style.display = "none";
-  if (video) video.style.display = "block";
+/**
+ * Toggles between Guided Wizard Mode and Direct Manual Form Mode
+ */
+function setEntryMode(mode) {
+  currentEntryMode = mode;
+  const btnWizard = document.getElementById("btn-mode-wizard");
+  const btnManual = document.getElementById("btn-mode-manual");
+  const stepperWrap = document.getElementById("wizard-stepper-wrap");
 
-  scannedDataPending = null;
-  lastCapturedDataUrl = null;
+  if (mode === "manual") {
+    if (btnWizard) btnWizard.classList.remove("active");
+    if (btnManual) btnManual.classList.add("active");
+    if (stepperWrap) stepperWrap.style.display = "none";
+    stopWizardCamera();
 
-  if (modal) modal.style.display = "flex";
+    // Show all panels at once for direct manual editing
+    document.querySelectorAll(".wizard-step-panel").forEach(p => {
+      p.style.display = "block";
+      p.classList.add("manual-mode-view");
+    });
+    // Hide Step 1 & Step 2 in direct manual mode
+    const p1 = document.getElementById("wizard-panel-1");
+    const p2 = document.getElementById("wizard-panel-2");
+    if (p1) p1.style.display = "none";
+    if (p2) p2.style.display = "none";
 
-  // Pre-initialize OCR engine in background so it's ready on snap
-  if (window.OCR_ENGINE && !window.OCR_ENGINE.isInitialized) {
-    window.OCR_ENGINE.init().catch(e => console.warn("[OCR] Background init:", e));
+    // Hide intro badges
+    document.querySelectorAll(".step-intro-box").forEach(b => b.style.display = "none");
+    document.querySelectorAll(".wizard-nav-bar").forEach(n => n.style.display = "none");
+
+  } else {
+    if (btnWizard) btnWizard.classList.add("active");
+    if (btnManual) btnManual.classList.remove("active");
+    if (stepperWrap) stepperWrap.style.display = "flex";
+
+    document.querySelectorAll(".step-intro-box").forEach(b => b.style.display = "block");
+    document.querySelectorAll(".wizard-nav-bar").forEach(n => n.style.display = "flex");
+
+    goToWizardStep(currentWizardStep || 1);
+  }
+}
+
+/**
+ * Navigates to a specific Wizard step (1, 2, 3, 4)
+ */
+function goToWizardStep(stepNum) {
+  if (currentEntryMode === "manual") return;
+
+  // Validation before proceeding
+  if (stepNum > 2 && currentWizardStep < stepNum && stepNum === 4) {
+    const counterVal = document.getElementById("counter-select")?.value;
+    if (!counterVal) {
+      showToast("Please select a Counter Number before continuing.", "warn");
+      return;
+    }
   }
 
-  await startCameraStream();
+  currentWizardStep = stepNum;
+
+  // 1. Update Stepper Nodes & Connecting Lines
+  for (let i = 1; i <= 4; i++) {
+    const node = document.getElementById(`step-node-${i}`);
+    const line = document.getElementById(`step-line-${i}`);
+    if (node) {
+      if (i === stepNum) {
+        node.className = "wizard-step-node active";
+      } else if (i < stepNum) {
+        node.className = "wizard-step-node completed";
+      } else {
+        node.className = "wizard-step-node";
+      }
+    }
+    if (line) {
+      line.className = i < stepNum ? "step-line completed" : "step-line";
+    }
+  }
+
+  // 2. Hide all panels, show only target panel
+  for (let i = 1; i <= 4; i++) {
+    const panel = document.getElementById(`wizard-panel-${i}`);
+    if (panel) {
+      panel.style.display = (i === stepNum) ? "block" : "none";
+    }
+  }
+
+  // 3. Camera lifecycle
+  if (stepNum === 1) {
+    startWizardCamera();
+  } else {
+    stopWizardCamera();
+  }
+
+  // 4. Smooth scroll to top of card on mobile
+  const card = document.querySelector(".wizard-card");
+  if (card && window.innerWidth < 768) {
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
-function closeScannerModal() {
-  stopCameraStream();
-  const modal = document.getElementById("scanner-modal");
-  if (modal) modal.style.display = "none";
-  scannedDataPending = null;
-  lastCapturedDataUrl = null;
+/**
+ * Skips camera scan directly to counter and manual form
+ */
+function skipWizardToManual() {
+  goToWizardStep(3);
 }
 
-async function startCameraStream() {
-  stopCameraStream();
-  const video = document.getElementById("scanner-video");
+/**
+ * Starts camera stream in Step 1 viewfinder
+ */
+async function startWizardCamera() {
+  stopWizardCamera();
+  const video = document.getElementById("wizard-video");
   if (!video) return;
-
-  video.style.display = "block";
-  const previewImg = document.getElementById("scanner-preview-img");
-  if (previewImg) previewImg.style.display = "none";
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     console.warn("[Scanner] getUserMedia not supported in this browser.");
-    showToast("Camera API not available in this browser. Please use 📁 Gallery to pick a photo.", "info");
     return;
   }
 
-  // 1. Try rear/facing camera
   try {
     const constraints = {
       video: {
@@ -3038,93 +3121,84 @@ async function startCameraStream() {
       },
       audio: false
     };
-    scannerStream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = scannerStream;
+    wizardStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = wizardStream;
     await video.play();
     return;
   } catch (err) {
-    console.warn("[Scanner] Ideal constraints failed, trying basic video:", err);
+    console.warn("[Scanner] Ideal facing failed, trying basic camera:", err);
   }
 
-  // 2. Fallback to any available video stream (e.g. laptop webcam, external cam)
   try {
-    scannerStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-    video.srcObject = scannerStream;
+    wizardStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    video.srcObject = wizardStream;
     await video.play();
   } catch (fallbackErr) {
-    console.warn("[Scanner] No camera device found or permission denied:", fallbackErr);
-    showToast("No active camera found. You can pick photos using 📁 Gallery.", "info");
+    console.warn("[Scanner] No active camera device found:", fallbackErr);
   }
 }
 
-function stopCameraStream() {
-  if (scannerStream) {
+function stopWizardCamera() {
+  if (wizardStream) {
     try {
-      scannerStream.getTracks().forEach(t => t.stop());
+      wizardStream.getTracks().forEach(t => t.stop());
     } catch (_) {}
-    scannerStream = null;
+    wizardStream = null;
   }
-  const video = document.getElementById("scanner-video");
+  const video = document.getElementById("wizard-video");
   if (video) video.srcObject = null;
 }
 
 async function toggleCameraFacing() {
   currentCameraFacing = (currentCameraFacing === "environment") ? "user" : "environment";
-  await startCameraStream();
+  await startWizardCamera();
 }
 
 /**
- * Resets back to live camera view to retake photo
+ * Snaps photo from Step 1 video stream
  */
-async function recaptureScanner() {
-  const resultBar = document.getElementById("scanner-result-bar");
-  const controls = document.getElementById("scanner-controls-bar");
-  const targetBox = document.getElementById("scanner-target-box");
-  const previewImg = document.getElementById("scanner-preview-img");
-  const video = document.getElementById("scanner-video");
-  const busy = document.getElementById("scanner-busy-overlay");
+async function captureWizardPhoto() {
+  const video = document.getElementById("wizard-video");
+  const canvas = document.getElementById("wizard-canvas");
+  if (!video || !video.videoWidth) {
+    showToast("Camera is not ready. You can pick a photo from 📁 Gallery.", "warn");
+    return;
+  }
 
-  if (resultBar) resultBar.style.display = "none";
-  if (busy) busy.style.display = "none";
-  if (controls) controls.style.display = "flex";
-  if (targetBox) targetBox.style.display = "flex";
-  if (previewImg) previewImg.style.display = "none";
-  if (video) video.style.display = "block";
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  scannedDataPending = null;
-  lastCapturedDataUrl = null;
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+  lastCapturedDataUrl = dataUrl;
 
-  await startCameraStream();
+  stopWizardCamera();
+  await processWizardImageOcr(canvas, dataUrl);
 }
 
-async function handleScannerFileUpload(event) {
+/**
+ * Handles Gallery Photo selection in Step 1
+ */
+async function handleWizardFileUpload(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
 
-  const busy = document.getElementById("scanner-busy-overlay");
-  const statusEl = document.getElementById("ocr-status-text");
+  const busy = document.getElementById("wizard-busy-overlay");
+  const statusEl = document.getElementById("wizard-ocr-status");
   if (busy) busy.style.display = "flex";
-  if (statusEl) statusEl.textContent = "Reading selected photo...";
+  if (statusEl) statusEl.textContent = "Loading selected photo...";
 
   try {
     const reader = new FileReader();
     reader.onload = async (e) => {
       const dataUrl = e.target.result;
       lastCapturedDataUrl = dataUrl;
-
-      // Show captured photo preview on screen
-      const previewImg = document.getElementById("scanner-preview-img");
-      const video = document.getElementById("scanner-video");
-      if (previewImg) {
-        previewImg.src = dataUrl;
-        previewImg.style.display = "block";
-      }
-      if (video) video.style.display = "none";
-      stopCameraStream();
+      stopWizardCamera();
 
       const img = new Image();
       img.onload = async () => {
-        await processImageForOcr(img);
+        await processWizardImageOcr(img, dataUrl);
       };
       img.onerror = () => {
         if (busy) busy.style.display = "none";
@@ -3145,58 +3219,22 @@ async function handleScannerFileUpload(event) {
   }
 }
 
-async function captureAndProcessScan() {
-  const video = document.getElementById("scanner-video");
-  const canvas = document.getElementById("scanner-canvas");
-  const previewImg = document.getElementById("scanner-preview-img");
-
-  if (!video || !video.videoWidth) {
-    showToast("Camera is not ready. Please use 📁 Gallery to select a photo.", "warn");
-    return;
-  }
-
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
-  lastCapturedDataUrl = dataUrl;
-
-  // Freeze preview on screen
-  if (previewImg) {
-    previewImg.src = dataUrl;
-    previewImg.style.display = "block";
-  }
-  video.style.display = "none";
-  stopCameraStream();
-
-  await processImageForOcr(canvas);
-}
-
-async function processImageForOcr(sourceElement) {
-  const busy = document.getElementById("scanner-busy-overlay");
-  const statusEl = document.getElementById("ocr-status-text");
-  const resultBar = document.getElementById("scanner-result-bar");
-  const controls = document.getElementById("scanner-controls-bar");
-  const targetBox = document.getElementById("scanner-target-box");
-
-  const counterValEl = document.getElementById("sresult-counter-val");
-  const counterSubEl = document.getElementById("sresult-counter-sub");
-  const readingValEl = document.getElementById("sresult-reading-val");
-  const readingSubEl = document.getElementById("sresult-reading-sub");
-  const rawBoxEl = document.getElementById("sresult-raw-box");
+/**
+ * Executes OCR on image, populates Step 2 Verification Card and transitions
+ */
+async function processWizardImageOcr(sourceElement, dataUrl) {
+  const busy = document.getElementById("wizard-busy-overlay");
+  const statusEl = document.getElementById("wizard-ocr-status");
 
   if (busy) busy.style.display = "flex";
-  if (statusEl) statusEl.textContent = "Scanning printer LCD & serial...";
-  if (resultBar) resultBar.style.display = "none";
+  if (statusEl) statusEl.textContent = "Reading printer LCD & serial...";
 
   try {
     if (!window.OCR_ENGINE) {
       throw new Error("OCR Engine is loading or unavailable.");
     }
     const result = await window.OCR_ENGINE.recognize(sourceElement);
-    console.log("[OCR] Scan result:", result);
+    console.log("[Wizard OCR] Result:", result);
 
     scannedDataPending = result;
 
@@ -3206,54 +3244,129 @@ async function processImageForOcr(sourceElement) {
       scannedDataPending.matchedPrinter = matchedPrinter;
     }
 
-    // Populate Detailed Verification Card
+    // Set preview photo in Step 2
+    const previewImg = document.getElementById("verify-preview-img");
+    if (previewImg) previewImg.src = dataUrl;
+
+    // Populate Verification Slide in Step 2
+    const counterValEl = document.getElementById("verify-counter-val");
+    const counterSubEl = document.getElementById("verify-counter-sub");
+    const readingValEl = document.getElementById("verify-reading-val");
+    const readingSubEl = document.getElementById("verify-reading-sub");
+
     if (counterValEl) {
       if (matchedPrinter) {
         counterValEl.innerHTML = `<span style="color:#10b981;">🟢 ${escapeHtml(matchedPrinter.fullCounter)}</span>`;
         if (counterSubEl) counterSubEl.textContent = `${matchedPrinter.counterName} • ${matchedPrinter.hospital || "ALL"}`;
       } else if (result.serialNo) {
         counterValEl.innerHTML = `<span style="color:#38bdf8;">S/N: ${escapeHtml(result.serialNo)}</span>`;
-        if (counterSubEl) counterSubEl.textContent = "Printer serial detected (Select counter below)";
+        if (counterSubEl) counterSubEl.textContent = "Serial recognized (Confirm printer in next step)";
       } else if (result.counterMarker) {
         counterValEl.innerHTML = `<span style="color:#38bdf8;">Marker: #${escapeHtml(result.counterMarker)}</span>`;
-        if (counterSubEl) counterSubEl.textContent = "Counter marker detected";
+        if (counterSubEl) counterSubEl.textContent = "Counter sticker recognized";
       } else {
         counterValEl.innerHTML = `<span style="color:#f59e0b;">⚠️ Not Detected</span>`;
-        if (counterSubEl) counterSubEl.textContent = "Align closer to serial number or counter sticker";
+        if (counterSubEl) counterSubEl.textContent = "Will select manually in next step";
       }
     }
 
     if (readingValEl) {
       if (result.closingReading) {
-        readingValEl.innerHTML = `<strong style="font-size:1.3rem; color:#38bdf8;">${result.closingReading}</strong> <span style="font-size:0.8rem; color:#94a3b8;">Pages</span>`;
+        readingValEl.innerHTML = `<strong style="font-size:1.4rem; color:#0284c7;">${result.closingReading}</strong> <span style="font-size:0.82rem; color:var(--text-muted);">Pages</span>`;
         if (readingSubEl) readingSubEl.textContent = "Extracted from LCD Total Count";
       } else {
-        readingValEl.innerHTML = `<span style="color:#f59e0b; font-size:1rem;">⚠️ Not Detected</span>`;
-        if (readingSubEl) readingSubEl.textContent = "LCD meter was blurry or not in frame";
+        readingValEl.innerHTML = `<span style="color:#f59e0b; font-size:1.1rem;">⚠️ Not Detected</span>`;
+        if (readingSubEl) readingSubEl.textContent = "Enter closing reading manually in Step 4";
       }
     }
 
-    if (rawBoxEl && result.rawText) {
-      rawBoxEl.textContent = `Raw OCR text: "${result.rawText.slice(0, 100).replace(/\n/g, ' ')}"`;
-      rawBoxEl.style.display = "block";
-    }
-
     if (busy) busy.style.display = "none";
-    if (controls) controls.style.display = "none";
-    if (targetBox) targetBox.style.display = "none";
-    if (resultBar) resultBar.style.display = "flex";
-
     if (navigator.vibrate) navigator.vibrate(100);
 
-    if (!result.closingReading && !matchedPrinter) {
-      showToast("Could not read numbers clearly. You can tap 'Retake' or adjust photo.", "warn");
-    }
+    // Transition smoothly to Step 2
+    goToWizardStep(2);
 
   } catch (err) {
-    console.error("[OCR] Processing error:", err);
+    console.error("[Wizard OCR] Error:", err);
     if (busy) busy.style.display = "none";
-    showToast("OCR Scan analysis failed: " + err.message, "error");
+    showToast("Scan analysis failed: " + err.message, "error");
+    // Offer fallback directly to manual counter selection
+    goToWizardStep(3);
   }
+}
+
+/**
+ * Step 2: Confirms extracted printer & reading, auto-applies and advances to Step 3
+ */
+function confirmStep2AndProceed() {
+  if (scannedDataPending) {
+    const { closingReading, matchedPrinter } = scannedDataPending;
+
+    // Pre-select counter in Step 3 if matched
+    if (matchedPrinter) {
+      const row1 = matchedPrinter.fullCounter;
+      const row2 = [matchedPrinter.counterName, matchedPrinter.hospital ? `(${matchedPrinter.hospital})` : ""].filter(Boolean).join(" ");
+      selectCounterOption(matchedPrinter.fullCounter, row1, row2);
+    }
+
+    // Pre-fill closing reading in Step 4
+    if (closingReading !== null && closingReading !== undefined) {
+      const closingInput = document.getElementById("closing-reading");
+      if (closingInput) {
+        closingInput.value = closingReading;
+        calcBalance();
+        validateReadings();
+      }
+    }
+  }
+
+  goToWizardStep(3);
+}
+
+/**
+ * Step 3: Handles conditional Paper Rim Checkbox toggle
+ */
+function handleRimCheckboxChange(isChecked) {
+  const container = document.getElementById("rim-inputs-collapsible");
+  const typeSelect = document.getElementById("issue-receive-select");
+  const issuedInput = document.getElementById("paper-issued");
+  const receivedInput = document.getElementById("paper-recieved");
+
+  if (container) {
+    container.style.display = isChecked ? "block" : "none";
+  }
+
+  if (!isChecked) {
+    // Reset to none / 0 so paper balance is not altered unintentionally
+    if (typeSelect) typeSelect.value = "None";
+    if (issuedInput) issuedInput.value = "0";
+    if (receivedInput) receivedInput.value = "0";
+    toggleIssueReceiveFields();
+    calcBalance();
+  } else {
+    // Default to ISSUE when user actively checks box
+    if (typeSelect) typeSelect.value = "ISSUE";
+    toggleIssueReceiveFields();
+  }
+}
+
+/**
+ * Step 3: Validates counter selection and advances to Step 4 (Meter Readings)
+ */
+function proceedToStep4() {
+  const counterVal = document.getElementById("counter-select")?.value;
+  if (!counterVal) {
+    showToast("⚠️ Please select a Counter Number before continuing.", "warn");
+    openCounterPickerModal();
+    return;
+  }
+
+  // Ensure Opening Reading is refreshed from latest entry
+  handleCounterSelectChange();
+  calcBalance();
+  validateReadings();
+
+  goToWizardStep(4);
 }
 
 /**
@@ -3262,7 +3375,7 @@ async function processImageForOcr(sourceElement) {
 function findMatchingPrinter(serialNo, counterMarker) {
   if (!allPrinterItems || !allPrinterItems.length) return null;
 
-  // 1. Try exact or partial serial match
+  // 1. Exact or partial serial match
   if (serialNo) {
     const cleanScanSerial = serialNo.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
     const match = allPrinterItems.find(p => {
@@ -3273,7 +3386,7 @@ function findMatchingPrinter(serialNo, counterMarker) {
     if (match) return match;
   }
 
-  // 2. Try counter marker match (e.g. "32")
+  // 2. Counter marker match (e.g. "32")
   if (counterMarker) {
     const targetMarkerNum = parseInt(counterMarker, 10);
     const match = allPrinterItems.find(p => {
@@ -3286,43 +3399,17 @@ function findMatchingPrinter(serialNo, counterMarker) {
   return null;
 }
 
-/**
- * Applies scanned values directly to entry form
- */
-function applyScanResultToForm() {
-  if (!scannedDataPending) {
-    closeScannerModal();
-    return;
-  }
-
-  const { closingReading, matchedPrinter } = scannedDataPending;
-
-  // 1. If printer found, select it
-  if (matchedPrinter) {
-    const row1 = matchedPrinter.fullCounter;
-    const row2 = [matchedPrinter.counterName, matchedPrinter.hospital ? `(${matchedPrinter.hospital})` : ""].filter(Boolean).join(" ");
-    selectCounterOption(matchedPrinter.fullCounter, row1, row2);
-  }
-
-  // 2. Set closing reading if present
-  if (closingReading !== null && closingReading !== undefined) {
-    const closingInput = document.getElementById("closing-reading");
-    if (closingInput) {
-      closingInput.value = closingReading;
-      calcBalance();
-      const isValid = validateReadings();
-      if (!isValid) {
-        const opening = parseFloat(document.getElementById("opening-reading")?.value || 0);
-        showToast(`⚠️ Warning: Scanned closing reading (${closingReading}) is less than opening reading (${opening})! Please check display.`, "error");
-      }
+// Ensure camera is stopped when navigating away from Entry tab
+const prevShowTab = window.showTab;
+window.showTab = function(tabName) {
+  if (typeof prevShowTab === "function") prevShowTab(tabName);
+  if (tabName !== "entry") {
+    stopWizardCamera();
+  } else {
+    if (currentEntryMode === "wizard" && currentWizardStep === 1) {
+      startWizardCamera();
     }
   }
+};
 
-  closeScannerModal();
-
-  // 3. User feedback
-  const counterText = matchedPrinter ? matchedPrinter.fullCounter : "Printer";
-  const readingText = (closingReading !== null && closingReading !== undefined) ? `Closing: ${closingReading}` : "";
-  showToast(`✅ Auto-filled from scan: ${counterText} | ${readingText}`, "success");
-}
 
