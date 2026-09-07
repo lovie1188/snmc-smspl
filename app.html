@@ -7,7 +7,7 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#f8fafc">
   <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
-  <link rel="stylesheet" href="assets/css/app.css?v=23">
+  <link rel="stylesheet" href="assets/css/app.css?v=27">
 
   <style>
     /* ── SuperAdmin Notification Panel ── */
@@ -446,10 +446,15 @@
 
         <form id="entry-form" onsubmit="submitEntry(event)">
           
-          <!-- Column C: Entry Date (Visible for SuperAdmins) -->
-          <div class="form-group" id="entry-date-group" style="display: none; margin-bottom:12px;">
-            <label>Entry Date <span class="req">*</span></label>
-            <input type="date" id="entry-date-input" class="native-input" style="background:#ffffff; font-weight:600;">
+          <!-- Column C: Entry Date (Default = Current Date, Editable by SUPERADMIN only) -->
+          <div class="form-group" id="entry-date-group" style="margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <label style="margin-bottom:0;">Entry Date <span class="req">*</span></label>
+              <span id="entry-date-role-badge" style="font-size:0.62rem; font-weight:800; padding:2px 8px; border-radius:10px; background:#f1f5f9; color:var(--text-muted);">
+                🔒 TODAY ONLY
+              </span>
+            </div>
+            <input type="date" id="entry-date-input" class="native-input" style="background:#f8fafc; font-weight:700;" readonly>
           </div>
 
           <!-- Hidden input for real counter selection -->
@@ -466,7 +471,7 @@
             </div>
 
             <!-- In-Place Camera Viewfinder Box -->
-            <div class="wizard-camera-container">
+            <div class="wizard-camera-container" id="wizard-camera-container">
               <video id="wizard-video" playsinline autoplay muted></video>
               <canvas id="wizard-canvas" style="display:none;"></canvas>
               
@@ -487,8 +492,88 @@
               </div>
             </div>
 
-            <!-- Camera Controls -->
-            <div class="wizard-scan-actions">
+            <!-- ── INTERACTIVE IMAGE ADJUSTER & ANGLE CORRECTION VIEW ── -->
+            <div id="wizard-adjuster-container" class="wizard-adjuster-card" style="display:none;">
+              <div class="adjuster-header">
+                <div class="adjuster-title">
+                  <span>📐 Adjust, Straighten &amp; Crop</span>
+                  <span class="adjuster-hint">Drag to Pan • Pinch or Slider to Zoom</span>
+                </div>
+                <button type="button" class="btn-adjuster-reset" onclick="resetAdjuster()" title="Reset all adjustments">
+                  🔄 Reset
+                </button>
+              </div>
+
+              <!-- Interactive Canvas Viewport -->
+              <div class="adjuster-viewport" id="adjuster-viewport">
+                <canvas id="adjuster-canvas"></canvas>
+                <!-- Crop Guide Box with Corner Markers -->
+                <div class="adjuster-crop-guide" id="adjuster-crop-guide">
+                  <div class="crop-corner tl"></div>
+                  <div class="crop-corner tr"></div>
+                  <div class="crop-corner bl"></div>
+                  <div class="crop-corner br"></div>
+                  <div class="crop-grid-line h1"></div>
+                  <div class="crop-grid-line h2"></div>
+                  <div class="crop-grid-line v1"></div>
+                  <div class="crop-grid-line v2"></div>
+                  <div class="crop-badge">ALIGN LCD &amp; SERIAL INSIDE BOX</div>
+                </div>
+              </div>
+
+              <!-- Fine Angle Correction Slider (-45° to +45°) -->
+              <div class="adjuster-control-row">
+                <div class="control-label">
+                  <span>📐 Angle / Straighten:</span>
+                  <strong id="angle-value-lbl">0°</strong>
+                </div>
+                <div class="slider-with-btns">
+                  <button type="button" class="btn-step-adjust" onclick="nudgeAngle(-1)" title="-1 degree">−1°</button>
+                  <input type="range" id="adjuster-angle-slider" min="-45" max="45" value="0" step="0.5" oninput="onAngleSliderChange(this.value)">
+                  <button type="button" class="btn-step-adjust" onclick="nudgeAngle(1)" title="+1 degree">+1°</button>
+                  <button type="button" class="btn-zero-angle" onclick="onAngleSliderChange(0)" title="Set 0 degree">0°</button>
+                </div>
+              </div>
+
+              <!-- Zoom Slider (1x to 4x) -->
+              <div class="adjuster-control-row">
+                <div class="control-label">
+                  <span>🔍 Zoom:</span>
+                  <strong id="zoom-value-lbl">1.0x</strong>
+                </div>
+                <div class="slider-with-btns">
+                  <button type="button" class="btn-step-adjust" onclick="nudgeZoom(-0.1)" title="Zoom out">−</button>
+                  <input type="range" id="adjuster-zoom-slider" min="1" max="4" value="1" step="0.05" oninput="onZoomSliderChange(this.value)">
+                  <button type="button" class="btn-step-adjust" onclick="nudgeZoom(0.1)" title="Zoom in">+</button>
+                </div>
+              </div>
+
+              <!-- Floating Quick Action Buttons: 90° Rotations & LCD Contrast Filter -->
+              <div class="adjuster-actions-pills">
+                <button type="button" class="btn-adjuster-pill" onclick="rotate90(-90)" title="Rotate 90° Left">
+                  ⟲ 90° Left
+                </button>
+                <button type="button" class="btn-adjuster-pill" onclick="rotate90(90)" title="Rotate 90° Right">
+                  ⟳ 90° Right
+                </button>
+                <button type="button" class="btn-adjuster-pill" id="btn-toggle-contrast" onclick="toggleLcdContrastFilter()" title="Enhance LCD contrast">
+                  🌓 LCD Filter: OFF
+                </button>
+              </div>
+
+              <!-- Adjuster Footer Actions -->
+              <div class="adjuster-footer-nav">
+                <button type="button" class="btn-adjuster-retake" onclick="cancelAdjusterAndRetake()">
+                  📸 Retake Photo
+                </button>
+                <button type="button" class="btn-adjuster-scan" onclick="applyAdjusterCropAndScan()">
+                  ⚡ Read Display (OCR) ➔
+                </button>
+              </div>
+            </div>
+
+            <!-- Camera Controls (Hidden when Adjuster is open) -->
+            <div class="wizard-scan-actions" id="wizard-scan-actions">
               <label class="btn-wizard-sub" title="Upload from phone gallery">
                 📁 Pick Gallery Photo
                 <input type="file" id="wizard-file-input" accept="image/*" style="display:none;" onchange="handleWizardFileUpload(event)">
@@ -503,7 +588,7 @@
               </button>
             </div>
 
-            <div class="wizard-skip-link-wrap">
+            <div class="wizard-skip-link-wrap" id="wizard-skip-wrap">
               <button type="button" class="btn-link-skip" onclick="skipWizardToManual()">
                 ✍️ Skip scanning &amp; enter printer manually ➔
               </button>
@@ -603,8 +688,8 @@
                     <strong class="spc-meta-val highlight" id="spc-last-reading">0 Pages</strong>
                   </div>
                   <div class="spc-meta-item">
-                    <span class="spc-meta-lbl">CURRENT PAPER BALANCE</span>
-                    <strong class="spc-meta-val" id="spc-balance">0 Sheets</strong>
+                    <span class="spc-meta-lbl">LAST NET PRINTS (BAL)</span>
+                    <strong class="spc-meta-val" id="spc-balance">0 Pages</strong>
                   </div>
                 </div>
               </div>
@@ -686,17 +771,11 @@
               ⚠️ Closing Reading cannot be less than Opening Reading!
             </div>
 
-            <!-- Real-Time Calculation Grid: Prints Made & Paper Balance -->
-            <div class="form-row" style="margin-top: 10px;">
-              <div class="form-group">
-                <label>Net Prints (Closing − Opening)</label>
-                <input type="number" class="native-input" id="net-prints-calc" readonly placeholder="0 Pages" style="background:#f8fafc; font-weight:800; font-size:1.1rem; color:#10b981;">
-              </div>
-
-              <div class="form-group">
-                <label>Paper Balance (Opening − Closing)</label>
-                <input type="number" class="native-input" id="paper-balance" readonly placeholder="Auto Calculated" style="background:#f8fafc; font-weight:700;">
-              </div>
+            <!-- Real-Time Calculation: Net Prints (Closing − Opening) => Column H: BALANCE -->
+            <div class="form-group" style="margin-top: 10px;">
+              <label>Net Prints / Balance (Closing − Opening) <span style="font-size:0.72rem; color:var(--text-muted);">(Column H)</span></label>
+              <input type="number" class="native-input" id="paper-balance" readonly placeholder="0 Pages Printed" style="background:#f0fdf4; font-weight:800; font-size:1.15rem; color:#10b981; border-color:#86efac;">
+              <input type="hidden" id="net-prints-calc">
             </div>
 
             <!-- Column I: REMARK -->
@@ -1710,15 +1789,15 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   
-  <script src="assets/js/config.js?v=23"></script>
-  <script src="assets/js/schema.js?v=23"></script>
-  <script src="assets/js/auth.js?v=23"></script>
-  <script src="assets/js/sheets.js?v=23"></script>
-  <script src="assets/js/db.js?v=23"></script>
-  <script src="assets/js/notifications.js?v=23"></script>
-  <script src="assets/js/admob.js?v=23"></script>
-  <script src="assets/js/ocr.js?v=23"></script>
-  <script src="assets/js/app.js?v=23"></script>
+  <script src="assets/js/config.js?v=27"></script>
+  <script src="assets/js/schema.js?v=27"></script>
+  <script src="assets/js/auth.js?v=27"></script>
+  <script src="assets/js/sheets.js?v=27"></script>
+  <script src="assets/js/db.js?v=27"></script>
+  <script src="assets/js/notifications.js?v=27"></script>
+  <script src="assets/js/admob.js?v=27"></script>
+  <script src="assets/js/ocr.js?v=27"></script>
+  <script src="assets/js/app.js?v=27"></script>
 
   <script>
     function toggleUserDropdown(e) {

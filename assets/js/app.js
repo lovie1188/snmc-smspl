@@ -571,8 +571,8 @@ function renderHistoryRows(rowsToRender) {
               <span class="stat-val">${escapeHtml(closing)}</span>
             </div>
             <div class="history-card-stat">
-              <span class="stat-label">Balance</span>
-              <span class="stat-val balance">${escapeHtml(balance)}</span>
+              <span class="stat-label">Net Prints (Bal)</span>
+              <span class="stat-val balance" style="color:#059669; font-weight:800;">${escapeHtml(balance)}</span>
             </div>
             <div class="history-card-stat">
               <span class="stat-label">Issued</span>
@@ -713,7 +713,7 @@ function toggleIssueReceiveFields() {
   calcBalance();
 }
 
-// ── Calculate BALANCE & NET PRINTS DIFFERENCE ─────────────────
+// ── Calculate BALANCE & NET PRINTS DIFFERENCE (Column H) ─────
 function calcBalance() {
   const openingInput = document.getElementById("opening-reading");
   const closingInput = document.getElementById("closing-reading");
@@ -724,23 +724,22 @@ function calcBalance() {
   const opening = parseFloat(openingVal || 0);
   const closing = parseFloat(closingVal || 0);
   
-  // 1. Net Prints Calculation: (Closing - Opening)
-  const netPrintsEl = document.getElementById("net-prints-calc");
-  if (netPrintsEl) {
-    if (closingVal !== "" && !isNaN(closing) && !isNaN(opening)) {
-      const net = closing - opening;
-      netPrintsEl.value = net >= 0 ? net : 0;
-    } else {
-      netPrintsEl.value = 0;
-    }
+  // Net Prints Calculation: (Closing - Opening) => directly saved in Column H: BALANCE
+  let netPrints = 0;
+  if (closingVal !== "" && !isNaN(closing) && !isNaN(opening)) {
+    netPrints = Math.max(0, closing - opening);
   }
 
-  // 2. Paper Balance (Opening - Closing as per Google Sheets Column H formula)
+  const netPrintsEl = document.getElementById("net-prints-calc");
+  if (netPrintsEl) {
+    netPrintsEl.value = netPrints;
+  }
+
+  // Column H: BALANCE in Google Sheets now receives Net Prints (Closing - Opening)
   const balEl = document.getElementById("paper-balance");
   if (balEl) {
-    const diff = opening - closing;
-    balEl.value = isNaN(diff) ? 0 : diff;
-    balEl.style.color = diff < 0 ? "#ef4444" : "#0f172a";
+    balEl.value = netPrints;
+    balEl.style.color = "#10b981"; // Fresh green for successful net prints
   }
 }
 
@@ -832,7 +831,7 @@ function handleCounterSelectChange() {
     if (sub) sub.textContent = counterName;
     if (sEl) sEl.textContent = serialNo;
     if (lastEl) lastEl.textContent = `${foundPrevClosing} Pages`;
-    if (balEl) balEl.textContent = `${foundPrevBalance} Sheets`;
+    if (balEl) balEl.textContent = `${foundPrevBalance} Pages`;
 
     confirmCard.style.display = "block";
   }
@@ -1161,19 +1160,49 @@ async function loadHistory() {
 }
 
 function setDefaultDate() {
-  const userEmail = (currentUser?.email || "").toLowerCase().trim();
+  const user = currentUser || getStoredUser() || {};
+  const userEmail = (user.email || "").toLowerCase().trim();
+  const isSuper = isSuperAdmin(userEmail) || user.isSuperAdmin === true;
+
   const dateGroup = document.getElementById("entry-date-group");
   const dateInput = document.getElementById("entry-date-input");
+  const badgeEl = document.getElementById("entry-date-role-badge");
 
-  if (isSuperAdmin(userEmail)) {
-    if (dateGroup) dateGroup.style.display = "block";
-    if (dateInput && !dateInput.value) {
-      const now = new Date();
-      const pad = n => String(n).padStart(2, "0");
-      dateInput.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  if (dateGroup) dateGroup.style.display = "block";
+
+  // Always set default to Current Date (Today)
+  const now = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+  if (dateInput && !dateInput.value) {
+    dateInput.value = todayStr;
+  }
+
+  // Editable ONLY by SuperAdmin
+  if (isSuper) {
+    if (dateInput) {
+      dateInput.readOnly = false;
+      dateInput.style.background = "#ffffff";
+      dateInput.style.cursor = "pointer";
+    }
+    if (badgeEl) {
+      badgeEl.innerHTML = "⚡ SUPERADMIN EDITABLE";
+      badgeEl.style.background = "rgba(124, 58, 237, 0.1)";
+      badgeEl.style.color = "#7c3aed";
     }
   } else {
-    if (dateGroup) dateGroup.style.display = "none";
+    if (dateInput) {
+      dateInput.value = todayStr; // Non-superadmins always locked to today
+      dateInput.readOnly = true;
+      dateInput.style.background = "#f1f5f9";
+      dateInput.style.cursor = "not-allowed";
+    }
+    if (badgeEl) {
+      badgeEl.innerHTML = "🔒 TODAY (LOCKED)";
+      badgeEl.style.background = "#f1f5f9";
+      badgeEl.style.color = "var(--text-muted)";
+    }
   }
 }
 
@@ -1287,6 +1316,7 @@ async function submitEntry(event) {
     }
 
     document.getElementById("entry-form").reset();
+    setDefaultDate();
     toggleIssueReceiveFields();
     
     // Reset guided wizard state if in wizard mode
@@ -3155,7 +3185,7 @@ async function toggleCameraFacing() {
 }
 
 /**
- * Snaps photo from Step 1 video stream
+ * Snaps photo from Step 1 video stream and opens Image Adjuster
  */
 async function captureWizardPhoto() {
   const video = document.getElementById("wizard-video");
@@ -3170,15 +3200,18 @@ async function captureWizardPhoto() {
   const ctx = canvas.getContext("2d");
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
   lastCapturedDataUrl = dataUrl;
 
   stopWizardCamera();
-  await processWizardImageOcr(canvas, dataUrl);
+
+  const img = new Image();
+  img.onload = () => openImageAdjuster(img);
+  img.src = dataUrl;
 }
 
 /**
- * Handles Gallery Photo selection in Step 1
+ * Handles Gallery Photo selection in Step 1 and opens Image Adjuster
  */
 async function handleWizardFileUpload(event) {
   const file = event.target.files && event.target.files[0];
@@ -3197,8 +3230,9 @@ async function handleWizardFileUpload(event) {
       stopWizardCamera();
 
       const img = new Image();
-      img.onload = async () => {
-        await processWizardImageOcr(img, dataUrl);
+      img.onload = () => {
+        if (busy) busy.style.display = "none";
+        openImageAdjuster(img);
       };
       img.onerror = () => {
         if (busy) busy.style.display = "none";
@@ -3217,6 +3251,368 @@ async function handleWizardFileUpload(event) {
   } finally {
     event.target.value = "";
   }
+}
+
+// ════════════════════════════════════════════════════════════
+// ── INTERACTIVE IMAGE ADJUSTER & ANGLE CORRECTION CONTROLLER ──
+// ════════════════════════════════════════════════════════════
+
+let adjusterSourceImage = null;
+let adjusterState = {
+  angle: 0,           // Fine angle slider (-45 to +45)
+  baseRotation: 0,    // 0, 90, 180, 270 (from 90° buttons)
+  zoom: 1.0,          // 1.0 to 4.0
+  panX: 0,            // Horizontal translation offset
+  panY: 0,            // Vertical translation offset
+  lcdFilter: false    // High contrast B&W LCD filter
+};
+
+let isDraggingAdjuster = false;
+let dragStartX = 0;
+let dragStartY = 0;
+let initialPanX = 0;
+let initialPanY = 0;
+
+/**
+ * Initializes and displays the Image Adjuster view with captured image
+ */
+function openImageAdjuster(img) {
+  adjusterSourceImage = img;
+
+  // Hide live camera container and bottom action triggers
+  const camContainer = document.getElementById("wizard-camera-container");
+  const scanActions = document.getElementById("wizard-scan-actions");
+  const skipWrap = document.getElementById("wizard-skip-wrap");
+  const adjCard = document.getElementById("wizard-adjuster-container");
+
+  if (camContainer) camContainer.style.display = "none";
+  if (scanActions) scanActions.style.display = "none";
+  if (skipWrap) skipWrap.style.display = "none";
+  if (adjCard) adjCard.style.display = "block";
+
+  // Reset adjustments to initial default
+  resetAdjuster();
+
+  // Attach touch/mouse pan listeners once
+  initAdjusterInteractions();
+
+  // Draw initial state
+  renderAdjusterCanvas();
+
+  // Scroll smoothly to adjuster on mobile
+  if (adjCard && window.innerWidth < 768) {
+    adjCard.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+/**
+ * Resets all transformations
+ */
+function resetAdjuster() {
+  adjusterState = {
+    angle: 0,
+    baseRotation: 0,
+    zoom: 1.0,
+    panX: 0,
+    panY: 0,
+    lcdFilter: false
+  };
+
+  const angleSlider = document.getElementById("adjuster-angle-slider");
+  const zoomSlider = document.getElementById("adjuster-zoom-slider");
+  const angleLbl = document.getElementById("angle-value-lbl");
+  const zoomLbl = document.getElementById("zoom-value-lbl");
+  const contrastBtn = document.getElementById("btn-toggle-contrast");
+
+  if (angleSlider) angleSlider.value = 0;
+  if (zoomSlider) zoomSlider.value = 1;
+  if (angleLbl) angleLbl.textContent = "0°";
+  if (zoomLbl) zoomLbl.textContent = "1.0x";
+  if (contrastBtn) {
+    contrastBtn.classList.remove("active");
+    contrastBtn.textContent = "🌓 LCD Filter: OFF";
+  }
+
+  renderAdjusterCanvas();
+}
+
+/**
+ * Cancels Adjuster and goes back to Camera Viewfinder in Step 1
+ */
+function cancelAdjusterAndRetake() {
+  const camContainer = document.getElementById("wizard-camera-container");
+  const scanActions = document.getElementById("wizard-scan-actions");
+  const skipWrap = document.getElementById("wizard-skip-wrap");
+  const adjCard = document.getElementById("wizard-adjuster-container");
+
+  if (adjCard) adjCard.style.display = "none";
+  if (camContainer) camContainer.style.display = "block";
+  if (scanActions) scanActions.style.display = "flex";
+  if (skipWrap) skipWrap.style.display = "block";
+
+  startWizardCamera();
+}
+
+/**
+ * Fine Angle Correction Slider Handler (-45° to +45°)
+ */
+function onAngleSliderChange(val) {
+  adjusterState.angle = parseFloat(val) || 0;
+  const angleSlider = document.getElementById("adjuster-angle-slider");
+  if (angleSlider) angleSlider.value = adjusterState.angle;
+  const angleLbl = document.getElementById("angle-value-lbl");
+  if (angleLbl) angleLbl.textContent = (adjusterState.angle > 0 ? "+" : "") + adjusterState.angle.toFixed(1) + "°";
+  renderAdjusterCanvas();
+}
+
+function nudgeAngle(delta) {
+  let newAngle = Math.max(-45, Math.min(45, adjusterState.angle + delta));
+  onAngleSliderChange(newAngle);
+}
+
+/**
+ * Zoom Slider Handler (1x to 4x)
+ */
+function onZoomSliderChange(val) {
+  adjusterState.zoom = Math.max(1.0, Math.min(4.0, parseFloat(val) || 1.0));
+  const zoomSlider = document.getElementById("adjuster-zoom-slider");
+  if (zoomSlider) zoomSlider.value = adjusterState.zoom;
+  const zoomLbl = document.getElementById("zoom-value-lbl");
+  if (zoomLbl) zoomLbl.textContent = adjusterState.zoom.toFixed(2) + "x";
+  renderAdjusterCanvas();
+}
+
+function nudgeZoom(delta) {
+  let newZoom = Math.max(1.0, Math.min(4.0, adjusterState.zoom + delta));
+  onZoomSliderChange(newZoom);
+}
+
+/**
+ * 90° Rotations (Left or Right)
+ */
+function rotate90(delta) {
+  adjusterState.baseRotation = (adjusterState.baseRotation + delta) % 360;
+  if (adjusterState.baseRotation < 0) adjusterState.baseRotation += 360;
+  renderAdjusterCanvas();
+}
+
+/**
+ * Toggles high-contrast digital display enhancement filter
+ */
+function toggleLcdContrastFilter() {
+  adjusterState.lcdFilter = !adjusterState.lcdFilter;
+  const contrastBtn = document.getElementById("btn-toggle-contrast");
+  if (contrastBtn) {
+    if (adjusterState.lcdFilter) {
+      contrastBtn.classList.add("active");
+      contrastBtn.textContent = "🌓 LCD Filter: ON";
+    } else {
+      contrastBtn.classList.remove("active");
+      contrastBtn.textContent = "🌓 LCD Filter: OFF";
+    }
+  }
+  renderAdjusterCanvas();
+}
+
+/**
+ * Initializes Touch & Mouse drag listeners for panning inside viewport
+ */
+let adjusterInteractionsBound = false;
+function initAdjusterInteractions() {
+  if (adjusterInteractionsBound) return;
+  const viewport = document.getElementById("adjuster-viewport");
+  if (!viewport) return;
+
+  const onStart = (clientX, clientY) => {
+    isDraggingAdjuster = true;
+    dragStartX = clientX;
+    dragStartY = clientY;
+    initialPanX = adjusterState.panX;
+    initialPanY = adjusterState.panY;
+  };
+
+  const onMove = (clientX, clientY) => {
+    if (!isDraggingAdjuster) return;
+    const dx = clientX - dragStartX;
+    const dy = clientY - dragStartY;
+    adjusterState.panX = initialPanX + dx;
+    adjusterState.panY = initialPanY + dy;
+    renderAdjusterCanvas();
+  };
+
+  const onEnd = () => {
+    isDraggingAdjuster = false;
+  };
+
+  // Mouse events
+  viewport.addEventListener("mousedown", (e) => onStart(e.clientX, e.clientY));
+  window.addEventListener("mousemove", (e) => onMove(e.clientX, e.clientY));
+  window.addEventListener("mouseup", onEnd);
+
+  // Touch events
+  viewport.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 1) {
+      onStart(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: true });
+
+  viewport.addEventListener("touchmove", (e) => {
+    if (e.touches.length === 1) {
+      onMove(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: true });
+
+  viewport.addEventListener("touchend", onEnd);
+  adjusterInteractionsBound = true;
+}
+
+/**
+ * Renders the adjusted, straightened & zoomed image onto the Adjuster Canvas
+ */
+function renderAdjusterCanvas() {
+  const canvas = document.getElementById("adjuster-canvas");
+  if (!canvas || !adjusterSourceImage) return;
+
+  const viewport = document.getElementById("adjuster-viewport");
+  const vw = viewport ? viewport.clientWidth : 400;
+  const vh = viewport ? viewport.clientHeight : 300;
+
+  // Set internal resolution matching viewport
+  canvas.width = vw || 400;
+  canvas.height = vh || 300;
+
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+
+  // Move to center of viewport
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  ctx.translate(cx + adjusterState.panX, cy + adjusterState.panY);
+
+  // Apply base 90° rotation + fine angle slider
+  const totalAngleDeg = adjusterState.baseRotation + adjusterState.angle;
+  const totalAngleRad = (totalAngleDeg * Math.PI) / 180;
+  ctx.rotate(totalAngleRad);
+
+  // Apply zoom
+  ctx.scale(adjusterState.zoom, adjusterState.zoom);
+
+  // Calculate scaled image dimensions to fit viewport initially
+  const imgW = adjusterSourceImage.naturalWidth || adjusterSourceImage.width;
+  const imgH = adjusterSourceImage.naturalHeight || adjusterSourceImage.height;
+  const fitScale = Math.min(canvas.width / imgW, canvas.height / imgH);
+  const drawW = imgW * fitScale;
+  const drawH = imgH * fitScale;
+
+  // Draw image centered
+  ctx.drawImage(adjusterSourceImage, -drawW / 2, -drawH / 2, drawW, drawH);
+
+  ctx.restore();
+
+  // Optional: Apply high contrast digital enhancement if enabled
+  if (adjusterState.lcdFilter) {
+    applyCanvasLcdFilter(ctx, canvas.width, canvas.height);
+  }
+}
+
+/**
+ * High contrast grayscale / binarization filter for fading LCD segments
+ */
+function applyCanvasLcdFilter(ctx, width, height) {
+  const imgData = ctx.getImageData(0, 0, width, height);
+  const d = imgData.data;
+  const contrastFactor = 1.6; // High contrast
+  const intercept = 128 * (1 - contrastFactor);
+
+  for (let i = 0; i < d.length; i += 4) {
+    // Luminance
+    let gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    // Contrast stretch
+    gray = contrastFactor * gray + intercept;
+    // Clamp
+    gray = gray < 0 ? 0 : (gray > 255 ? 255 : gray);
+
+    d[i] = gray;
+    d[i + 1] = gray;
+    d[i + 2] = gray;
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+/**
+ * Extracts the cropped area inside the guide frame and passes it to OCR
+ */
+async function applyAdjusterCropAndScan() {
+  const viewport = document.getElementById("adjuster-viewport");
+  const cropGuide = document.getElementById("adjuster-crop-guide");
+  const canvas = document.getElementById("adjuster-canvas");
+
+  if (!viewport || !cropGuide || !canvas || !adjusterSourceImage) return;
+
+  // Get guide rectangle relative to viewport
+  const vpRect = viewport.getBoundingClientRect();
+  const guideRect = cropGuide.getBoundingClientRect();
+
+  const guideLeft = guideRect.left - vpRect.left;
+  const guideTop = guideRect.top - vpRect.top;
+  const guideW = guideRect.width;
+  const guideH = guideRect.height;
+
+  // Create high-resolution crop export canvas (at least 1200px width for crystal clear OCR)
+  const exportScale = Math.max(2, Math.min(4, 1600 / (guideW || 400)));
+  const cropCanvas = document.createElement("canvas");
+  cropCanvas.width = Math.round(guideW * exportScale);
+  cropCanvas.height = Math.round(guideH * exportScale);
+  const cropCtx = cropCanvas.getContext("2d");
+
+  cropCtx.fillStyle = "#ffffff";
+  cropCtx.fillRect(0, 0, cropCanvas.width, cropCanvas.height);
+
+  cropCtx.save();
+  // Scale coordinate system to high resolution
+  cropCtx.scale(exportScale, exportScale);
+  // Shift origin so that top-left of crop guide corresponds to (0, 0)
+  cropCtx.translate(-guideLeft, -guideTop);
+
+  // Now replay viewport rendering identical to renderAdjusterCanvas
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  cropCtx.translate(cx + adjusterState.panX, cy + adjusterState.panY);
+
+  const totalAngleDeg = adjusterState.baseRotation + adjusterState.angle;
+  const totalAngleRad = (totalAngleDeg * Math.PI) / 180;
+  cropCtx.rotate(totalAngleRad);
+
+  cropCtx.scale(adjusterState.zoom, adjusterState.zoom);
+
+  const imgW = adjusterSourceImage.naturalWidth || adjusterSourceImage.width;
+  const imgH = adjusterSourceImage.naturalHeight || adjusterSourceImage.height;
+  const fitScale = Math.min(canvas.width / imgW, canvas.height / imgH);
+  const drawW = imgW * fitScale;
+  const drawH = imgH * fitScale;
+
+  cropCtx.drawImage(adjusterSourceImage, -drawW / 2, -drawH / 2, drawW, drawH);
+  cropCtx.restore();
+
+  // If LCD filter was enabled, apply to high-res crop
+  if (adjusterState.lcdFilter) {
+    applyCanvasLcdFilter(cropCtx, cropCanvas.width, cropCanvas.height);
+  }
+
+  const croppedDataUrl = cropCanvas.toDataURL("image/jpeg", 0.96);
+  lastCapturedDataUrl = croppedDataUrl;
+
+  // Hide adjuster and transition to OCR processing
+  const adjCard = document.getElementById("wizard-adjuster-container");
+  if (adjCard) adjCard.style.display = "none";
+
+  const camContainer = document.getElementById("wizard-camera-container");
+  if (camContainer) camContainer.style.display = "block";
+
+  await processWizardImageOcr(cropCanvas, croppedDataUrl);
 }
 
 /**

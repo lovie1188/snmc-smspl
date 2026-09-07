@@ -2386,4 +2386,269 @@ body {
   margin-bottom: 0;
 }
 
+/* ============================================================
+   Interactive Image Adjuster, Angle Correction & Crop UI
+   ============================================================ */
+
+.wizard-adjuster-card {
+  background: #0f172a;
+  border-radius: 16px;
+  padding: 12px;
+  color: #f8fafc;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  margin-bottom: 14px;
+}
+
+.adjuster-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.adjuster-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.adjuster-title span {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+.adjuster-hint {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+.btn-adjuster-reset {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-adjuster-reset:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ── Viewport & Crop Guide ────────────────────────────────── */
+.adjuster-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 380px;
+  background: #000000;
+  border-radius: 12px;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.adjuster-viewport:active {
+  cursor: grabbing;
+}
+.adjuster-viewport canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* ── Crop Target Overlay Box ──────────────────────────────── */
+.adjuster-crop-guide {
+  position: absolute;
+  top: 10%;
+  left: 8%;
+  right: 8%;
+  bottom: 10%;
+  border: 2px solid rgba(56, 189, 248, 0.85);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
+  border-radius: 8px;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+}
+.crop-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-color: #38bdf8;
+  border-style: solid;
+}
+.crop-corner.tl { top: -2px; left: -2px; border-width: 4px 0 0 4px; border-top-left-radius: 4px; }
+.crop-corner.tr { top: -2px; right: -2px; border-width: 4px 4px 0 0; border-top-right-radius: 4px; }
+.crop-corner.bl { bottom: -2px; left: -2px; border-width: 0 0 4px 4px; border-bottom-left-radius: 4px; }
+.crop-corner.br { bottom: -2px; right: -2px; border-width: 0 4px 4px 0; border-bottom-right-radius: 4px; }
+
+/* Grid composition lines */
+.crop-grid-line {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+.crop-grid-line.h1 { top: 33.33%; left: 0; right: 0; height: 1px; }
+.crop-grid-line.h2 { top: 66.66%; left: 0; right: 0; height: 1px; }
+.crop-grid-line.v1 { left: 33.33%; top: 0; bottom: 0; width: 1px; }
+.crop-grid-line.v2 { left: 66.66%; top: 0; bottom: 0; width: 1px; }
+
+.crop-badge {
+  background: rgba(15, 23, 42, 0.85);
+  color: #38bdf8;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 12px;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+/* ── Control Sliders (Angle & Zoom) ───────────────────────── */
+.adjuster-control-row {
+  margin-top: 10px;
+}
+.adjuster-control-row .control-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: #cbd5e1;
+  margin-bottom: 4px;
+}
+.adjuster-control-row .control-label strong {
+  color: #38bdf8;
+}
+.slider-with-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slider-with-btns input[type="range"] {
+  flex: 1;
+  height: 6px;
+  accent-color: #38bdf8;
+  background: #334155;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+.btn-step-adjust {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #ffffff;
+  width: 32px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+}
+.btn-step-adjust:hover {
+  background: #334155;
+}
+.btn-zero-angle {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  padding: 0 8px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-zero-angle:hover {
+  color: #ffffff;
+  background: #334155;
+}
+
+/* ── Action Pills (90 deg Rotate, Contrast) ───────────────── */
+.adjuster-actions-pills {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.btn-adjuster-pill {
+  flex: 1;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.btn-adjuster-pill:hover {
+  background: #334155;
+  border-color: #475569;
+}
+.btn-adjuster-pill.active {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+/* ── Footer Navigation ────────────────────────────────────── */
+.adjuster-footer-nav {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.btn-adjuster-retake {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  width: 36%;
+  text-align: center;
+  transition: background 0.15s ease;
+}
+.btn-adjuster-retake:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.btn-adjuster-scan {
+  flex: 1;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+  transition: all 0.15s ease;
+}
+.btn-adjuster-scan:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #059669, #047857);
+}
+
+
 

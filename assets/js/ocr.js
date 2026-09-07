@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SNMC PrintTrack - OCR Scanner Engine (assets/js/ocr.js)
  * High-speed client-side LCD & Marker extraction using Tesseract.js
  */
@@ -122,7 +122,7 @@ const OCR_ENGINE = {
     let serialNo = null;
     let counterMarker = null;
 
-    // 1. Check for LCD reading: "TOTAL COUNT : 001784" or "COUNT : 017606" or "TOTAL : 1784"
+    // 1. Check for LCD reading: "TOTAL COUNT : 017606" or "017606"
     const countPatterns = [
       /(?:TOTAL\s*COUNT|TOTAL\s*PAGE|T0TAL\s*COUNT|COUNT)\s*[:=]?\s*0*([0-9]{2,8})/i,
       /(?:TOTAL|COUNT)\s*[:=]?\s*([0-9]{3,8})/i,
@@ -152,25 +152,44 @@ const OCR_ENGINE = {
       }
     }
 
-    // 2. Check for Serial No: e.g. "ACN3041231595", "ACN 304/231595", "ACN 3041234129"
-    const serialMatch = text.match(/(ACN\s*304\s*[\/\-]?[0-9]{6,8}|ACN[0-9]{8,12})/i);
-    if (serialMatch && serialMatch[1]) {
-      serialNo = serialMatch[1].replace(/[\s\/\-]/g, "");
-    }
-
-    // 3. Check for Counter circle/marker number (e.g. "32", "16", "NO. 32", "(32)")
-    const markerMatches = [
-      /(?:COUNTER|NO|NO\.|C)[\s.:#-]*([0-9]{1,3})\b/i,
-      /(?:^|\s|\()([0-9]{1,3})(?:\)|\s|$)/
+    // 2. Check for Serial No: e.g. "AcN 3041234129", "ACN 3041234129", "AN 3041234129", "ACN3041234129"
+    // Note: OCR recognized 'AN 3041234129' or 'ACN 3041234129'
+    const serialPatterns = [
+      /(?:A[C\s]?N|ACN|SCN|AG\s*N)[\s.:_-]*([0-9]{8,12})/i,
+      /(?:A[C\s]?N|ACN)[\s.:_-]*(304[\s\/-]?[0-9]{6,8})/i,
+      /\b(304[0-9]{7})\b/,
+      /(?:ACN\s*304\s*[\/\-]?[0-9]{6,8}|ACN[0-9]{8,12})/i
     ];
 
-    for (const pat of markerMatches) {
+    for (const sPat of serialPatterns) {
+      const sm = text.match(sPat);
+      if (sm) {
+        const captured = sm[1] || sm[0];
+        const digitsOnly = captured.replace(/[^0-9]/g, "");
+        if (digitsOnly.length >= 7) {
+          serialNo = "ACN" + digitsOnly;
+          break;
+        }
+      }
+    }
+
+    // 3. Check for Counter circle/marker number (e.g. circled "16", "(16)", "16", "NO. 16", "COUNTER 16")
+    const markerPatterns = [
+      /(?:COUNTER|NO|NO\.|C|#)[\s.:#-]*([0-9]{1,3})\b/i,
+      /\(([0-9]{1,3})\)/,
+      /(?:^|\n|\s)([0-9]{1,3})(?:\n|\s|$)/
+    ];
+
+    for (const pat of markerPatterns) {
       const m = text.match(pat);
       if (m && m[1]) {
         const parsed = parseInt(m[1].trim(), 10);
+        // Ensure not part of the large reading or serial digits
         if (!isNaN(parsed) && parsed >= 1 && parsed <= 150) {
-          counterMarker = String(parsed);
-          break;
+          if (!closingReading || parsed !== closingReading) {
+            counterMarker = String(parsed);
+            break;
+          }
         }
       }
     }
