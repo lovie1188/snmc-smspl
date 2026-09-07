@@ -6,33 +6,56 @@
 const OCR_ENGINE = {
   isInitialized: false,
   worker: null,
+  initPromise: null,
 
   async init() {
     if (this.isInitialized && this.worker) return true;
-    if (typeof Tesseract === "undefined") {
-      console.warn("[OCR] Tesseract.js is not loaded yet.");
-      return false;
-    }
-    try {
-      this.worker = await Tesseract.createWorker("eng", 1, {
-        logger: m => {
-          if (m && m.status === "recognizing text") {
-            const pct = Math.round((m.progress || 0) * 100);
-            const statusEl = document.getElementById("ocr-status-text");
-            if (statusEl) statusEl.textContent = `Reading display... ${pct}%`;
+    if (this.initPromise) return this.initPromise;
+
+    this.initPromise = (async () => {
+      if (typeof Tesseract === "undefined") {
+        console.warn("[OCR] Tesseract.js is not loaded yet.");
+        return false;
+      }
+      try {
+        const workerOptions = {
+          workerPath: "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js",
+          corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core-simd-lstm.wasm.js",
+          logger: m => {
+            if (m && m.status) {
+              const statusEl = document.getElementById("ocr-status-text");
+              if (statusEl) {
+                if (m.status === "recognizing text") {
+                  const pct = Math.round((m.progress || 0) * 100);
+                  statusEl.textContent = `Reading display... ${pct}%`;
+                } else if (m.status === "loading tesseract core") {
+                  statusEl.textContent = "Loading OCR core...";
+                } else if (m.status === "loading language traineddata") {
+                  statusEl.textContent = "Loading trained data...";
+                }
+              }
+            }
           }
-        }
-      });
-      // Whitelist letters, numbers, colons, slashes, dashes, spaces
-      await this.worker.setParameters({
-        tessedit_char_whitelist: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:/-#() "
-      });
-      this.isInitialized = true;
-      return true;
-    } catch (err) {
-      console.error("[OCR] Failed to initialize Tesseract worker:", err);
-      return false;
-    }
+        };
+
+        this.worker = await Tesseract.createWorker("eng", 1, workerOptions);
+
+        await this.worker.setParameters({
+          tessedit_char_whitelist: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz:/-#() "
+        });
+        this.isInitialized = true;
+        return true;
+      } catch (err) {
+        console.error("[OCR] Failed to initialize Tesseract worker:", err);
+        this.worker = null;
+        this.isInitialized = false;
+        throw err;
+      } finally {
+        this.initPromise = null;
+      }
+    })();
+
+    return this.initPromise;
   },
 
   /**
@@ -71,7 +94,7 @@ const OCR_ENGINE = {
   },
 
   /**
-   * Recognizes text from image/canvas
+   * Recognizes text from image/canvas/dataURL/Blob
    */
   async recognize(imageSource) {
     const ready = await this.init();

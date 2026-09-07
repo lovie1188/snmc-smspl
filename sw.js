@@ -2,7 +2,7 @@
 // PrintTrack — Service Worker with FCM Push Support
 // ============================================================
 
-const CACHE_NAME = 'printtrack-v21';
+const CACHE_NAME = 'printtrack-v22';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -52,8 +52,13 @@ self.addEventListener('fetch', (event) => {
   
   const url = new URL(event.request.url);
 
-  // Skip external Google / Firebase endpoints
-  if (url.hostname.includes('googleapis.com') || url.hostname.includes('google.com')) return;
+  // Skip external Google / Firebase / CDN endpoints
+  if (url.hostname.includes('googleapis.com') || 
+      url.hostname.includes('google.com') ||
+      url.hostname.includes('jsdelivr.net') ||
+      url.hostname.includes('unpkg.com') ||
+      url.hostname.includes('github.com') ||
+      url.hostname.includes('githubusercontent.com')) return;
 
   // Never cache API calls — pass straight to network
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/.netlify/functions/')) {

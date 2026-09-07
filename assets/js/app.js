@@ -2968,23 +2968,39 @@ async function handleAdminCenterToggleGoogle(enabled) {
 
 
 // ══════════════════════════════════════════════════════════
-// ── SMART SCANNER (CAMERA & OCR AUTO-FILL) ──────────────
+// ── SMART SCANNER (FULLSCREEN CAMERA & OCR AUTO-FILL) ───
 // ══════════════════════════════════════════════════════════
 
 let scannerStream = null;
 let currentCameraFacing = "environment"; // default to rear camera on mobile
 let scannedDataPending = null;
+let lastCapturedDataUrl = null;
 
 async function openScannerModal() {
   const modal = document.getElementById("scanner-modal");
   const resultBar = document.getElementById("scanner-result-bar");
   const busy = document.getElementById("scanner-busy-overlay");
+  const controls = document.getElementById("scanner-controls-bar");
+  const targetBox = document.getElementById("scanner-target-box");
+  const previewImg = document.getElementById("scanner-preview-img");
+  const video = document.getElementById("scanner-video");
   
   if (resultBar) resultBar.style.display = "none";
   if (busy) busy.style.display = "none";
+  if (controls) controls.style.display = "flex";
+  if (targetBox) targetBox.style.display = "flex";
+  if (previewImg) previewImg.style.display = "none";
+  if (video) video.style.display = "block";
+
   scannedDataPending = null;
+  lastCapturedDataUrl = null;
 
   if (modal) modal.style.display = "flex";
+
+  // Pre-initialize OCR engine in background so it's ready on snap
+  if (window.OCR_ENGINE && !window.OCR_ENGINE.isInitialized) {
+    window.OCR_ENGINE.init().catch(e => console.warn("[OCR] Background init:", e));
+  }
 
   await startCameraStream();
 }
@@ -2994,6 +3010,7 @@ function closeScannerModal() {
   const modal = document.getElementById("scanner-modal");
   if (modal) modal.style.display = "none";
   scannedDataPending = null;
+  lastCapturedDataUrl = null;
 }
 
 async function startCameraStream() {
@@ -3001,35 +3018,50 @@ async function startCameraStream() {
   const video = document.getElementById("scanner-video");
   if (!video) return;
 
+  video.style.display = "block";
+  const previewImg = document.getElementById("scanner-preview-img");
+  if (previewImg) previewImg.style.display = "none";
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    console.warn("[Scanner] getUserMedia not supported in this browser.");
+    showToast("Camera API not available in this browser. Please use 📁 Gallery to pick a photo.", "info");
+    return;
+  }
+
+  // 1. Try rear/facing camera
   try {
     const constraints = {
       video: {
         facingMode: { ideal: currentCameraFacing },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
       },
       audio: false
     };
     scannerStream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = scannerStream;
     await video.play();
+    return;
   } catch (err) {
-    console.warn("[Scanner] Camera stream direct start failed:", err);
-    // Try fallback without constraints
-    try {
-      scannerStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      video.srcObject = scannerStream;
-      await video.play();
-    } catch (fallbackErr) {
-      console.warn("[Scanner] No camera access:", fallbackErr);
-      showToast("Camera access unavailable. Please use the 📁 Gallery button to upload a photo.", "info");
-    }
+    console.warn("[Scanner] Ideal constraints failed, trying basic video:", err);
+  }
+
+  // 2. Fallback to any available video stream (e.g. laptop webcam, external cam)
+  try {
+    scannerStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    video.srcObject = scannerStream;
+    await video.play();
+  } catch (fallbackErr) {
+    console.warn("[Scanner] No camera device found or permission denied:", fallbackErr);
+    showToast("No active camera found. You can pick photos using 📁 Gallery.", "info");
   }
 }
 
 function stopCameraStream() {
   if (scannerStream) {
-    scannerStream.getTracks().forEach(t => t.stop());
+    try {
+      scannerStream.getTracks().forEach(t => t.stop());
+    } catch (_) {}
     scannerStream = null;
   }
   const video = document.getElementById("scanner-video");
@@ -3041,6 +3073,30 @@ async function toggleCameraFacing() {
   await startCameraStream();
 }
 
+/**
+ * Resets back to live camera view to retake photo
+ */
+async function recaptureScanner() {
+  const resultBar = document.getElementById("scanner-result-bar");
+  const controls = document.getElementById("scanner-controls-bar");
+  const targetBox = document.getElementById("scanner-target-box");
+  const previewImg = document.getElementById("scanner-preview-img");
+  const video = document.getElementById("scanner-video");
+  const busy = document.getElementById("scanner-busy-overlay");
+
+  if (resultBar) resultBar.style.display = "none";
+  if (busy) busy.style.display = "none";
+  if (controls) controls.style.display = "flex";
+  if (targetBox) targetBox.style.display = "flex";
+  if (previewImg) previewImg.style.display = "none";
+  if (video) video.style.display = "block";
+
+  scannedDataPending = null;
+  lastCapturedDataUrl = null;
+
+  await startCameraStream();
+}
+
 async function handleScannerFileUpload(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
@@ -3048,22 +3104,42 @@ async function handleScannerFileUpload(event) {
   const busy = document.getElementById("scanner-busy-overlay");
   const statusEl = document.getElementById("ocr-status-text");
   if (busy) busy.style.display = "flex";
-  if (statusEl) statusEl.textContent = "Loading selected image...";
+  if (statusEl) statusEl.textContent = "Reading selected photo...";
 
   try {
-    const img = new Image();
-    img.onload = async () => {
-      URL.revokeObjectURL(img.src);
-      await processImageForOcr(img);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const dataUrl = e.target.result;
+      lastCapturedDataUrl = dataUrl;
+
+      // Show captured photo preview on screen
+      const previewImg = document.getElementById("scanner-preview-img");
+      const video = document.getElementById("scanner-video");
+      if (previewImg) {
+        previewImg.src = dataUrl;
+        previewImg.style.display = "block";
+      }
+      if (video) video.style.display = "none";
+      stopCameraStream();
+
+      const img = new Image();
+      img.onload = async () => {
+        await processImageForOcr(img);
+      };
+      img.onerror = () => {
+        if (busy) busy.style.display = "none";
+        showToast("Could not load selected photo.", "error");
+      };
+      img.src = dataUrl;
     };
-    img.onerror = () => {
+    reader.onerror = () => {
       if (busy) busy.style.display = "none";
-      showToast("Could not load image file.", "error");
+      showToast("Error reading file.", "error");
     };
-    img.src = URL.createObjectURL(file);
+    reader.readAsDataURL(file);
   } catch (err) {
     if (busy) busy.style.display = "none";
-    showToast("Error reading file: " + err.message, "error");
+    showToast("Error loading file: " + err.message, "error");
   } finally {
     event.target.value = "";
   }
@@ -3072,8 +3148,10 @@ async function handleScannerFileUpload(event) {
 async function captureAndProcessScan() {
   const video = document.getElementById("scanner-video");
   const canvas = document.getElementById("scanner-canvas");
+  const previewImg = document.getElementById("scanner-preview-img");
+
   if (!video || !video.videoWidth) {
-    showToast("Camera is not ready. You can also pick a photo via 📁 Gallery.", "warn");
+    showToast("Camera is not ready. Please use 📁 Gallery to select a photo.", "warn");
     return;
   }
 
@@ -3082,6 +3160,17 @@ async function captureAndProcessScan() {
   const ctx = canvas.getContext("2d");
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+  lastCapturedDataUrl = dataUrl;
+
+  // Freeze preview on screen
+  if (previewImg) {
+    previewImg.src = dataUrl;
+    previewImg.style.display = "block";
+  }
+  video.style.display = "none";
+  stopCameraStream();
+
   await processImageForOcr(canvas);
 }
 
@@ -3089,25 +3178,25 @@ async function processImageForOcr(sourceElement) {
   const busy = document.getElementById("scanner-busy-overlay");
   const statusEl = document.getElementById("ocr-status-text");
   const resultBar = document.getElementById("scanner-result-bar");
-  const counterPill = document.getElementById("sresult-counter-pill");
-  const readingPill = document.getElementById("sresult-reading-pill");
+  const controls = document.getElementById("scanner-controls-bar");
+  const targetBox = document.getElementById("scanner-target-box");
+
+  const counterValEl = document.getElementById("sresult-counter-val");
+  const counterSubEl = document.getElementById("sresult-counter-sub");
+  const readingValEl = document.getElementById("sresult-reading-val");
+  const readingSubEl = document.getElementById("sresult-reading-sub");
+  const rawBoxEl = document.getElementById("sresult-raw-box");
 
   if (busy) busy.style.display = "flex";
-  if (statusEl) statusEl.textContent = "Scanning printer display...";
+  if (statusEl) statusEl.textContent = "Scanning printer LCD & serial...";
   if (resultBar) resultBar.style.display = "none";
 
   try {
     if (!window.OCR_ENGINE) {
-      throw new Error("OCR Engine is not initialized.");
+      throw new Error("OCR Engine is loading or unavailable.");
     }
     const result = await window.OCR_ENGINE.recognize(sourceElement);
     console.log("[OCR] Scan result:", result);
-
-    if (!result.closingReading && !result.serialNo && !result.counterMarker) {
-      if (busy) busy.style.display = "none";
-      showToast("Could not clearly detect reading or serial. Please align closer and retry.", "warn");
-      return;
-    }
 
     scannedDataPending = result;
 
@@ -3117,25 +3206,53 @@ async function processImageForOcr(sourceElement) {
       scannedDataPending.matchedPrinter = matchedPrinter;
     }
 
-    if (counterPill) {
-      counterPill.textContent = matchedPrinter 
-        ? `Printer: ${matchedPrinter.fullCounter}` 
-        : (result.serialNo ? `S/N: ${result.serialNo}` : (result.counterMarker ? `Marker: #${result.counterMarker}` : `Counter: Unknown`));
+    // Populate Detailed Verification Card
+    if (counterValEl) {
+      if (matchedPrinter) {
+        counterValEl.innerHTML = `<span style="color:#10b981;">🟢 ${escapeHtml(matchedPrinter.fullCounter)}</span>`;
+        if (counterSubEl) counterSubEl.textContent = `${matchedPrinter.counterName} • ${matchedPrinter.hospital || "ALL"}`;
+      } else if (result.serialNo) {
+        counterValEl.innerHTML = `<span style="color:#38bdf8;">S/N: ${escapeHtml(result.serialNo)}</span>`;
+        if (counterSubEl) counterSubEl.textContent = "Printer serial detected (Select counter below)";
+      } else if (result.counterMarker) {
+        counterValEl.innerHTML = `<span style="color:#38bdf8;">Marker: #${escapeHtml(result.counterMarker)}</span>`;
+        if (counterSubEl) counterSubEl.textContent = "Counter marker detected";
+      } else {
+        counterValEl.innerHTML = `<span style="color:#f59e0b;">⚠️ Not Detected</span>`;
+        if (counterSubEl) counterSubEl.textContent = "Align closer to serial number or counter sticker";
+      }
     }
-    if (readingPill) {
-      readingPill.textContent = result.closingReading ? `Reading: ${result.closingReading}` : "Reading: Not Detected";
+
+    if (readingValEl) {
+      if (result.closingReading) {
+        readingValEl.innerHTML = `<strong style="font-size:1.3rem; color:#38bdf8;">${result.closingReading}</strong> <span style="font-size:0.8rem; color:#94a3b8;">Pages</span>`;
+        if (readingSubEl) readingSubEl.textContent = "Extracted from LCD Total Count";
+      } else {
+        readingValEl.innerHTML = `<span style="color:#f59e0b; font-size:1rem;">⚠️ Not Detected</span>`;
+        if (readingSubEl) readingSubEl.textContent = "LCD meter was blurry or not in frame";
+      }
+    }
+
+    if (rawBoxEl && result.rawText) {
+      rawBoxEl.textContent = `Raw OCR text: "${result.rawText.slice(0, 100).replace(/\n/g, ' ')}"`;
+      rawBoxEl.style.display = "block";
     }
 
     if (busy) busy.style.display = "none";
+    if (controls) controls.style.display = "none";
+    if (targetBox) targetBox.style.display = "none";
     if (resultBar) resultBar.style.display = "flex";
 
-    // Vibrate phone if supported
     if (navigator.vibrate) navigator.vibrate(100);
+
+    if (!result.closingReading && !matchedPrinter) {
+      showToast("Could not read numbers clearly. You can tap 'Retake' or adjust photo.", "warn");
+    }
 
   } catch (err) {
     console.error("[OCR] Processing error:", err);
     if (busy) busy.style.display = "none";
-    showToast("Scan analysis failed: " + err.message, "error");
+    showToast("OCR Scan analysis failed: " + err.message, "error");
   }
 }
 
