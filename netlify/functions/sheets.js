@@ -39,7 +39,7 @@ const DAILY_RANGE = "A:L";
 const ALLOWED_SENDERS_TAB = "allowed_senders";
 const FCMTOKENS_TAB = "fcmtokens";
 const STOCK_TAB = "stock";
-const STOCK_RANGE = "A:M";
+const STOCK_RANGE = "A:O";
 const USER_HOSPITALS_TAB = "user_hospitals";
 const USER_HOSPITALS_RANGE = "A:H";
 
@@ -483,6 +483,79 @@ async function updateSheetRow(tab, range, row, customSheetId = null) {
   return res.json();
 }
 
+/**
+ * Uploads an image Buffer to Google Drive, sets public read permission, and returns the direct view link
+ */
+async function uploadBufferToGoogleDrive(buffer, filename, mimeType = "image/jpeg", folderId = GOOGLE_DRIVE_PHOTO_FOLDER_ID) {
+  const authHeaders = await getSheetsAuthHeaders();
+  if (!authHeaders) {
+    throw new Error("SERVER_CONFIG_ERROR: Google service account credentials required for Drive upload.");
+  }
+
+  // 1. Multipart boundary payload to upload metadata + file data
+  const boundary = "-------314159265358979323846";
+  const delimiter = `\r\n--${boundary}\r\n`;
+  const closeDelimiter = `\r\n--${boundary}--`;
+
+  const metadata = {
+    name: filename,
+    mimeType: mimeType,
+    parents: folderId ? [folderId] : []
+  };
+
+  const metadataBuffer = Buffer.from(
+    delimiter +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify(metadata) +
+    delimiter +
+    `Content-Type: ${mimeType}\r\n\r\n`
+  );
+
+  const closeBuffer = Buffer.from(closeDelimiter);
+  const multipartBody = Buffer.concat([metadataBuffer, buffer, closeBuffer]);
+
+  const uploadUrl = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,webContentLink";
+  const uploadRes = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      ...authHeaders,
+      "Content-Type": `multipart/related; boundary=${boundary}`,
+      "Content-Length": String(multipartBody.length)
+    },
+    body: multipartBody
+  });
+
+  if (!uploadRes.ok) {
+    const errText = await uploadRes.text().catch(() => "");
+    throw new Error(`Google Drive upload failed (${uploadRes.status}): ${errText}`);
+  }
+
+  const fileData = await uploadRes.json();
+  const fileId = fileData.id;
+
+  // 2. Set file permission to anyone with link (read-only)
+  try {
+    const permUrl = `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`;
+    await fetch(permUrl, {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        role: "reader",
+        type: "anyone"
+      })
+    });
+  } catch (pErr) {
+    console.warn("[Drive Permission Warning]:", pErr.message);
+  }
+
+  // Direct embeddable / loadable image link
+  const directLink = `https://drive.google.com/uc?id=${fileId}&export=view`;
+  return { fileId, directLink };
+}
+
 async function clearSheetRow(tab, range, customSheetId = null) {
   const targetSheetId = customSheetId || SHEET_ID;
   const authHeaders = await getSheetsAuthHeaders();
@@ -900,6 +973,30 @@ exports.handler = async function (event, context) {
       };
     }
 
+    // ── 4b. Append Stock Entry (SuperAdmin Only) ──
+    if (action === "appendStockEntry" && event.httpMethod === "POST") {
+      if (!userIsSuperAdmin) {
+        const err = new Error("Forbidden: Only SuperAdmins can record new stock receipts.");
+        err.statusCode = 403;
+        throw err;
+      }
+
+      const payload = JSON.parse(event.body || "{}");
+      const row = payload.row;
+      if (!Array.isArray(row) || row.length < 13) {
+        const err = new Error("Invalid stock payload: row array of 13 to 15 columns is required.");
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const appendResult = await appendSheetRow(STOCK_TAB, STOCK_RANGE, row);
+      return jsonResponse(200, headers, {
+        success: true,
+        message: "Stock entry saved successfully to Google Sheets.",
+        result: appendResult
+      });
+    }
+
     // ── 5. Server-authoritative notification sender check ──
     if (action === "checkSender" && event.httpMethod === "GET") {
       const email = userEmail;
@@ -1254,7 +1351,7 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { ok: true, deletedEmail: email, rowIndex: targetRowIndex });
     }
 
-    // ── 14. Direct Fast Storage for Employee Photo (Saved to Manpower Sheet & Neon DB) ──
+    // ── 14. Direct Fast Storage for Employee Photo (Saved to Google Drive, Manpower Sheet & Neon DB) ──
     if (action === "uploadEmployeePhoto" && event.httpMethod === "POST") {
       const payload = JSON.parse(event.body || "{}");
       const targetEmail = String(payload.email || userEmail).toLowerCase().trim();
@@ -1274,39 +1371,63 @@ exports.handler = async function (event, context) {
         throw err;
       }
 
-      // Format clean data URL (e.g. data:image/jpeg;base64,...)
-      const cleanDataUrl = base64Data.startsWith("data:") 
-        ? base64Data 
-        : `data:${mimeType};base64,${base64Data}`;
+      // Convert Base64 dataURL to raw binary buffer
+      const pureBase64 = base64Data.replace(/^data:[^;]+;base64,/, "");
+      const imageBuffer = Buffer.from(pureBase64, "base64");
 
-      // 1. Update Column AA (index 26) in Manpower Sheet
-      const sheetData = await fetchSheetDataPublic(`'${MANPOWER_TAB}'!${MANPOWER_RANGE}`, MANPOWER_SHEET_ID);
-      if (sheetData && sheetData.values) {
-        const rowIndex = sheetData.values.findIndex((r, i) => {
-          if (i === 0) return false;
-          const rEmail = String(r[9] || r[8] || "").toLowerCase().trim();
-          return rEmail === targetEmail;
-        });
+      let finalPhotoUrl = "";
 
-        if (rowIndex !== -1) {
-          const targetRow = rowIndex + 1;
-          const existingRow = sheetData.values[rowIndex] || [];
-          const updatedRow = new Array(Math.max(30, existingRow.length)).fill("");
-          for (let c = 0; c < existingRow.length; c++) {
-            updatedRow[c] = existingRow[c] || "";
-          }
-          updatedRow[26] = cleanDataUrl; // AA: PHOTO
-
-          await updateSheetRow(MANPOWER_TAB, `A${targetRow}:AD${targetRow}`, updatedRow, MANPOWER_SHEET_ID);
+      // 1. Attempt upload to dedicated Google Drive Folder
+      try {
+        const safeEmailPrefix = targetEmail.split("@")[0].replace(/[^a-zA-Z0-9_-]/g, "_");
+        const filename = `photo_${safeEmailPrefix}_${Date.now()}.jpg`;
+        const driveResult = await uploadBufferToGoogleDrive(imageBuffer, filename, mimeType, GOOGLE_DRIVE_PHOTO_FOLDER_ID);
+        if (driveResult && driveResult.directLink) {
+          finalPhotoUrl = driveResult.directLink;
         }
+      } catch (driveErr) {
+        console.warn("[Drive Upload Fallback Warning]:", driveErr.message);
       }
 
-      // 2. Also persist in Neon DB avatar column if user exists
+      // Fallback: If Google Drive API had an issue, use clean base64 data URL
+      if (!finalPhotoUrl) {
+        finalPhotoUrl = base64Data.startsWith("data:") 
+          ? base64Data 
+          : `data:${mimeType};base64,${base64Data}`;
+      }
+
+      // 2. Update Column AA (index 26) in Manpower Sheet
       try {
-        await queryNeon(`UPDATE users SET avatar = $1, updated_at = NOW() WHERE LOWER(email) = $2;`, [cleanDataUrl, targetEmail]);
+        const sheetData = await fetchSheetDataPublic(`'${MANPOWER_TAB}'!${MANPOWER_RANGE}`, MANPOWER_SHEET_ID);
+        if (sheetData && sheetData.values) {
+          const rowIndex = sheetData.values.findIndex((r, i) => {
+            if (i === 0) return false;
+            const rEmail = String(r[9] || r[8] || "").toLowerCase().trim();
+            return rEmail === targetEmail;
+          });
+
+          if (rowIndex !== -1) {
+            const targetRow = rowIndex + 1;
+            const existingRow = sheetData.values[rowIndex] || [];
+            const updatedRow = new Array(Math.max(30, existingRow.length)).fill("");
+            for (let c = 0; c < existingRow.length; c++) {
+              updatedRow[c] = existingRow[c] || "";
+            }
+            updatedRow[26] = finalPhotoUrl; // AA: PHOTO
+
+            await updateSheetRow(MANPOWER_TAB, `A${targetRow}:AD${targetRow}`, updatedRow, MANPOWER_SHEET_ID);
+          }
+        }
+      } catch (sheetErr) {
+        console.error("[Manpower Sheet Photo Update Error]:", sheetErr.message);
+      }
+
+      // 3. Also persist in Neon DB avatar column if user exists
+      try {
+        await queryNeon(`UPDATE users SET avatar = $1, updated_at = NOW() WHERE LOWER(email) = $2;`, [finalPhotoUrl, targetEmail]);
       } catch (_) {}
 
-      return jsonResponse(200, headers, { ok: true, photoUrl: cleanDataUrl, email: targetEmail });
+      return jsonResponse(200, headers, { ok: true, photoUrl: finalPhotoUrl, email: targetEmail });
     }
 
     // ── 15. Action: getScannerSettings (SuperAdmin & App Scanner Config) ──

@@ -94,12 +94,29 @@ function setSummaryDatePreset(preset, btn) {
     summaryEndDate = todayStr;
     if (startInput) startInput.value = todayStr;
     if (endInput) endInput.value = todayStr;
+  } else if (preset === "last_7") {
+    const last7 = new Date(today);
+    last7.setDate(last7.getDate() - 6);
+    const last7Str = `${last7.getFullYear()}-${pad(last7.getMonth() + 1)}-${pad(last7.getDate())}`;
+    summaryStartDate = last7Str;
+    summaryEndDate = todayStr;
+    if (startInput) startInput.value = last7Str;
+    if (endInput) endInput.value = todayStr;
   } else if (preset === "this_month") {
     const firstDay = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-01`;
     summaryStartDate = firstDay;
     summaryEndDate = todayStr;
     if (startInput) startInput.value = firstDay;
     if (endInput) endInput.value = todayStr;
+  } else if (preset === "last_month") {
+    const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const prevMonthLast = new Date(today.getFullYear(), today.getMonth(), 0);
+    const pmStart = `${prevMonth.getFullYear()}-${pad(prevMonth.getMonth() + 1)}-01`;
+    const pmEnd = `${prevMonthLast.getFullYear()}-${pad(prevMonthLast.getMonth() + 1)}-${pad(prevMonthLast.getDate())}`;
+    summaryStartDate = pmStart;
+    summaryEndDate = pmEnd;
+    if (startInput) startInput.value = pmStart;
+    if (endInput) endInput.value = pmEnd;
   } else {
     // All time
     summaryStartDate = "";
@@ -124,6 +141,80 @@ function filterSummaryByDateRange() {
   }
 
   calculateHospitalMetrics();
+}
+
+function animateCountUp(element, targetValue, duration = 400) {
+  if (!element) return;
+  const target = parseFloat(targetValue.toString().replace(/,/g, ''));
+  if (isNaN(target) || target === 0) {
+    element.textContent = targetValue;
+    return;
+  }
+  const startTime = performance.now();
+  const update = (currentTime) => {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const easeProgress = progress * (2 - progress);
+    const current = Math.round(target * easeProgress);
+    element.textContent = current.toLocaleString('en-IN');
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    } else {
+      element.textContent = targetValue;
+    }
+  };
+  requestAnimationFrame(update);
+}
+
+function updateDashboardWelcomeBar(hospitalName) {
+  const bar = document.getElementById("dashboard-welcome-bar");
+  if (!bar) return;
+  
+  const hour = new Date().getHours();
+  let greeting = "Good Evening";
+  if (hour < 12) greeting = "Good Morning";
+  else if (hour < 17) greeting = "Good Afternoon";
+  
+  const name = currentUser?.name || "User";
+  const d = new Date();
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = d.toLocaleString('en-US', { month: 'short' });
+  const year = d.getFullYear();
+  const weekday = d.toLocaleString('en-US', { weekday: 'long' });
+  const dateStr = `${day} ${month} ${year} (${weekday})`;
+
+  // Calculate time since last entry today
+  let lastEntryText = "No entries today";
+  const todayStr = new Date().toLocaleDateString("en-CA");
+  if (Array.isArray(allDailyRows)) {
+    const todayEntries = allDailyRows.filter(r => {
+      const rd = parseRowDate(r["Date"] || r["Timestamp"] || r["hg"] || "");
+      return rd && rd.toLocaleDateString("en-CA") === todayStr;
+    });
+    if (todayEntries.length > 0) {
+      todayEntries.sort((a, b) => (parseRowDate(a["Date"]||a["Timestamp"]||a["hg"])||0) - (parseRowDate(b["Date"]||b["Timestamp"]||b["hg"])||0));
+      const latest = parseRowDate(todayEntries[todayEntries.length - 1]["Date"] || todayEntries[todayEntries.length - 1]["Timestamp"] || todayEntries[todayEntries.length - 1]["hg"]);
+      if (latest) {
+        const diffMs = Math.max(0, new Date() - latest);
+        const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+        if (diffHrs === 0) {
+          const diffMins = Math.floor(diffMs / (1000 * 60));
+          lastEntryText = `Last entry: ${diffMins}m ago`;
+        } else {
+          lastEntryText = `Last entry: ${diffHrs}h ago`;
+        }
+      }
+    }
+  }
+
+  bar.innerHTML = `
+    <div class="wb-greeting">${greeting}, <strong>${name}</strong></div>
+    <div class="wb-context">
+      <span class="wb-badge">${hospitalName}</span>
+      <span class="wb-date">${dateStr}</span>
+      <span class="wb-last-entry">${lastEntryText}</span>
+    </div>
+  `;
 }
 
 function calculateHospitalMetrics() {
@@ -299,12 +390,12 @@ function calculateHospitalMetrics() {
   const prnCountEl  = document.getElementById("kpi-prints-count");
   const entriesEl   = document.getElementById("kpi-entries-count");
 
-  if (delSheetsEl) delSheetsEl.textContent = activeStats.delivered.toLocaleString("en-IN");
-  if (delRimsEl)   delRimsEl.textContent   = activeStats.stockRims.toLocaleString("en-IN");
-  if (issSheetsEl) issSheetsEl.textContent = activeStats.issued.toLocaleString("en-IN");
+  if (delSheetsEl) animateCountUp(delSheetsEl, activeStats.delivered.toLocaleString("en-IN"), 400);
+  if (delRimsEl)   animateCountUp(delRimsEl, activeStats.stockRims.toLocaleString("en-IN"), 400);
+  if (issSheetsEl) animateCountUp(issSheetsEl, activeStats.issued.toLocaleString("en-IN"), 400);
   if (issRimsEl)   issRimsEl.textContent   = (activeStats.issued / 500).toFixed(1);
-  if (prnCountEl)  prnCountEl.textContent  = activeStats.prints.toLocaleString("en-IN");
-  if (entriesEl)   entriesEl.textContent   = activeStats.entries.toLocaleString("en-IN");
+  if (prnCountEl)  animateCountUp(prnCountEl, activeStats.prints.toLocaleString("en-IN"), 400);
+  if (entriesEl)   animateCountUp(entriesEl, activeStats.entries.toLocaleString("en-IN"), 400);
 
   // Populate Consumption Tracker Bar
   const stockBalanceEl = document.getElementById("kpi-stock-balance");
@@ -337,6 +428,16 @@ function calculateHospitalMetrics() {
     } else {
       lowStockBanner.style.display = "none";
     }
+  }
+
+  // 6. Update Welcome & Context Bar
+  updateDashboardWelcomeBar(activeHospitalName);
+
+  // Show/hide Team Directory widget based on super admin
+  const teamWidget = document.getElementById("widget-team-directory");
+  if (teamWidget) {
+    const userIsSuper = typeof isSuperAdmin === "function" && isSuperAdmin(currentUser?.email || "");
+    teamWidget.style.display = userIsSuper ? "flex" : "none";
   }
 }
 
@@ -1806,13 +1907,15 @@ function closePrinterDetailModal(e) {
   if (collapseIcon) collapseIcon.style.display = "none";
 }
 
-// ── DEDICATED STOCK (RECEIVED PAPER) PAGE ──────────────────
+// ── DEDICATED STOCK (RECEIVED PAPER & CONSUMABLES) PAGE ──────
 let activeStockHospitalFilter = "ALL";
+let activeStockCategoryFilter = "ALL";
 
 async function loadStockPage() {
   try {
     const data = await fetchStockEntries();
     allStockRows = data.rows || [];
+    populateStockCategoryPills();
     renderStockList();
   } catch (err) {
     showToast("Stock load failed: " + err.message, "error");
@@ -1826,8 +1929,74 @@ function filterStockByHospital(hospital, btnEl) {
   renderStockList();
 }
 
+function filterStockByCategory(category, btnEl) {
+  activeStockCategoryFilter = category;
+  document.querySelectorAll("#stock-category-pills .pill-btn").forEach(b => b.classList.remove("active"));
+  if (btnEl) btnEl.classList.add("active");
+  renderStockList();
+}
+
 function filterStockList() {
   renderStockList();
+}
+
+function syncStockUnitPer(val) {
+  const perInput = document.getElementById("stock-new-per");
+  if (perInput && !perInput.dataset.manualEdit) {
+    perInput.value = val;
+  }
+}
+
+// Dynamically extract unique categories from sheet rows and update category pills & form dropdown
+function populateStockCategoryPills() {
+  const standardCats = ["Paper", "Toner", "Accessories"];
+  const dynamicCats = new Set(standardCats);
+
+  if (Array.isArray(allStockRows)) {
+    allStockRows.forEach(r => {
+      const c = (r["Item Type"] || "").trim();
+      if (c && c !== "N/A" && c !== "-") {
+        dynamicCats.add(c);
+      }
+    });
+  }
+
+  // Populate category filter pills
+  const pillsContainer = document.getElementById("stock-category-pills");
+  if (pillsContainer) {
+    let html = `<button type="button" class="pill-btn ${activeStockCategoryFilter === 'ALL' ? 'active' : ''}" onclick="filterStockByCategory('ALL', this)">All Items</button>`;
+    dynamicCats.forEach(cat => {
+      let icon = "📦";
+      if (cat.toLowerCase().includes("paper")) icon = "📄";
+      else if (cat.toLowerCase().includes("toner") || cat.toLowerCase().includes("cartridge")) icon = "🖨️";
+      else if (cat.toLowerCase().includes("access") || cat.toLowerCase().includes("cable")) icon = "🔌";
+      
+      const isActive = activeStockCategoryFilter.toLowerCase() === cat.toLowerCase() ? "active" : "";
+      html += `<button type="button" class="pill-btn ${isActive}" onclick="filterStockByCategory('${escapeHtml(cat)}', this)">${icon} ${escapeHtml(cat)}</button>`;
+    });
+    pillsContainer.innerHTML = html;
+  }
+
+  // Populate form category dropdown options
+  const formSelect = document.getElementById("stock-new-itemtype");
+  if (formSelect) {
+    const currentVal = formSelect.value;
+    let optHtml = `
+      <option value="Paper">📄 Paper Rims</option>
+      <option value="Toner">🖨️ Toner Cartridge</option>
+      <option value="Accessories">🔌 Accessories / Other</option>
+    `;
+    dynamicCats.forEach(cat => {
+      if (!standardCats.includes(cat)) {
+        optHtml += `<option value="${escapeHtml(cat)}">📦 ${escapeHtml(cat)}</option>`;
+      }
+    });
+    optHtml += `<option value="__NEW__">➕ Add New Category...</option>`;
+    formSelect.innerHTML = optHtml;
+    if (currentVal && formSelect.querySelector(`option[value="${currentVal}"]`)) {
+      formSelect.value = currentVal;
+    }
+  }
 }
 
 function renderStockList() {
@@ -1838,6 +2007,14 @@ function renderStockList() {
   const searchVal = document.getElementById("stock-search-input")?.value?.toLowerCase().trim() || "";
   const dateVal = document.getElementById("stock-date-filter")?.value || "";
 
+  // SuperAdmin Add Stock button toggle
+  const addStockBtn = document.getElementById("btn-add-stock-entry");
+  if (addStockBtn) {
+    const userIsSuper = typeof isSuperAdmin === "function" && isSuperAdmin(currentUser?.email || "");
+    addStockBtn.style.display = userIsSuper ? "inline-flex" : "none";
+  }
+
+  // Convert HTML date (YYYY-MM-DD) to Sheet Date format (DD-MM-YYYY)
   let targetDateFormatted = "";
   if (dateVal && dateVal.includes("-")) {
     const parts = dateVal.split("-");
@@ -1851,25 +2028,122 @@ function renderStockList() {
     if (!isHospitalVisible(hosp)) return false;
     if (activeStockHospitalFilter !== "ALL" && !hosp.includes(activeStockHospitalFilter)) return false;
 
+    // Category filter check
+    if (activeStockCategoryFilter !== "ALL") {
+      const itemCat = (r["Item Type"] || "").toLowerCase().trim();
+      const desc = (r["Description Of Goods"] || "").toLowerCase().trim();
+      const targetCat = activeStockCategoryFilter.toLowerCase();
+      
+      let matchesCategory = false;
+      if (itemCat) {
+        matchesCategory = itemCat.includes(targetCat) || targetCat.includes(itemCat);
+      } else {
+        // Fallback for legacy rows
+        if (targetCat.includes("paper") && (desc.includes("paper") || desc.includes("rim") || desc.includes("a4"))) matchesCategory = true;
+        else if (targetCat.includes("toner") && desc.includes("toner")) matchesCategory = true;
+        else if (targetCat.includes("access") && (desc.includes("cable") || desc.includes("drum") || desc.includes("access"))) matchesCategory = true;
+      }
+      if (!matchesCategory) return false;
+    }
+
     const rowStr = Object.values(r).join(" ").toLowerCase();
     const matchesSearch = !searchVal || rowStr.includes(searchVal);
-    const rowDate = String(r["Date"] || "");
-    const matchesDate = !dateVal || rowDate.includes(dateVal) || (targetDateFormatted && rowDate.includes(targetDateFormatted));
+    const rowDate = String(r["Date"] || "").trim();
+    const matchesDate = !dateVal || rowDate === targetDateFormatted || rowDate.includes(targetDateFormatted);
     return matchesSearch && matchesDate;
   });
 
-  // Calculate totals
+  // Calculate overall totals and hospital-wise breakdown
   let totalRims = 0;
   let totalSheets = 0;
+  const hospBreakdown = {
+    MDM: { rims: 0, sheets: 0 },
+    MGH: { rims: 0, sheets: 0 },
+    UMMED: { rims: 0, sheets: 0 }
+  };
+
   filtered.forEach(r => {
+    const itemCat = (r["Item Type"] || "").toLowerCase().trim();
+    const desc = (r["Description Of Goods"] || "").toLowerCase().trim();
+    const isPaper = itemCat ? itemCat === "paper" : (desc.includes("paper") || desc.includes("rim") || desc.includes("a4"));
     const rims = parseFloat(r["Qualtity"] || r["Quantity"] || 0) || 0;
-    const sheets = parseFloat(r["PAPER Quantity"] || 0) || (rims * 500);
+    const sheets = isPaper ? (parseFloat(r["PAPER Quantity"] || 0) || (rims * 500)) : 0;
     totalRims += rims;
     totalSheets += sheets;
+
+    const h = (r["HOSPITAL"] || "").toUpperCase();
+    if (h.includes("MDM")) {
+      hospBreakdown.MDM.rims += rims;
+      hospBreakdown.MDM.sheets += sheets;
+    } else if (h.includes("MGH")) {
+      hospBreakdown.MGH.rims += rims;
+      hospBreakdown.MGH.sheets += sheets;
+    } else if (h.includes("UMMED") || h.includes("UMAID")) {
+      hospBreakdown.UMMED.rims += rims;
+      hospBreakdown.UMMED.sheets += sheets;
+    }
   });
 
-  if (totalRimsEl) totalRimsEl.textContent = totalRims.toLocaleString("en-IN");
-  if (totalSheetsEl) totalSheetsEl.textContent = totalSheets.toLocaleString("en-IN");
+  // Dynamically update KPI card labels based on active Category
+  const kpiLbl1 = document.getElementById("stock-kpi-lbl-1");
+  const kpiSub1 = document.getElementById("stock-kpi-sub-1");
+  const kpiLbl2 = document.getElementById("stock-kpi-lbl-2");
+  const kpiSub2 = document.getElementById("stock-kpi-sub-2");
+
+  const catLower = activeStockCategoryFilter.toLowerCase();
+  if (catLower === "paper") {
+    if (kpiLbl1) kpiLbl1.textContent = "Total Rims Received";
+    if (kpiSub1) kpiSub1.textContent = "Rim Packets (Col E)";
+    if (kpiLbl2) kpiLbl2.textContent = "Total Paper Sheets";
+    if (kpiSub2) kpiSub2.textContent = "500 Sheets / Rim (Col M)";
+  } else if (catLower.includes("toner")) {
+    if (kpiLbl1) kpiLbl1.textContent = "Total Toners Received";
+    if (kpiSub1) kpiSub1.textContent = "Cartridge Units (Col E)";
+    if (kpiLbl2) kpiLbl2.textContent = "Paper Sheets (N/A)";
+    if (kpiSub2) kpiSub2.textContent = "Not applicable for Toner";
+  } else if (catLower !== "all") {
+    if (kpiLbl1) kpiLbl1.textContent = `Total ${activeStockCategoryFilter} Units`;
+    if (kpiSub1) kpiSub1.textContent = "Quantity Received (Col E)";
+    if (kpiLbl2) kpiLbl2.textContent = "Paper Sheets (N/A)";
+    if (kpiSub2) kpiSub2.textContent = "Only applies to Paper";
+  } else {
+    if (kpiLbl1) kpiLbl1.textContent = "Total Quantity Received";
+    if (kpiSub1) kpiSub1.textContent = "Rims & Units (Col E)";
+    if (kpiLbl2) kpiLbl2.textContent = "Total Paper Sheets";
+    if (kpiSub2) kpiSub2.textContent = "500 Sheets / Rim (Col M)";
+  }
+
+  // Update KPI Totals with count-up animation if available
+  if (totalRimsEl) {
+    if (typeof animateCountUp === "function") {
+      animateCountUp(totalRimsEl, totalRims, 350);
+    } else {
+      totalRimsEl.textContent = totalRims.toLocaleString("en-IN");
+    }
+  }
+  if (totalSheetsEl) {
+    if (typeof animateCountUp === "function") {
+      animateCountUp(totalSheetsEl, totalSheets, 350);
+    } else {
+      totalSheetsEl.textContent = totalSheets.toLocaleString("en-IN");
+    }
+  }
+
+  // Update Hospital-Wise Breakdown Cards
+  const mdmRimsEl = document.getElementById("shb-mdm-rims");
+  const mdmSheetsEl = document.getElementById("shb-mdm-sheets");
+  const mghRimsEl = document.getElementById("shb-mgh-rims");
+  const mghSheetsEl = document.getElementById("shb-mgh-sheets");
+  const ummedRimsEl = document.getElementById("shb-ummed-rims");
+  const ummedSheetsEl = document.getElementById("shb-ummed-sheets");
+
+  const qtyUnitLabel = catLower === "paper" ? "Rims" : (catLower.includes("toner") ? "Toners" : "Units");
+  if (mdmRimsEl) mdmRimsEl.textContent = `${hospBreakdown.MDM.rims.toLocaleString("en-IN")} ${qtyUnitLabel}`;
+  if (mdmSheetsEl) mdmSheetsEl.textContent = `${hospBreakdown.MDM.sheets.toLocaleString("en-IN")} Pgs`;
+  if (mghRimsEl) mghRimsEl.textContent = `${hospBreakdown.MGH.rims.toLocaleString("en-IN")} ${qtyUnitLabel}`;
+  if (mghSheetsEl) mghSheetsEl.textContent = `${hospBreakdown.MGH.sheets.toLocaleString("en-IN")} Pgs`;
+  if (ummedRimsEl) ummedRimsEl.textContent = `${hospBreakdown.UMMED.rims.toLocaleString("en-IN")} ${qtyUnitLabel}`;
+  if (ummedSheetsEl) ummedSheetsEl.textContent = `${hospBreakdown.UMMED.sheets.toLocaleString("en-IN")} Pgs`;
 
   if (!filtered.length) {
     container.innerHTML = "";
@@ -1879,44 +2153,403 @@ function renderStockList() {
 
   if (noStock) noStock.style.display = "none";
 
-  container.innerHTML = filtered.map(r => {
+  container.innerHTML = filtered.map((r, idx) => {
     const date = r["Date"] || "";
     const invoiceNo = r["Invoice No."] || "N/A";
     const desc = r["Description Of Goods"] || "Paper Supply";
-    const rims = r["Qualtity"] || "0";
-    const sheets = r["PAPER Quantity"] || String(parseFloat(rims) * 500);
+    const qtyVal = r["Qualtity"] || r["Quantity"] || "0";
+    const unitVal = r["UNIT"] || "PCS";
+    const sheets = r["PAPER Quantity"] || String(parseFloat(qtyVal) * 500);
     const hosp = r["HOSPITAL"] || "";
-    const total = r["TOTAL"] || r["Amount"] || "";
+    const rawTotal = parseFloat(r["TOTAL"] || r["Amount"] || 0) || 0;
+    const formattedTotal = rawTotal > 0 ? `₹${rawTotal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—";
+    const itemType = r["Item Type"] || (desc.toLowerCase().includes("toner") ? "Toner" : "Paper");
+    const itemIcon = itemType.toLowerCase().includes("toner") ? "🖨️" : (itemType.toLowerCase().includes("access") ? "🔌" : "📄");
 
     return `
-      <div class="history-card-item">
+      <div class="history-card-item stock-entry-card" onclick="openStockDetailModalByIndex(${idx})" style="cursor:pointer;" title="Tap to view full invoice breakdown">
         <div class="history-card-header">
           <div>
-            <div class="history-card-title">${escapeHtml(invoiceNo)}</div>
+            <div class="history-card-title">${itemIcon} ${escapeHtml(invoiceNo)}</div>
             <div class="history-card-date">📅 ${escapeHtml(date)} • ${escapeHtml(desc)}</div>
           </div>
-          <span class="badge" style="background:rgba(16,185,129,0.1); color:#059669; border:1px solid rgba(16,185,129,0.25);">
-            ${escapeHtml(hosp || "GENERAL")}
-          </span>
+          <div style="display:flex; gap:4px; align-items:center;">
+            ${(r["Invoice PDF Link"] || r["PDF Link"] || "").trim() ? `
+              <span class="badge" style="background:#f0fdf4; color:#15803d; font-size:0.68rem; border:1px solid #86efac;" title="Purchase Invoice PDF available">
+                📄 PDF
+              </span>
+            ` : ''}
+            <span class="badge" style="background:rgba(59,130,246,0.1); color:#1d4ed8; font-size:0.68rem; border:1px solid rgba(59,130,246,0.25);">
+              ${escapeHtml(itemType)}
+            </span>
+            <span class="badge" style="background:rgba(16,185,129,0.1); color:#059669; font-size:0.68rem; border:1px solid rgba(16,185,129,0.25);">
+              ${escapeHtml(hosp || "GENERAL")}
+            </span>
+          </div>
         </div>
 
         <div class="history-card-grid">
           <div class="history-card-stat">
-            <span class="stat-label">Rim Quantity (Col E)</span>
-            <span class="stat-val highlight">${escapeHtml(String(rims))} Rims</span>
+            <span class="stat-label">Quantity / Unit</span>
+            <span class="stat-val highlight">${escapeHtml(String(qtyVal))} ${escapeHtml(unitVal)}</span>
           </div>
           <div class="history-card-stat">
-            <span class="stat-label">Paper Sheets (Col M)</span>
-            <span class="stat-val" style="color:#059669;">${parseFloat(sheets).toLocaleString("en-IN")} Pgs</span>
+            <span class="stat-label">Paper Sheets</span>
+            <span class="stat-val" style="color:#059669;">${itemType.toLowerCase() === 'paper' ? parseFloat(sheets || 0).toLocaleString("en-IN") + ' Pgs' : '—'}</span>
           </div>
           <div class="history-card-stat">
             <span class="stat-label">Invoice Amount</span>
-            <span class="stat-val">₹${escapeHtml(String(total))}</span>
+            <span class="stat-val">${formattedTotal}</span>
           </div>
         </div>
       </div>
     `;
   }).join("");
+}
+
+// ── Stock Detail Modal (Full Invoice Information) ──────────
+let activeFilteredStockRows = [];
+
+function openStockDetailModalByIndex(idx) {
+  const searchVal = document.getElementById("stock-search-input")?.value?.toLowerCase().trim() || "";
+  const dateVal = document.getElementById("stock-date-filter")?.value || "";
+  let targetDateFormatted = "";
+  if (dateVal && dateVal.includes("-")) {
+    const parts = dateVal.split("-");
+    if (parts.length === 3) targetDateFormatted = `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+
+  activeFilteredStockRows = allStockRows.filter(r => {
+    const hosp = (r["HOSPITAL"] || "").toUpperCase();
+    if (!isHospitalVisible(hosp)) return false;
+    if (activeStockHospitalFilter !== "ALL" && !hosp.includes(activeStockHospitalFilter)) return false;
+    if (activeStockCategoryFilter !== "ALL") {
+      const itemCat = (r["Item Type"] || "").toLowerCase().trim();
+      const desc = (r["Description Of Goods"] || "").toLowerCase().trim();
+      const targetCat = activeStockCategoryFilter.toLowerCase();
+      let matchesCategory = false;
+      if (itemCat) {
+        matchesCategory = itemCat.includes(targetCat) || targetCat.includes(itemCat);
+      } else {
+        if (targetCat.includes("paper") && (desc.includes("paper") || desc.includes("rim") || desc.includes("a4"))) matchesCategory = true;
+        else if (targetCat.includes("toner") && desc.includes("toner")) matchesCategory = true;
+        else if (targetCat.includes("access") && (desc.includes("cable") || desc.includes("drum") || desc.includes("access"))) matchesCategory = true;
+      }
+      if (!matchesCategory) return false;
+    }
+    const rowStr = Object.values(r).join(" ").toLowerCase();
+    const matchesSearch = !searchVal || rowStr.includes(searchVal);
+    const rowDate = String(r["Date"] || "").trim();
+    const matchesDate = !dateVal || rowDate === targetDateFormatted || rowDate.includes(targetDateFormatted);
+    return matchesSearch && matchesDate;
+  });
+
+  const row = activeFilteredStockRows[idx];
+  if (!row) return;
+
+  const titleEl = document.getElementById("sdm-invoice-title");
+  const dateSubEl = document.getElementById("sdm-date-sub");
+  const bodyEl = document.getElementById("sdm-body");
+
+  if (titleEl) titleEl.textContent = row["Invoice No."] || "Stock Receipt";
+  if (dateSubEl) dateSubEl.textContent = `Date: ${row["Date"] || "N/A"} • Hospital: ${row["HOSPITAL"] || "General"}`;
+
+  const rims = parseFloat(row["Qualtity"] || row["Quantity"] || 0) || 0;
+  const itemType = row["Item Type"] || "Paper";
+  const isPaper = itemType.toLowerCase() === "paper";
+  const sheets = isPaper ? (parseFloat(row["PAPER Quantity"] || 0) || (rims * 500)) : 0;
+  const rate = row["Rate"] ? `₹${parseFloat(row["Rate"]).toLocaleString("en-IN")}` : "—";
+  const rateTax = row["Rate Inc of TAX"] ? `₹${parseFloat(row["Rate Inc of TAX"]).toLocaleString("en-IN")}` : "—";
+  const amount = row["Amount"] ? `₹${parseFloat(row["Amount"]).toLocaleString("en-IN")}` : "—";
+  const total = row["TOTAL"] ? `₹${parseFloat(row["TOTAL"]).toLocaleString("en-IN")}` : "—";
+  const pdfLink = (row["Invoice PDF Link"] || row["PDF Link"] || row["Invoice PDF"] || "").trim();
+
+  if (bodyEl) {
+    bodyEl.innerHTML = `
+      <div style="background:#f8fafc; border-radius:14px; padding:12px 14px; border:1px solid #e2e8f0;">
+        <div style="font-size:0.88rem; font-weight:800; color:#0f172a; margin-bottom:4px;">${escapeHtml(row["Description Of Goods"] || "Stock Supply")}</div>
+        <div style="color:#64748b; font-size:0.75rem;">HSN/SAC: <strong>${escapeHtml(row["HSN/SAC"] || "N/A")}</strong> • Category: <strong style="color:#1d4ed8;">${escapeHtml(itemType)}</strong></div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:10px 12px;">
+          <div style="font-size:0.7rem; color:#1e40af; font-weight:700;">QUANTITY & UNIT</div>
+          <div style="font-size:1.05rem; font-weight:800; color:#1d4ed8;">${rims.toLocaleString("en-IN")} ${row["UNIT"] || "PCS"}</div>
+          <div style="font-size:0.68rem; color:#3b82f6;">Per: ${row["per"] || row["UNIT"] || "PCS"}</div>
+        </div>
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:10px 12px;">
+          <div style="font-size:0.7rem; color:#166534; font-weight:700;">PAPER SHEETS (IF PAPER)</div>
+          <div style="font-size:1.05rem; font-weight:800; color:#15803d;">${itemType.toLowerCase() === 'paper' ? sheets.toLocaleString("en-IN") + ' Pgs' : 'N/A'}</div>
+        </div>
+      </div>
+
+      <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:12px 14px;">
+        <div style="font-weight:700; font-size:0.78rem; color:#334155; margin-bottom:8px; border-bottom:1px dashed #e2e8f0; padding-bottom:4px;">Billing & Tax Breakdown</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:0.76rem;">
+          <div>Rate (Excl. Tax): <strong>${rate}</strong></div>
+          <div>Rate (Inc. Tax): <strong>${rateTax}</strong></div>
+          <div>Subtotal Amount: <strong>${amount}</strong></div>
+          <div>Total (With Tax): <strong style="color:#0f172a; font-size:0.85rem;">${total}</strong></div>
+        </div>
+      </div>
+
+      ${pdfLink ? `
+        <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:14px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <div style="font-size:0.78rem; color:#166534; font-weight:700;">📄 Purchase Invoice PDF:</div>
+          <a href="${escapeHtml(pdfLink)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:6px; background:#15803d; color:#ffffff; padding:6px 14px; border-radius:20px; font-size:0.75rem; font-weight:800; text-decoration:none; box-shadow:0 2px 6px rgba(21,128,61,0.25);">
+            View PDF Drive ↗
+          </a>
+        </div>
+      ` : ''}
+    `;
+  }
+
+  const modal = document.getElementById("stock-detail-modal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeStockDetailModal(e) {
+  if (e && e.target !== e.currentTarget && !e.target.classList.contains("modal-close")) return;
+  const modal = document.getElementById("stock-detail-modal");
+  if (modal) modal.style.display = "none";
+}
+
+// ── WhatsApp Stock Summary Share ───────────────────────────
+function shareStockSummaryWhatsApp() {
+  if (!Array.isArray(allStockRows) || allStockRows.length === 0) {
+    showToast("No stock records to share.", "warn");
+    return;
+  }
+
+  const hospScope = activeStockHospitalFilter === "ALL" ? "All Hospitals (MDM, MGH, UMMED)" : `${activeStockHospitalFilter} Hospital`;
+  const catScope = activeStockCategoryFilter === "ALL" ? "All Items" : `${activeStockCategoryFilter}`;
+  let totalRims = 0;
+  let totalSheets = 0;
+  const filtered = allStockRows.filter(r => {
+    const hosp = (r["HOSPITAL"] || "").toUpperCase();
+    if (!isHospitalVisible(hosp)) return false;
+    if (activeStockHospitalFilter !== "ALL" && !hosp.includes(activeStockHospitalFilter)) return false;
+    if (activeStockCategoryFilter !== "ALL") {
+      const itemCat = (r["Item Type"] || "").toLowerCase().trim();
+      const targetCat = activeStockCategoryFilter.toLowerCase();
+      if (itemCat && !itemCat.includes(targetCat)) return false;
+    }
+    return true;
+  });
+
+  filtered.forEach(r => {
+    const rims = parseFloat(r["Qualtity"] || r["Quantity"] || 0) || 0;
+    const sheets = parseFloat(r["PAPER Quantity"] || 0) || (rims * 500);
+    totalRims += rims;
+    totalSheets += sheets;
+  });
+
+  const todayStr = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+  const text = 
+`📦 *SNMC PrintTrack — Paper & Stock Receipt Ledger*
+🏥 *Hospital Scope:* ${hospScope}
+📂 *Category:* ${catScope}
+📅 *As of:* ${todayStr}
+──────────────────────
+📋 *Total Invoices/Receipts:* ${filtered.length}
+📦 *Total Quantity Logged:* ${totalRims.toLocaleString("en-IN")} Units
+📄 *Total Paper Sheets:* ${totalSheets.toLocaleString("en-IN")} Sheets
+──────────────────────
+_Generated via Softtech Multi Service Pvt. Ltd. (SNMC PrintTrack)_`;
+
+  const encoded = encodeURIComponent(text);
+  window.open(`https://wa.me/?text=${encoded}`, "_blank");
+}
+
+// ── Add Stock Entry Modal & Handlers (SuperAdmin) ───────────
+function openAddStockModal() {
+  const user = currentUser || getStoredUser() || {};
+  const isSuper = typeof isSuperAdmin === "function" && isSuperAdmin(user.email || "");
+  if (!isSuper) {
+    showToast("🚫 Only SuperAdmins can add stock entries.", "error");
+    return;
+  }
+
+  const modal = document.getElementById("add-stock-modal");
+  const form = document.getElementById("add-stock-form");
+  if (form) form.reset();
+
+  // Set default date to today (YYYY-MM-DD)
+  const today = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+  const dateInput = document.getElementById("stock-new-date");
+  if (dateInput) dateInput.value = todayStr;
+
+  const customCatBox = document.getElementById("stock-custom-category-box");
+  if (customCatBox) customCatBox.style.display = "none";
+
+  handleStockItemTypeChange();
+  if (modal) modal.style.display = "flex";
+}
+
+function closeAddStockModal(e) {
+  if (e && e.target !== e.currentTarget && !e.target.classList.contains("modal-close")) return;
+  const modal = document.getElementById("add-stock-modal");
+  if (modal) modal.style.display = "none";
+}
+
+function handleStockItemTypeChange() {
+  const select = document.getElementById("stock-new-itemtype");
+  const type = select?.value || "Paper";
+  const customCatBox = document.getElementById("stock-custom-category-box");
+  const customCatInput = document.getElementById("stock-new-custom-category");
+  const qtyLbl = document.getElementById("stock-new-qty-lbl");
+  const unitInput = document.getElementById("stock-new-unit");
+  const perInput = document.getElementById("stock-new-per");
+  const sheetsBox = document.getElementById("stock-new-sheets-box");
+  const descInput = document.getElementById("stock-new-desc");
+
+  if (type === "__NEW__") {
+    if (customCatBox) customCatBox.style.display = "block";
+    if (customCatInput) {
+      customCatInput.focus();
+      customCatInput.required = true;
+    }
+    if (qtyLbl) qtyLbl.textContent = "Quantity *";
+    if (sheetsBox) sheetsBox.style.display = "none";
+    if (unitInput) unitInput.value = "PCS";
+    if (perInput) perInput.value = "PCS";
+  } else {
+    if (customCatBox) customCatBox.style.display = "none";
+    if (customCatInput) {
+      customCatInput.required = false;
+      customCatInput.value = "";
+    }
+
+    if (type === "Paper") {
+      if (qtyLbl) qtyLbl.textContent = "Paper Rims Quantity *";
+      if (sheetsBox) sheetsBox.style.display = "flex";
+      if (unitInput) unitInput.value = "PCS";
+      if (perInput) perInput.value = "PCS";
+      if (descInput && !descInput.value) descInput.placeholder = "e.g. JK ECO RISE A4 70GSM";
+    } else if (type === "Toner") {
+      if (qtyLbl) qtyLbl.textContent = "Toner Cartridges Quantity *";
+      if (sheetsBox) sheetsBox.style.display = "none";
+      if (unitInput) unitInput.value = "PCS";
+      if (perInput) perInput.value = "PCS";
+      if (descInput && !descInput.value) descInput.placeholder = "e.g. HP LaserJet 88A Black Toner";
+    } else {
+      if (qtyLbl) qtyLbl.textContent = "Item Quantity *";
+      if (sheetsBox) sheetsBox.style.display = "none";
+      if (unitInput) unitInput.value = "PCS";
+      if (perInput) perInput.value = "PCS";
+      if (descInput && !descInput.value) descInput.placeholder = "e.g. Printer Cable / Drum Unit";
+    }
+  }
+  calculateStockTotals();
+}
+
+function calculateStockTotals() {
+  const select = document.getElementById("stock-new-itemtype");
+  const type = select?.value || "Paper";
+  const qty = parseFloat(document.getElementById("stock-new-qty")?.value || 0) || 0;
+  const rate = parseFloat(document.getElementById("stock-new-rate")?.value || 0) || 0;
+  const rateTax = parseFloat(document.getElementById("stock-new-ratetax")?.value || 0) || 0;
+
+  // Sheets calc
+  const calcSheetsEl = document.getElementById("stock-new-calc-sheets");
+  if (calcSheetsEl) {
+    const totalSheets = type === "Paper" ? qty * 500 : 0;
+    calcSheetsEl.textContent = `${totalSheets.toLocaleString("en-IN")} Sheets`;
+  }
+
+  // Amount & Total
+  const amountInput = document.getElementById("stock-new-amount");
+  const totalInput = document.getElementById("stock-new-total");
+
+  if (rate > 0 && qty > 0 && amountInput) {
+    amountInput.value = (rate * qty).toFixed(2);
+  }
+  if (rateTax > 0 && qty > 0 && totalInput) {
+    totalInput.value = (rateTax * qty).toFixed(2);
+  } else if (rate > 0 && qty > 0 && (!rateTax || rateTax === 0) && totalInput && !totalInput.value) {
+    totalInput.value = (rate * qty).toFixed(2);
+  }
+}
+
+async function submitStockEntry(event) {
+  event.preventDefault();
+  const submitBtn = document.getElementById("btn-submit-stock-entry");
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "⏳ Saving...";
+  }
+
+  try {
+    let itemType = document.getElementById("stock-new-itemtype")?.value || "Paper";
+    if (itemType === "__NEW__") {
+      const customCat = (document.getElementById("stock-new-custom-category")?.value || "").trim();
+      if (!customCat) {
+        showToast("Please enter a category name.", "warn");
+        return;
+      }
+      itemType = customCat;
+    }
+
+    const hospital = document.getElementById("stock-new-hospital")?.value || "MDM";
+    const rawDate = document.getElementById("stock-new-date")?.value || "";
+    let formattedDate = "";
+    if (rawDate && rawDate.includes("-")) {
+      const p = rawDate.split("-");
+      if (p.length === 3) formattedDate = `${p[2]}-${p[1]}-${p[0]}`; // DD-MM-YYYY
+    } else {
+      formattedDate = rawDate;
+    }
+
+    const invoiceNo = (document.getElementById("stock-new-invoice")?.value || "").trim();
+    const desc = (document.getElementById("stock-new-desc")?.value || "").trim();
+    const hsn = (document.getElementById("stock-new-hsn")?.value || "").trim();
+    const qty = parseFloat(document.getElementById("stock-new-qty")?.value || 0) || 0;
+    const unit = (document.getElementById("stock-new-unit")?.value || "PCS").trim();
+    const rateTax = (document.getElementById("stock-new-ratetax")?.value || "").trim();
+    const rate = (document.getElementById("stock-new-rate")?.value || "").trim();
+    const per = (document.getElementById("stock-new-per")?.value || unit).trim();
+    const amount = (document.getElementById("stock-new-amount")?.value || "").trim();
+    const total = (document.getElementById("stock-new-total")?.value || "").trim();
+    const paperQty = itemType.toLowerCase() === "paper" ? String(qty * 500) : "";
+    const pdfLink = (document.getElementById("stock-new-pdf-link")?.value || "").trim();
+
+    // Build row conforming to Columns A:O:
+    // [Date, Invoice No., Description Of Goods, HSN/SAC, Qualtity, UNIT, Rate Inc of TAX, Rate, per, Amount, TOTAL, HOSPITAL, PAPER Quantity, Item Type, Invoice PDF Link]
+    const row = [
+      formattedDate,
+      invoiceNo,
+      desc,
+      hsn,
+      String(qty),
+      unit,
+      rateTax,
+      rate,
+      per,
+      amount,
+      total,
+      hospital,
+      paperQty,
+      itemType,
+      pdfLink
+    ];
+
+    await appendStockEntry(row);
+    showToast("✅ Stock entry recorded successfully!", "success");
+    closeAddStockModal();
+
+    // Reload stock entries and refresh display
+    await loadStockPage();
+  } catch (err) {
+    showToast("Stock save failed: " + err.message, "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "💾 Save Stock Entry";
+    }
+  }
 }
 
 function exportStockToExcel() {
@@ -1934,11 +2567,35 @@ function exportStockToExcel() {
     return;
   }
   try {
-    const worksheet = XLSX.utils.json_to_sheet(allStockRows);
+    const filteredRows = allStockRows.filter(r => {
+      const hosp = (r["HOSPITAL"] || "").toUpperCase();
+      if (!isHospitalVisible(hosp)) return false;
+      if (activeStockHospitalFilter !== "ALL" && !hosp.includes(activeStockHospitalFilter)) return false;
+      if (activeStockCategoryFilter !== "ALL") {
+        const itemCat = (r["Item Type"] || "").toLowerCase().trim();
+        const desc = (r["Description Of Goods"] || "").toLowerCase().trim();
+        const targetCat = activeStockCategoryFilter.toLowerCase();
+        let matchesCategory = false;
+        if (itemCat) {
+          matchesCategory = itemCat.includes(targetCat) || targetCat.includes(itemCat);
+        } else {
+          if (targetCat.includes("paper") && (desc.includes("paper") || desc.includes("rim") || desc.includes("a4"))) matchesCategory = true;
+          else if (targetCat.includes("toner") && desc.includes("toner")) matchesCategory = true;
+          else if (targetCat.includes("access") && (desc.includes("cable") || desc.includes("drum") || desc.includes("access"))) matchesCategory = true;
+        }
+        if (!matchesCategory) return false;
+      }
+      return true;
+    });
+
+    const exportRows = filteredRows.length ? filteredRows : allStockRows;
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Received_Paper_Stock");
-    XLSX.writeFile(workbook, `PrintTrack_Stock_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    showToast("📊 Stock Exported to Excel!", "success");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Received_Stock");
+    const hospSuffix = activeStockHospitalFilter !== "ALL" ? `_${activeStockHospitalFilter}` : "";
+    const catSuffix = activeStockCategoryFilter !== "ALL" ? `_${activeStockCategoryFilter}` : "";
+    XLSX.writeFile(workbook, `PrintTrack_Stock${hospSuffix}${catSuffix}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    showToast(`📊 Exported ${exportRows.length} stock records to Excel!`, "success");
   } catch (e) {
     showToast("Export failed: " + e.message, "error");
   }
@@ -2126,11 +2783,21 @@ function renderEmployeesList() {
     const initials = rawName.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
     const isLoginBlocked = (emp.loginAllowed === "NO" || emp.loginAllowed === false);
 
+    let cardThumbUrl = (emp.photoUrl && typeof emp.photoUrl === "string" ? emp.photoUrl.trim() : "").replace(/^["']|["']$/g, "");
+    if (cardThumbUrl.includes("drive.google.com")) {
+      const m = cardThumbUrl.match(/(?:id=|\/d\/)([a-zA-Z0-9_-]{20,})/);
+      if (m && m[1]) cardThumbUrl = `https://drive.google.com/thumbnail?id=${m[1]}&sz=w120`;
+    }
+
     return `
       <div class="employee-card-item" data-id="${escapeHtml(emp.id)}">
         <div>
           <div class="emp-card-header">
-            <div class="emp-avatar-circle">${escapeHtml(initials)}</div>
+            <div class="emp-avatar-circle" style="overflow:hidden; padding:0; display:flex; align-items:center; justify-content:center;">
+              ${cardThumbUrl 
+                ? `<img src="${escapeHtml(cardThumbUrl)}" alt="Photo" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.parentElement.innerText='${escapeHtml(initials)}';">` 
+                : escapeHtml(initials)}
+            </div>
             <div class="emp-name-block">
               <div class="emp-full-name" title="${escapeHtml(emp.name)}">${escapeHtml(emp.name)}</div>
               <div class="emp-role-tag">${escapeHtml(emp.role)} • <span class="badge" style="background:rgba(59,130,246,0.1); color:#1d4ed8;">${escapeHtml(emp.hospital)}</span></div>
@@ -2242,12 +2909,34 @@ function openIdCardOffcanvas(empOrName, email, phone, hospital, role, id, member
   const initials = realName.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "EM";
   if (avatarEl) avatarEl.textContent = initials;
 
-  if (photoUrl && photoUrl.trim() !== "") {
-    if (photoImg) {
-      photoImg.src = photoUrl.trim();
-      photoImg.style.display = "block";
+  let rawPhoto = (emp.photoUrl && typeof emp.photoUrl === "string" && emp.photoUrl.trim() !== "") 
+    ? emp.photoUrl.trim() 
+    : (photoUrl && typeof photoUrl === "string" && photoUrl.trim() !== "" ? photoUrl.trim() : "");
+
+  // Clean rawPhoto: remove any surrounding quotes, whitespace or escape characters
+  rawPhoto = rawPhoto.replace(/^["']|["']$/g, "").trim();
+
+  // If photo is a Google Drive view link, format it to high-reliability thumbnail direct URL
+  let actualPhotoUrl = rawPhoto;
+  if (rawPhoto.includes("drive.google.com")) {
+    const fileIdMatch = rawPhoto.match(/(?:id=|\/d\/)([a-zA-Z0-9_-]{20,})/);
+    if (fileIdMatch && fileIdMatch[1]) {
+      actualPhotoUrl = `https://drive.google.com/thumbnail?id=${fileIdMatch[1]}&sz=w800`;
     }
-    if (avatarEl) avatarEl.style.display = "none";
+  }
+
+  if (actualPhotoUrl) {
+    if (photoImg) {
+      photoImg.onerror = () => {
+        photoImg.style.display = "none";
+        if (avatarEl) avatarEl.style.display = "flex";
+      };
+      photoImg.onload = () => {
+        photoImg.style.display = "block";
+        if (avatarEl) avatarEl.style.display = "none";
+      };
+      photoImg.src = actualPhotoUrl;
+    }
   } else {
     if (photoImg) photoImg.style.display = "none";
     if (avatarEl) avatarEl.style.display = "flex";
@@ -2269,6 +2958,21 @@ function triggerPhotoUpload() {
   }
 }
 
+// ── Interactive ID Photo Adjuster & Crop Controller ───────────
+let idPhotoAdjusterImage = null;
+let idPhotoAdjusterState = {
+  angle: 0,
+  baseRotation: 0,
+  zoom: 1.0,
+  panX: 0,
+  panY: 0
+};
+let isDraggingIdPhoto = false;
+let idPhotoDragStartX = 0;
+let idPhotoDragStartY = 0;
+let idPhotoInitialPanX = 0;
+let idPhotoInitialPanY = 0;
+
 async function handlePhotoFileSelected(e) {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
@@ -2278,13 +2982,227 @@ async function handlePhotoFileSelected(e) {
     return;
   }
 
-  showToast("📷 Optimizing and uploading photo to Google Drive...", "info");
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const img = new Image();
+    img.onload = () => {
+      openIdPhotoAdjusterModal(img);
+    };
+    img.onerror = () => {
+      showToast("Could not load selected photo.", "error");
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = "";
+}
+
+function openIdPhotoAdjusterModal(img) {
+  idPhotoAdjusterImage = img;
+  const modal = document.getElementById("id-photo-adjuster-modal");
+  if (modal) modal.style.display = "flex";
+
+  resetIdPhotoAdjuster();
+  initIdPhotoAdjusterInteractions();
+  renderIdPhotoAdjusterCanvas();
+}
+
+function closeIdPhotoAdjusterModal(e) {
+  if (e && e.target !== e.currentTarget && !e.target.classList.contains("modal-close-btn")) return;
+  const modal = document.getElementById("id-photo-adjuster-modal");
+  if (modal) modal.style.display = "none";
+}
+
+function resetIdPhotoAdjuster() {
+  idPhotoAdjusterState = {
+    angle: 0,
+    baseRotation: 0,
+    zoom: 1.0,
+    panX: 0,
+    panY: 0
+  };
+
+  const angleSlider = document.getElementById("id-photo-angle-slider");
+  const zoomSlider = document.getElementById("id-photo-zoom-slider");
+  const angleLbl = document.getElementById("id-photo-angle-lbl");
+  const zoomLbl = document.getElementById("id-photo-zoom-lbl");
+
+  if (angleSlider) angleSlider.value = 0;
+  if (zoomSlider) zoomSlider.value = 1;
+  if (angleLbl) angleLbl.textContent = "0°";
+  if (zoomLbl) zoomLbl.textContent = "1.0x";
+
+  renderIdPhotoAdjusterCanvas();
+}
+
+function onIdPhotoAngleSliderChange(val) {
+  idPhotoAdjusterState.angle = parseFloat(val) || 0;
+  const angleSlider = document.getElementById("id-photo-angle-slider");
+  if (angleSlider) angleSlider.value = idPhotoAdjusterState.angle;
+  const angleLbl = document.getElementById("id-photo-angle-lbl");
+  if (angleLbl) angleLbl.textContent = (idPhotoAdjusterState.angle > 0 ? "+" : "") + idPhotoAdjusterState.angle.toFixed(1) + "°";
+  renderIdPhotoAdjusterCanvas();
+}
+
+function nudgeIdPhotoAngle(delta) {
+  let newAngle = Math.max(-45, Math.min(45, idPhotoAdjusterState.angle + delta));
+  onIdPhotoAngleSliderChange(newAngle);
+}
+
+function onIdPhotoZoomSliderChange(val) {
+  idPhotoAdjusterState.zoom = Math.max(1.0, Math.min(4.0, parseFloat(val) || 1.0));
+  const zoomSlider = document.getElementById("id-photo-zoom-slider");
+  if (zoomSlider) zoomSlider.value = idPhotoAdjusterState.zoom;
+  const zoomLbl = document.getElementById("id-photo-zoom-lbl");
+  if (zoomLbl) zoomLbl.textContent = idPhotoAdjusterState.zoom.toFixed(2) + "x";
+  renderIdPhotoAdjusterCanvas();
+}
+
+function nudgeIdPhotoZoom(delta) {
+  let newZoom = Math.max(1.0, Math.min(4.0, idPhotoAdjusterState.zoom + delta));
+  onIdPhotoZoomSliderChange(newZoom);
+}
+
+function rotateIdPhoto90(delta) {
+  idPhotoAdjusterState.baseRotation = (idPhotoAdjusterState.baseRotation + delta) % 360;
+  if (idPhotoAdjusterState.baseRotation < 0) idPhotoAdjusterState.baseRotation += 360;
+  renderIdPhotoAdjusterCanvas();
+}
+
+function renderIdPhotoAdjusterCanvas() {
+  const canvas = document.getElementById("id-photo-adjuster-canvas");
+  const viewport = document.getElementById("id-photo-adjuster-viewport");
+  if (!canvas || !viewport || !idPhotoAdjusterImage) return;
+
+  const rect = viewport.getBoundingClientRect();
+  canvas.width = rect.width || 320;
+  canvas.height = rect.height || 426;
+
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  ctx.translate(cx + idPhotoAdjusterState.panX, cy + idPhotoAdjusterState.panY);
+
+  const totalAngleDeg = idPhotoAdjusterState.baseRotation + idPhotoAdjusterState.angle;
+  ctx.rotate((totalAngleDeg * Math.PI) / 180);
+  ctx.scale(idPhotoAdjusterState.zoom, idPhotoAdjusterState.zoom);
+
+  const imgW = idPhotoAdjusterImage.naturalWidth || idPhotoAdjusterImage.width;
+  const imgH = idPhotoAdjusterImage.naturalHeight || idPhotoAdjusterImage.height;
+  const fitScale = Math.min(canvas.width / imgW, canvas.height / imgH);
+  const drawW = imgW * fitScale;
+  const drawH = imgH * fitScale;
+
+  ctx.drawImage(idPhotoAdjusterImage, -drawW / 2, -drawH / 2, drawW, drawH);
+  ctx.restore();
+}
+
+function initIdPhotoAdjusterInteractions() {
+  const viewport = document.getElementById("id-photo-adjuster-viewport");
+  if (!viewport || viewport._hasListeners) return;
+  viewport._hasListeners = true;
+
+  viewport.addEventListener("mousedown", (e) => {
+    isDraggingIdPhoto = true;
+    idPhotoDragStartX = e.clientX;
+    idPhotoDragStartY = e.clientY;
+    idPhotoInitialPanX = idPhotoAdjusterState.panX;
+    idPhotoInitialPanY = idPhotoAdjusterState.panY;
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!isDraggingIdPhoto) return;
+    idPhotoAdjusterState.panX = idPhotoInitialPanX + (e.clientX - idPhotoDragStartX);
+    idPhotoAdjusterState.panY = idPhotoInitialPanY + (e.clientY - idPhotoDragStartY);
+    renderIdPhotoAdjusterCanvas();
+  });
+
+  window.addEventListener("mouseup", () => {
+    isDraggingIdPhoto = false;
+  });
+
+  viewport.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 1) {
+      isDraggingIdPhoto = true;
+      idPhotoDragStartX = e.touches[0].clientX;
+      idPhotoDragStartY = e.touches[0].clientY;
+      idPhotoInitialPanX = idPhotoAdjusterState.panX;
+      idPhotoInitialPanY = idPhotoAdjusterState.panY;
+    }
+  }, { passive: true });
+
+  viewport.addEventListener("touchmove", (e) => {
+    if (!isDraggingIdPhoto || e.touches.length !== 1) return;
+    idPhotoAdjusterState.panX = idPhotoInitialPanX + (e.touches[0].clientX - idPhotoDragStartX);
+    idPhotoAdjusterState.panY = idPhotoInitialPanY + (e.touches[0].clientY - idPhotoDragStartY);
+    renderIdPhotoAdjusterCanvas();
+  }, { passive: true });
+
+  viewport.addEventListener("touchend", () => {
+    isDraggingIdPhoto = false;
+  });
+}
+
+async function submitAdjustedIdPhoto() {
+  const viewport = document.getElementById("id-photo-adjuster-viewport");
+  const guide = viewport ? viewport.querySelector(".adjuster-crop-guide") : null;
+  const canvas = document.getElementById("id-photo-adjuster-canvas");
+  const submitBtn = document.getElementById("id-photo-upload-submit-btn");
+
+  if (!viewport || !guide || !canvas || !idPhotoAdjusterImage || !activeIdCardEmployee) return;
+
+  const vpRect = viewport.getBoundingClientRect();
+  const guideRect = guide.getBoundingClientRect();
+
+  const guideLeft = guideRect.left - vpRect.left;
+  const guideTop = guideRect.top - vpRect.top;
+  const guideW = guideRect.width;
+  const guideH = guideRect.height;
+
+  // High-res export canvas (passport size ~600x800)
+  const exportScale = Math.max(2, Math.min(3, 800 / (guideH || 400)));
+  const cropCanvas = document.createElement("canvas");
+  cropCanvas.width = Math.round(guideW * exportScale);
+  cropCanvas.height = Math.round(guideH * exportScale);
+  const cropCtx = cropCanvas.getContext("2d");
+
+  cropCtx.fillStyle = "#ffffff";
+  cropCtx.fillRect(0, 0, cropCanvas.width, cropCanvas.height);
+
+  cropCtx.save();
+  cropCtx.scale(exportScale, exportScale);
+  cropCtx.translate(-guideLeft, -guideTop);
+
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  cropCtx.translate(cx + idPhotoAdjusterState.panX, cy + idPhotoAdjusterState.panY);
+
+  const totalAngleDeg = idPhotoAdjusterState.baseRotation + idPhotoAdjusterState.angle;
+  cropCtx.rotate((totalAngleDeg * Math.PI) / 180);
+  cropCtx.scale(idPhotoAdjusterState.zoom, idPhotoAdjusterState.zoom);
+
+  const imgW = idPhotoAdjusterImage.naturalWidth || idPhotoAdjusterImage.width;
+  const imgH = idPhotoAdjusterImage.naturalHeight || idPhotoAdjusterImage.height;
+  const fitScale = Math.min(canvas.width / imgW, canvas.height / imgH);
+  const drawW = imgW * fitScale;
+  const drawH = imgH * fitScale;
+
+  cropCtx.drawImage(idPhotoAdjusterImage, -drawW / 2, -drawH / 2, drawW, drawH);
+  cropCtx.restore();
+
+  const base64Data = cropCanvas.toDataURL("image/jpeg", 0.90);
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "⏳ Uploading to Google Drive...";
+  }
 
   try {
-    // 1. Client-Side Image Compression using Canvas (max 800x800)
-    const base64Data = await compressImageToJpeg(file, 800, 0.85);
+    showToast("☁️ Uploading cropped passport photo to Google Drive...", "info");
 
-    // 2. Call uploadEmployeePhoto endpoint
     const res = await sheetsRequest("uploadEmployeePhoto", {
       method: "POST",
       body: JSON.stringify({
@@ -2297,13 +3215,13 @@ async function handlePhotoFileSelected(e) {
     if (res && res.photoUrl) {
       activeIdCardEmployee.photoUrl = res.photoUrl;
 
-      // Update in allEmployeeItems
+      // Update in allEmployeeItems directory
       const idx = allEmployeeItems.findIndex(emp => emp.email.toLowerCase() === activeIdCardEmployee.email.toLowerCase());
       if (idx !== -1) {
         allEmployeeItems[idx].photoUrl = res.photoUrl;
       }
 
-      // Update Live UI
+      // Update Live ID Card View
       const photoImg = document.getElementById("idc-photo-img");
       const avatarEl = document.getElementById("idc-avatar");
       if (photoImg) {
@@ -2312,49 +3230,18 @@ async function handlePhotoFileSelected(e) {
       }
       if (avatarEl) avatarEl.style.display = "none";
 
+      renderEmployeesList();
       showToast("✅ Profile photo uploaded to Google Drive & ID card updated!", "success");
+      closeIdPhotoAdjusterModal();
     }
   } catch (err) {
     showToast("Photo upload failed: " + err.message, "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "☁️ Save & Upload Photo";
+    }
   }
-}
-
-function compressImageToJpeg(file, maxDimension, quality) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxDimension) {
-            height = Math.round((height * maxDimension) / width);
-            width = maxDimension;
-          }
-        } else {
-          if (height > maxDimension) {
-            width = Math.round((width * maxDimension) / height);
-            height = maxDimension;
-          }
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const dataUrl = canvas.toDataURL("image/jpeg", quality);
-        resolve(dataUrl);
-      };
-      img.onerror = reject;
-      img.src = event.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 function printIdCard() {

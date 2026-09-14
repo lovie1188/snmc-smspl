@@ -7,7 +7,7 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#f8fafc">
   <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
-  <link rel="stylesheet" href="assets/css/app.css?v=33">
+  <link rel="stylesheet" href="assets/css/app.css?v=42">
 
   <style>
     /* ── SuperAdmin Notification Panel ── */
@@ -263,6 +263,9 @@
     <!-- TAB 0: DASHBOARD -->
     <section id="tab-dashboard" class="tab-panel active">
       
+      <!-- Personalized Welcome & Shift Context Bar -->
+      <div class="welcome-context-bar" id="dashboard-welcome-bar"></div>
+
       <!-- Hospital-Wise Summary Analytics Section -->
       <div class="skynex-card">
         <div class="hospital-summary-header">
@@ -281,7 +284,9 @@
             <div class="summary-quick-pills">
               <button type="button" class="summary-quick-pill active" onclick="setSummaryDatePreset('all', this)">All</button>
               <button type="button" class="summary-quick-pill" onclick="setSummaryDatePreset('today', this)">Today</button>
+              <button type="button" class="summary-quick-pill" onclick="setSummaryDatePreset('last_7', this)">Last 7 Days</button>
               <button type="button" class="summary-quick-pill" onclick="setSummaryDatePreset('this_month', this)">This Month</button>
+              <button type="button" class="summary-quick-pill" onclick="setSummaryDatePreset('last_month', this)">Last Month</button>
             </div>
           </div>
         </div>
@@ -378,7 +383,7 @@
       </div>
 
       <!-- Quick Action Widgets Grid -->
-      <div class="skynex-grid">
+      <div class="skynex-grid" id="quick-action-grid">
         
         <div class="skynex-widget w-blue" onclick="showTab('entry')">
           <div class="w-icon">📝</div>
@@ -393,6 +398,39 @@
           <div>
             <div class="w-title">View History</div>
             <div class="w-sub">Check past daily logs</div>
+          </div>
+        </div>
+
+        <!-- NEW WIDGETS -->
+        <div class="skynex-widget w-amber" onclick="showTab('stock'); loadStockPage();">
+          <div class="w-icon">📦</div>
+          <div>
+            <div class="w-title">Stock Ledger</div>
+            <div class="w-sub">Track paper stock</div>
+          </div>
+        </div>
+
+        <div class="skynex-widget w-teal" onclick="showTab('printers'); loadPrintersPage();">
+          <div class="w-icon">🖨️</div>
+          <div>
+            <div class="w-title">Printer Status</div>
+            <div class="w-sub">Check active printers</div>
+          </div>
+        </div>
+
+        <div class="skynex-widget w-green admin-only" id="widget-team-directory" onclick="showTab('employees'); loadEmployeesPage();" style="display:none;">
+          <div class="w-icon">👥</div>
+          <div>
+            <div class="w-title">Team Directory</div>
+            <div class="w-sub">Manage staff & cards</div>
+          </div>
+        </div>
+
+        <div class="skynex-widget w-indigo" onclick="openIdCardOffcanvas(currentUser)">
+          <div class="w-icon">🪪</div>
+          <div>
+            <div class="w-title">My ID Card</div>
+            <div class="w-sub">View digital ID pass</div>
           </div>
         </div>
 
@@ -1057,25 +1095,55 @@
       <div class="skynex-card">
         <div class="skynex-card-title" style="flex-wrap: wrap; gap: 10px;">
           <div>
-            <div style="font-size: 1rem; font-weight: 800;">Received Paper to Hospital</div>
-            <div style="font-size: 0.72rem; color: var(--text-muted);">Date-Wise Stock &amp; Invoices (Sheet Tab: stock)</div>
+            <div style="font-size: 1rem; font-weight: 800;">Received Paper &amp; Stock Ledger</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Paper Rims, Toners &amp; Consumables Receipt (Tab: stock)</div>
           </div>
-          <button class="arrow-btn" style="width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #15803d; background: rgba(22, 163, 74, 0.1);" onclick="exportStockToExcel()">
-            📊 Excel
-          </button>
+          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+            <button class="arrow-btn" style="width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #15803d; background: rgba(22, 163, 74, 0.1);" onclick="shareStockSummaryWhatsApp()" title="Share Stock Summary on WhatsApp">
+              💬 WhatsApp
+            </button>
+            <button class="arrow-btn" style="width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #0284c7; background: rgba(2, 132, 199, 0.1);" onclick="exportStockToExcel()" title="Export Stock Ledger to Excel">
+              📊 Excel
+            </button>
+            <button type="button" id="btn-add-stock-entry" class="arrow-btn admin-only" style="display:none; width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #ffffff; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; box-shadow: 0 2px 8px rgba(37,99,235,0.3);" onclick="openAddStockModal()">
+              ➕ Add Stock
+            </button>
+          </div>
         </div>
 
         <!-- Stock KPI Summary Cards -->
         <div class="stock-kpi-grid">
           <div class="stock-kpi-card">
-            <div class="kpi-label">Total Rims Received</div>
+            <div class="kpi-label" id="stock-kpi-lbl-1">Total Quantity Received</div>
             <div class="kpi-val" id="stock-total-rims">0</div>
-            <div class="kpi-sub">Rim Packets (Col E)</div>
+            <div class="kpi-sub" id="stock-kpi-sub-1">Packets / Units (Col E)</div>
           </div>
           <div class="stock-kpi-card highlight">
-            <div class="kpi-label">Total Paper Sheets</div>
+            <div class="kpi-label" id="stock-kpi-lbl-2">Total Paper Sheets</div>
             <div class="kpi-val highlight" id="stock-total-sheets">0</div>
-            <div class="kpi-sub">500 Sheets / Rim (Col M)</div>
+            <div class="kpi-sub" id="stock-kpi-sub-2">500 Sheets / Rim (Col M)</div>
+          </div>
+        </div>
+
+        <!-- Hospital Breakdown Row (MDM, MGH, UMMED) -->
+        <div class="stock-hosp-breakdown-grid" id="stock-hosp-breakdown">
+          <div class="shb-item">
+            <div class="shb-title">🏥 MDM Hospital</div>
+            <div class="shb-stats">
+              <span id="shb-mdm-rims">0 Rims</span> • <span id="shb-mdm-sheets">0 Pgs</span>
+            </div>
+          </div>
+          <div class="shb-item">
+            <div class="shb-title">🏥 MGH Hospital</div>
+            <div class="shb-stats">
+              <span id="shb-mgh-rims">0 Rims</span> • <span id="shb-mgh-sheets">0 Pgs</span>
+            </div>
+          </div>
+          <div class="shb-item">
+            <div class="shb-title">🏥 UMMED Hospital</div>
+            <div class="shb-stats">
+              <span id="shb-ummed-rims">0 Rims</span> • <span id="shb-ummed-sheets">0 Pgs</span>
+            </div>
           </div>
         </div>
 
@@ -1086,10 +1154,17 @@
             <input type="date" id="stock-date-filter" class="native-input" onchange="filterStockList()" style="font-size: 0.8rem; padding: 8px 12px;">
           </div>
           <div class="hospital-filter-pills" id="stock-hospital-pills">
-            <button type="button" class="pill-btn active" onclick="filterStockByHospital('ALL', this)">All</button>
+            <button type="button" class="pill-btn active" onclick="filterStockByHospital('ALL', this)">All Hospitals</button>
             <button type="button" class="pill-btn" onclick="filterStockByHospital('MDM', this)">MDM</button>
             <button type="button" class="pill-btn" onclick="filterStockByHospital('MGH', this)">MGH</button>
             <button type="button" class="pill-btn" onclick="filterStockByHospital('UMMED', this)">UMMED</button>
+          </div>
+          <!-- Category Filter Pills -->
+          <div class="hospital-filter-pills" id="stock-category-pills" style="margin-top: 6px;">
+            <button type="button" class="pill-btn active" onclick="filterStockByCategory('ALL', this)">All Items</button>
+            <button type="button" class="pill-btn" onclick="filterStockByCategory('Paper', this)">📄 Paper Rims</button>
+            <button type="button" class="pill-btn" onclick="filterStockByCategory('Toner', this)">🖨️ Toner Cartridges</button>
+            <button type="button" class="pill-btn" onclick="filterStockByCategory('Accessories', this)">🔌 Accessories &amp; Parts</button>
           </div>
         </div>
 
@@ -1098,7 +1173,7 @@
 
         <div id="no-stock" style="display:none; text-align:center; padding:36px; color:var(--text-muted);">
           <div style="font-size:2rem; margin-bottom:8px;">📦</div>
-          <p>No paper receipt records found.</p>
+          <p>No stock records found.</p>
         </div>
       </div>
     </section>
@@ -1477,7 +1552,7 @@
           <div class="id-card-photo-wrap">
             <div class="id-card-photo-box" id="idc-photo-container">
               <div class="id-card-photo-placeholder" id="idc-avatar">—</div>
-              <img id="idc-photo-img" style="display:none; width:100%; height:100%; object-fit:cover;" alt="Photo" crossorigin="anonymous">
+              <img id="idc-photo-img" style="display:none; width:100%; height:100%; object-fit:cover;" alt="Photo">
             </div>
           </div>
 
@@ -1525,6 +1600,80 @@
             🖨️ Print ID Card
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ID Card Profile Photo Adjuster Modal (Passport Crop & Adjust) ── -->
+  <div id="id-photo-adjuster-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; z-index:10005; background:rgba(15,23,42,0.75); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:12px;" onclick="closeIdPhotoAdjusterModal(event)">
+    <div class="modal-card" style="background:#0f172a; width:100%; max-width:440px; border-radius:20px; padding:16px; color:#ffffff; box-shadow:0 25px 60px rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15);" onclick="event.stopPropagation()">
+      <div class="adjuster-header" style="margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.12); display:flex; justify-content:space-between; align-items:center;">
+        <div class="adjuster-title">
+          <span style="font-size:0.95rem; font-weight:800; color:#ffffff;">📐 Adjust ID Card Photo</span>
+          <span class="adjuster-hint" style="font-size:0.68rem; color:#94a3b8;">Drag to Pan • Pinch or Slider to Zoom</span>
+        </div>
+        <button type="button" class="btn-adjuster-reset" onclick="resetIdPhotoAdjuster()" title="Reset adjustments">
+          🔄 Reset
+        </button>
+      </div>
+
+      <!-- Viewport with 3:4 Passport Crop Guide -->
+      <div class="adjuster-viewport" id="id-photo-adjuster-viewport" style="position:relative; width:100%; aspect-ratio:3/4; max-height:360px; background:#000000; border-radius:12px; overflow:hidden; touch-action:none; cursor:grab; display:flex; align-items:center; justify-content:center;">
+        <canvas id="id-photo-adjuster-canvas" style="display:block; max-width:100%; max-height:100%;"></canvas>
+        <div class="adjuster-crop-guide" style="position:absolute; top:8%; bottom:8%; left:12%; right:12%; border:2px solid #38bdf8; box-shadow:0 0 0 9999px rgba(0,0,0,0.65); border-radius:8px; pointer-events:none; display:flex; align-items:flex-end; justify-content:center; padding-bottom:6px;">
+          <div class="crop-corner tl"></div>
+          <div class="crop-corner tr"></div>
+          <div class="crop-corner bl"></div>
+          <div class="crop-corner br"></div>
+          <div class="crop-badge" style="background:rgba(15,23,42,0.85); color:#38bdf8; font-size:0.6rem; font-weight:800; padding:2px 8px; border-radius:10px;">FIT FACE IN BOX</div>
+        </div>
+      </div>
+
+      <!-- Fine Angle Correction Slider -->
+      <div class="adjuster-control-row" style="margin-top:10px;">
+        <div class="control-label">
+          <span>📐 Angle / Straighten:</span>
+          <strong id="id-photo-angle-lbl">0°</strong>
+        </div>
+        <div class="slider-with-btns">
+          <button type="button" class="btn-step-adjust" onclick="nudgeIdPhotoAngle(-1)">−1°</button>
+          <input type="range" id="id-photo-angle-slider" min="-45" max="45" value="0" step="0.5" oninput="onIdPhotoAngleSliderChange(this.value)">
+          <button type="button" class="btn-step-adjust" onclick="nudgeIdPhotoAngle(1)">+1°</button>
+          <button type="button" class="btn-zero-angle" onclick="onIdPhotoAngleSliderChange(0)">0°</button>
+        </div>
+      </div>
+
+      <!-- Zoom Slider -->
+      <div class="adjuster-control-row">
+        <div class="control-label">
+          <span>🔍 Zoom:</span>
+          <strong id="id-photo-zoom-lbl">1.0x</strong>
+        </div>
+        <div class="slider-with-btns">
+          <button type="button" class="btn-step-adjust" onclick="nudgeIdPhotoZoom(-0.1)">−</button>
+          <input type="range" id="id-photo-zoom-slider" min="1" max="4" value="1" step="0.05" oninput="onIdPhotoZoomSliderChange(this.value)">
+          <button type="button" class="btn-step-adjust" onclick="nudgeIdPhotoZoom(0.1)">+</button>
+        </div>
+      </div>
+
+      <!-- 90° Rotations -->
+      <div class="adjuster-actions-pills" style="margin-top:8px;">
+        <button type="button" class="btn-adjuster-pill" onclick="rotateIdPhoto90(-90)">
+          ⟲ 90° Left
+        </button>
+        <button type="button" class="btn-adjuster-pill" onclick="rotateIdPhoto90(90)">
+          ⟳ 90° Right
+        </button>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div style="display:flex; gap:8px; margin-top:14px;">
+        <button type="button" class="btn-adjuster-retake" style="flex:1;" onclick="closeIdPhotoAdjusterModal()">
+          ✕ Cancel
+        </button>
+        <button type="button" class="btn-adjuster-scan" id="id-photo-upload-submit-btn" style="flex:2; background:#0284c7;" onclick="submitAdjustedIdPhoto()">
+          ☁️ Save &amp; Upload Photo
+        </button>
       </div>
     </div>
   </div>
@@ -1814,6 +1963,157 @@
     </div>
   </div>
 
+  <!-- ── Add Stock Entry Modal (SuperAdmin Only) ── -->
+  <div id="add-stock-modal" class="modal-overlay" onclick="closeAddStockModal(event)" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.6); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px;">
+    <div class="modal-card" onclick="event.stopPropagation()" style="background:#ffffff; width:100%; max-width:520px; max-height:92vh; overflow-y:auto; border-radius:24px; padding:24px 20px; box-shadow:0 20px 50px rgba(15,23,42,0.25);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+        <div>
+          <div style="font-size:1.1rem; font-weight:800; color:#0f172a;">📦 Add Stock Receipt</div>
+          <div style="font-size:0.75rem; color:#64748b;">Record new Paper Rims, Toner, or Accessories (Sheet: stock)</div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeAddStockModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b;">✕</button>
+      </div>
+
+      <form id="add-stock-form" onsubmit="submitStockEntry(event)">
+        <!-- Item Type / Category & Hospital Row -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Category / Item Type *</label>
+            <select id="stock-new-itemtype" class="native-input" required onchange="handleStockItemTypeChange()" style="width:100%; font-size:0.82rem; padding:8px 10px;">
+              <option value="Paper">📄 Paper Rims</option>
+              <option value="Toner">🖨️ Toner Cartridge</option>
+              <option value="Accessories">🔌 Accessories / Other</option>
+              <option value="__NEW__">➕ Add New Category...</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Hospital *</label>
+            <select id="stock-new-hospital" class="native-input" required style="width:100%; font-size:0.82rem; padding:8px 10px;">
+              <option value="MDM">MDM Hospital</option>
+              <option value="MGH">MGH Hospital</option>
+              <option value="UMMED">UMMED Hospital</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Custom Category Input (shown when "Add New Category" selected) -->
+        <div id="stock-custom-category-box" style="display:none; margin-bottom:12px; background:#eff6ff; border:1px dashed #93c5fd; border-radius:12px; padding:8px 12px;">
+          <label style="display:block; font-size:0.74rem; font-weight:700; color:#1e40af; margin-bottom:4px;">Enter New Category Name *</label>
+          <input type="text" id="stock-new-custom-category" class="native-input" placeholder="e.g. Printer Spare Parts, Drum Unit, Ribbon..." style="width:100%; font-size:0.82rem; padding:8px 10px;">
+        </div>
+
+        <!-- Date & Invoice Number Row -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Receipt Date *</label>
+            <input type="date" id="stock-new-date" class="native-input" required style="width:100%; font-size:0.82rem; padding:8px 10px;">
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Invoice No. *</label>
+            <input type="text" id="stock-new-invoice" class="native-input" required placeholder="e.g. VAT-49 No. JK20260348" style="width:100%; font-size:0.82rem; padding:8px 10px;">
+          </div>
+        </div>
+
+        <!-- Description of Goods -->
+        <div style="margin-bottom:12px;">
+          <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Description of Goods / Item Name *</label>
+          <input type="text" id="stock-new-desc" class="native-input" required placeholder="e.g. JK ECO RISE A4 70GSM or HP 88A Toner" style="width:100%; font-size:0.82rem; padding:8px 10px;">
+        </div>
+
+        <!-- Quantity, Unit, and Per Row (Columns E, F, I) -->
+        <div style="display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div>
+            <label id="stock-new-qty-lbl" style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Quantity *</label>
+            <input type="number" id="stock-new-qty" class="native-input" required min="1" step="any" placeholder="e.g. 50" oninput="calculateStockTotals()" style="width:100%; font-size:0.82rem; padding:8px 10px;">
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">UNIT (Col F)</label>
+            <input type="text" id="stock-new-unit" class="native-input" value="PCS" oninput="syncStockUnitPer(this.value)" style="width:100%; font-size:0.82rem; padding:8px 10px;">
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Per (Col I)</label>
+            <input type="text" id="stock-new-per" class="native-input" value="PCS" style="width:100%; font-size:0.82rem; padding:8px 10px;">
+          </div>
+        </div>
+
+        <!-- Paper Sheets calculation (visible for Paper) -->
+        <div id="stock-new-sheets-box" style="margin-bottom:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:8px 12px; font-size:0.78rem; color:#166534; display:flex; justify-content:space-between; align-items:center;">
+          <span>Calculated Paper Sheets (500/Rim):</span>
+          <strong id="stock-new-calc-sheets">0 Sheets</strong>
+        </div>
+
+        <!-- Rate & Rate inc Tax -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Rate (excl. Tax)</label>
+            <input type="number" id="stock-new-rate" class="native-input" step="any" placeholder="₹ per unit" oninput="calculateStockTotals()" style="width:100%; font-size:0.82rem; padding:8px 10px;">
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Rate Inc of TAX</label>
+            <input type="number" id="stock-new-ratetax" class="native-input" step="any" placeholder="₹ per unit" oninput="calculateStockTotals()" style="width:100%; font-size:0.82rem; padding:8px 10px;">
+          </div>
+        </div>
+
+        <!-- Calculated Amount & Total -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Amount (Subtotal)</label>
+            <input type="number" id="stock-new-amount" class="native-input" step="any" placeholder="₹ 0.00" style="width:100%; font-size:0.82rem; padding:8px 10px; background:#f8fafc;">
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Invoice TOTAL (Inc Tax)</label>
+            <input type="number" id="stock-new-total" class="native-input" step="any" placeholder="₹ 0.00" style="width:100%; font-size:0.82rem; padding:8px 10px; font-weight:700; color:#0f172a; background:#f8fafc;">
+          </div>
+        </div>
+
+        <!-- HSN/SAC code & Invoice PDF Link Row -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">HSN/SAC Code</label>
+            <input type="text" id="stock-new-hsn" class="native-input" placeholder="e.g. 48025610" style="width:100%; font-size:0.82rem; padding:8px 10px;">
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Invoice PDF Drive Link</label>
+            <input type="url" id="stock-new-pdf-link" class="native-input" placeholder="https://drive.google.com/file/d/..." style="width:100%; font-size:0.82rem; padding:8px 10px;">
+          </div>
+        </div>
+
+        <!-- Submit Buttons -->
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button type="button" class="btn-native-submit" style="background:#f1f5f9; color:#475569; width:auto; padding:10px 18px;" onclick="closeAddStockModal()">
+            Cancel
+          </button>
+          <button type="submit" id="btn-submit-stock-entry" class="btn-native-submit" style="background:linear-gradient(135deg, #0284c7, #2563eb); color:#fff; width:auto; padding:10px 24px; font-weight:800; border:none; box-shadow:0 4px 12px rgba(37,99,235,0.3);">
+            💾 Save Stock Entry
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Stock Item Detail Modal (View Full Invoice Breakdown) ── -->
+  <div id="stock-detail-modal" class="modal-overlay" onclick="closeStockDetailModal(event)" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.6); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px;">
+    <div class="modal-card" onclick="event.stopPropagation()" style="background:#ffffff; width:100%; max-width:460px; border-radius:24px; padding:24px 20px; box-shadow:0 20px 50px rgba(15,23,42,0.25);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
+        <div>
+          <div style="font-size:1.05rem; font-weight:800; color:#0f172a;" id="sdm-invoice-title">Invoice Detail</div>
+          <div style="font-size:0.75rem; color:#64748b;" id="sdm-date-sub">Date &amp; Goods Info</div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeStockDetailModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b;">✕</button>
+      </div>
+
+      <div id="sdm-body" style="font-size:0.8rem; display:flex; flex-direction:column; gap:10px;">
+        <!-- Filled dynamically by JS -->
+      </div>
+
+      <div style="margin-top:16px; display:flex; justify-content:flex-end;">
+        <button type="button" class="btn-native-submit" style="background:#0f172a; color:#fff; width:auto; padding:8px 20px;" onclick="closeStockDetailModal()">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- SheetJS & jsPDF for Excel & PDF Export -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
@@ -1824,15 +2124,15 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   
-  <script src="assets/js/config.js?v=33"></script>
-  <script src="assets/js/schema.js?v=33"></script>
-  <script src="assets/js/auth.js?v=33"></script>
-  <script src="assets/js/sheets.js?v=33"></script>
-  <script src="assets/js/db.js?v=33"></script>
-  <script src="assets/js/notifications.js?v=33"></script>
-  <script src="assets/js/admob.js?v=33"></script>
-  <script src="assets/js/ocr.js?v=33"></script>
-  <script src="assets/js/app.js?v=33"></script>
+  <script src="assets/js/config.js?v=42"></script>
+  <script src="assets/js/schema.js?v=42"></script>
+  <script src="assets/js/auth.js?v=42"></script>
+  <script src="assets/js/sheets.js?v=42"></script>
+  <script src="assets/js/db.js?v=42"></script>
+  <script src="assets/js/notifications.js?v=42"></script>
+  <script src="assets/js/admob.js?v=42"></script>
+  <script src="assets/js/ocr.js?v=42"></script>
+  <script src="assets/js/app.js?v=42"></script>
 
   <script>
     function toggleUserDropdown(e) {

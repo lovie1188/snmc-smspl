@@ -100,6 +100,18 @@ async function fetchStockEntries() {
   return { headers: data?.headers || [], rows: data?.rows || [] };
 }
 
+// ── Append a new stock entry row (SuperAdmin) ─────────────
+async function appendStockEntry(rowArray) {
+  const data = await sheetsRequest(
+    "appendStockEntry",
+    {
+      method: "POST",
+      body: JSON.stringify({ row: rowArray })
+    }
+  );
+  return data;
+}
+
 // ── Utility: rows → unique column values ─────────────────
 function uniqueColValues(rows, colName) {
   return [...new Set(rows.map(r => r[colName]).filter(Boolean))].sort();

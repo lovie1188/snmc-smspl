@@ -2,7 +2,7 @@
 // PrintTrack — Service Worker with FCM Push Support
 // ============================================================
 
-const CACHE_NAME = 'printtrack-v33';
+const CACHE_NAME = 'printtrack-v42';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
