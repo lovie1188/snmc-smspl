@@ -524,7 +524,7 @@ body {
   position: fixed; bottom: calc(var(--nav-h) + 12px); left: 50%;
   transform: translateX(-50%) translateY(16px);
   padding: 10px 18px; border-radius: 20px;
-  font-size: 0.8rem; font-weight: 700; z-index: 999;
+  font-size: 0.8rem; font-weight: 700; z-index: 10000;
   opacity: 0; transition: all 0.25s ease; box-shadow: 0 8px 24px rgba(0,0,0,0.1);
   white-space: nowrap; max-width: 90vw;
 }
@@ -2787,6 +2787,311 @@ body {
     flex-direction: column;
   }
 }
+
+/* ============================================================
+   Fullscreen Camera Viewfinder & Post-Capture Processing UI
+   ============================================================ */
+
+/* Fullscreen Camera Overlay */
+.wizard-camera-fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 99999;
+  background: #000000;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+.wcf-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+  z-index: 25;
+}
+
+.wcf-btn-circle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.wcf-btn-circle:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(1.05);
+}
+
+.wcf-badge {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #38bdf8;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.wcf-viewfinder-wrap {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #050505;
+}
+
+.wcf-viewfinder-wrap video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.wcf-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 16px 20px 24px 20px;
+  background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+  z-index: 25;
+}
+
+.wcf-btn-sub {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+.wcf-btn-sub:hover {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: #38bdf8;
+}
+
+/* ── Camera Launch Card in Step 1 ── */
+.wizard-launch-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px dashed #cbd5e1;
+  border-radius: 20px;
+  padding: 28px 20px;
+  text-align: center;
+  margin-bottom: 14px;
+  transition: all 0.2s ease;
+}
+.wizard-launch-card:hover {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+}
+.launch-camera-icon-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: #ffffff;
+  font-size: 2.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px auto;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.launch-camera-icon-wrap:hover {
+  transform: scale(1.08);
+  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.45);
+}
+.launch-camera-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+.launch-camera-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+  max-width: 320px;
+  margin: 0 auto 16px auto;
+}
+.launch-actions-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.btn-launch-camera {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 24px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+.btn-launch-camera:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
+}
+.btn-launch-gallery {
+  background: #ffffff;
+  color: #334155;
+  border: 1.5px solid #cbd5e1;
+  padding: 10px 18px;
+  border-radius: 24px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+.btn-launch-gallery:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+/* ── Post-Capture Process Options Card ── */
+.post-capture-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+  margin-bottom: 14px;
+}
+.post-capture-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.post-capture-thumb-box {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  border: 2px solid #e2e8f0;
+  flex-shrink: 0;
+}
+.post-capture-thumb-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.post-capture-info {
+  flex: 1;
+}
+.post-capture-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.post-capture-sub {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+.post-capture-options-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+@media (min-width: 520px) {
+  .post-capture-options-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.btn-process-option {
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+.btn-process-option.primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+}
+.btn-process-option.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4);
+}
+.btn-process-option.secondary {
+  background: #f8fafc;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+.btn-process-option.secondary:hover {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+.btn-process-option.adjust {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.btn-process-option.adjust:hover {
+  background: #dbeafe;
+}
+.btn-process-option.retake {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+.btn-process-option.retake:hover {
+  background: #fee2e2;
+}
+
 
 
 

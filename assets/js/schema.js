@@ -20,18 +20,18 @@ const SHEET_SCHEMA = {
     range: "A:L",
     // Ordered column contract (index 0 => column A).
     columns: [
-      { key: "timestamp", header: "Timestamp",       type: "datetime" }, // Col A
-      { key: "email",     header: "Email address",   type: "string"   }, // Col B
-      { key: "date",      header: "Date",            type: "date"     }, // Col C
-      { key: "counter",   header: "counter Number",  type: "string"   }, // Col D
-      { key: "received",  header: "Paper Recieved",  type: "number"   }, // Col E
-      { key: "issued",    header: "Paper Issued",    type: "number"   }, // Col F
-      { key: "type",      header: "ISSUE / RECEIVE ",type: "enum", enum: ["ISSUE", "RECEIVE", "None"] }, // Col G
-      { key: "balance",   header: "BALANCE",         type: "number"   }, // Col H
-      { key: "remark",    header: "REMARK",          type: "string"   }, // Col I
-      { key: "opening",   header: "Opening reading", type: "number"   }, // Col J
-      { key: "closing",   header: "Closing Reading", type: "number"   }, // Col K
-      { key: "hospital",  header: "Hospital Name",   type: "string"   }  // Col L
+      { key: "timestamp", header: "Timestamp", type: "datetime" }, // Col A
+      { key: "email", header: "Email address", type: "string" }, // Col B
+      { key: "date", header: "Date", type: "date" }, // Col C
+      { key: "counter", header: "counter Number", type: "string" }, // Col D
+      { key: "received", header: "Paper Recieved", type: "number" }, // Col E
+      { key: "issued", header: "Paper Issued", type: "number" }, // Col F
+      { key: "type", header: "ISSUE / RECEIVE ", type: "enum", enum: ["ISSUE", "RECEIVE", "None"] }, // Col G
+      { key: "balance", header: "BALANCE", type: "number" }, // Col H
+      { key: "remark", header: "REMARK", type: "string" }, // Col I
+      { key: "opening", header: "Opening reading", type: "number" }, // Col J
+      { key: "closing", header: "Closing Reading", type: "number" }, // Col K
+      { key: "hospital", header: "Hospital Name", type: "string" }  // Col L
     ]
   },
 
@@ -51,10 +51,10 @@ const SHEET_SCHEMA = {
     tab: "fcmtokens",
     range: "A:D",
     columns: [
-      { key: "email",       header: "Email",        type: "string" },
+      { key: "email", header: "Email", type: "string" },
       { key: "displayName", header: "Display Name", type: "string" },
-      { key: "token",       header: "Token",        type: "string" },
-      { key: "timestamp",   header: "Timestamp",    type: "datetime" }
+      { key: "token", header: "Token", type: "string" },
+      { key: "timestamp", header: "Timestamp", type: "datetime" }
     ]
   },
 
@@ -63,7 +63,7 @@ const SHEET_SCHEMA = {
     tab: "allowed_senders",
     range: "A:B",
     columns: [
-      { key: "email",    header: "Email",    type: "string" },
+      { key: "email", header: "Email", type: "string" },
       { key: "approvedAt", header: "Approved At", type: "datetime" }
     ]
   },
@@ -71,38 +71,46 @@ const SHEET_SCHEMA = {
   // ── Stock / Paper Received tab (stock tab) ──
   stock: {
     tab: "stock",
-    range: "A:M",
+    range: "A:P",
     columns: [
-      { key: "date",        header: "Date",            type: "date"   }, // Col A
-      { key: "invoiceNo",   header: "Invoice No.",     type: "string" }, // Col B
+      { key: "date", header: "Date", type: "date" }, // Col A
+      { key: "invoiceNo", header: "Invoice No.", type: "string" }, // Col B
       { key: "description", header: "Description Of Goods", type: "string" },
-      { key: "hsn",         header: "HSN/SAC",         type: "string" },
-      { key: "rimQuantity", header: "Qualtity",        type: "number" }, // Col E (Rim Count)
-      { key: "unit",        header: "UNIT",            type: "string" },
-      { key: "rateTax",     header: "Rate Inc of TAX", type: "number" },
-      { key: "rate",        header: "Rate",            type: "number" },
-      { key: "per",         header: "per",             type: "string" },
-      { key: "amount",      header: "Amount",          type: "number" },
-      { key: "total",       header: "TOTAL",           type: "number" },
-      { key: "hospital",    header: "HOSPITAL",        type: "string" }, // Col L
-      { key: "paperCount",  header: "PAPER Quantity",   type: "number" }  // Col M (Sheets Count = Rims * 500)
+      { key: "hsn", header: "HSN/SAC", type: "string" },
+      { key: "rimQuantity", header: "Qualtity", type: "number" }, // Col E (Rim Count)
+      { key: "unit", header: "UNIT", type: "string" },
+      { key: "rateTax", header: "Rate Inc of TAX", type: "number" },
+      { key: "rate", header: "Rate", type: "number" },
+      { key: "per", header: "per", type: "string" },
+      { key: "amount", header: "Amount", type: "number" },
+      { key: "total", header: "TOTAL", type: "number" },
+      { key: "hospital", header: "HOSPITAL", type: "string" }, // Col L
+      { key: "paperCount", header: "PAPER Quantity", type: "number" }, // Col M (Sheets Count = Rims * 500)
+      { key: "itemType", header: "ITEM TYPE", type: "string" }, // Col N
+      { key: "deliveryChallan", header: "Delivery Challen", type: "string" }, // Col O
+      { key: "pdfLink", header: "INVOICE PDF LINK", type: "string" } // Col P
     ]
   },
 
-  // ── Employee & Manpower Master Sheet Integration ──
+  // ── Employee & Manpower Master Sheet Integration (Dedicated 30-column sheet) ──
   userHospitals: {
     sheetId: "1FrHbNqlJF1BpFdlVLsUMYVIGC9z0N_JS3vjrYAhwazA",
     tab: "manpower",
-    range: "A1:AD45",
+    range: "A1:AD",
     columns: [
-      { key: "email",        header: "Email",         type: "string" }, // Col A
-      { key: "hospitals",    header: "Hospitals",     type: "string" }, // Col B: Comma-separated (e.g. "MDM, MGH" or "ALL")
-      { key: "role",         header: "Role",          type: "string" }, // Col C: "SuperAdmin", "Supervisor", "Operator", "Technician", "Staff"
-      { key: "memberType",   header: "Member Type",   type: "string" }, // Col D: "Both", "Employee", "Contact"
-      { key: "loginAllowed", header: "Login Allowed", type: "string" }, // Col E: "YES" / "NO"
-      { key: "name",         header: "Full Name",     type: "string" }, // Col F: Employee Full Name
-      { key: "phone",        header: "Phone",         type: "string" }, // Col G: Mobile Phone Number
-      { key: "photoUrl",     header: "Photo URL",     type: "string" }  // Col H: Google Drive Photo Image URL
+      { key: "sNo", header: "S. No.", type: "string" }, // Col A (Col 0)
+      { key: "id", header: "Employee ID", type: "string" }, // Col B (Col 1)
+      { key: "doa", header: "DOA", type: "string" }, // Col C (Col 2)
+      { key: "name", header: "Name", type: "string" }, // Col D (Col 3)
+      { key: "role", header: "Designation", type: "string" }, // Col E (Col 4)
+      { key: "phone", header: "Contact No.", type: "string" }, // Col F (Col 5)
+      { key: "email", header: "Email ID", type: "string" }, // Col I (Col 8)
+      { key: "officeEmail", header: "Office Email", type: "string" }, // Col J (Col 9)
+      { key: "hospital", header: "Reporting Office", type: "string" }, // Col M (Col 12)
+      { key: "photoUrl", header: "PHOTO", type: "string" }, // Col AA (Col 26)
+      { key: "project", header: "PROJECT", type: "string" }, // Col AB (Col 27)
+      { key: "bloodGroup", header: "blood Group", type: "string" }, // Col AC (Col 28)
+      { key: "status", header: "STATUS", type: "string" } // Col AD (Col 29)
     ]
   }
 };

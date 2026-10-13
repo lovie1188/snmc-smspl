@@ -319,15 +319,6 @@ async function requireAuth() {
   }
 
   const userEmail = (storedUser.email || "").toLowerCase().trim();
-  const isSuper = isSuperAdmin(userEmail);
-
-  if (isSuper) {
-    storedUser.role = "SuperAdmin";
-    storedUser.isSuperAdmin = true;
-    storedUser.hospitals = ["ALL"];
-    setSessionData(token, storedUser);
-    return { token, user: storedUser };
-  }
 
   // Verify access live with serverless backend
   try {
@@ -342,12 +333,17 @@ async function requireAuth() {
     storedUser.role = check.role || storedUser.role || "Operator";
     storedUser.hospitals = check.hospitals || storedUser.hospitals || ["ALL"];
     storedUser.memberType = check.memberType || storedUser.memberType || "Operator";
-    storedUser.isSuperAdmin = check.isSuperAdmin || false;
+    storedUser.isSuperAdmin = check.isSuperAdmin || isSuperAdmin(userEmail);
 
     setSessionData(token, storedUser);
     return { token, user: storedUser };
   } catch (e) {
-    // If offline, allow existing stored session
+    // If offline or network error, verify email against client SuperAdmin list as fallback
+    if (isSuperAdmin(userEmail)) {
+      storedUser.isSuperAdmin = true;
+      storedUser.role = "SuperAdmin";
+      storedUser.hospitals = ["ALL"];
+    }
     return { token, user: storedUser };
   }
 }
@@ -376,4 +372,17 @@ function handleTokenExpiry() {
   sessionStorage.removeItem(KEY_TOKEN);
   redirectToLogin("token_expired");
 }
+
+// ── Global Security & RBAC Defaults (Accessible across all modules) ──
+window.currentUser = window.currentUser || null;
+window.activeAdminPermissions = window.activeAdminPermissions || {
+  can_add_entry: true,
+  can_edit_history: false,
+  can_delete_history: false,
+  can_add_stock: true,
+  can_export_excel: true,
+  can_manage_employees: false,
+  can_delete_employees: false,
+  can_send_broadcast: false
+};
 

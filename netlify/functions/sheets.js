@@ -28,7 +28,7 @@ function loadEnvFallback() {
         }
       });
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 loadEnvFallback();
 
@@ -39,14 +39,14 @@ const DAILY_RANGE = "A:L";
 const ALLOWED_SENDERS_TAB = "allowed_senders";
 const FCMTOKENS_TAB = "fcmtokens";
 const STOCK_TAB = "stock";
-const STOCK_RANGE = "A:O";
+const STOCK_RANGE = "A:P";
 const USER_HOSPITALS_TAB = "user_hospitals";
 const USER_HOSPITALS_RANGE = "A:H";
 
 // ── New Manpower Sheet Integration (Dedicated Employee & Team Master) ──
 const MANPOWER_SHEET_ID = "1FrHbNqlJF1BpFdlVLsUMYVIGC9z0N_JS3vjrYAhwazA";
 const MANPOWER_TAB = "manpower";
-const MANPOWER_RANGE = "A1:AD45";
+const MANPOWER_RANGE = "A1:AD";
 
 const GOOGLE_DRIVE_PHOTO_FOLDER_ID = "129N1_3z_802vJ-9I5nH9jMmSBinpbzGY";
 // Server-authoritative SuperAdmin list (override per environment via SUPER_ADMIN_EMAILS).
@@ -153,7 +153,70 @@ Return ONLY a valid, raw JSON object without markdown fences, with exactly these
   throw lastError || new Error("Gemini Vision processing failed across all models.");
 }
 
-const NEON_DB_URL = process.env.NEON_DATABASE_URL || "postgresql://neondb_owner:npg_0urCjOWDdp9f@ep-long-violet-az1arbtf-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
+/**
+ * Calls Gemini API with a text-only prompt (no image)
+ * Used for AI-generated insights, anomaly analysis, and smart summaries
+ */
+async function callGeminiText(promptText, temperature = 0.4) {
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_SHEETS_API_KEY || "";
+  if (!geminiKey) {
+    throw new Error("No Gemini API key configured in server environment.");
+  }
+
+  const payload = {
+    contents: [{ parts: [{ text: promptText }] }],
+    generationConfig: { temperature, maxOutputTokens: 300 }
+  };
+
+  const models = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-2.5-flash"];
+  let lastError = null;
+
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        console.warn(`[Gemini Text] Model ${model} returned HTTP ${resp.status}:`, errText);
+        lastError = new Error(`Gemini ${model} HTTP ${resp.status}`);
+        continue;
+      }
+
+      const resData = await resp.json();
+      const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      if (!text) { lastError = new Error("Empty response from Gemini Text."); continue; }
+      return text.trim();
+    } catch (e) {
+      console.warn(`[Gemini Text] Model ${model} attempt failed:`, e.message);
+      lastError = e;
+    }
+  }
+  throw lastError || new Error("Gemini Text processing failed across all models.");
+}
+
+const NEON_DB_URL = process.env.NEON_DATABASE_URL;
+
+// Neon Database Query Helper (Shared with auth.js)
+async function queryNeon(sql, params = []) {
+  if (!NEON_DB_URL) {
+    throw new Error("SERVER_CONFIG_ERROR: NEON_DATABASE_URL environment variable is not configured.");
+  }
+  const pg = new PgClient({ connectionString: NEON_DB_URL });
+  await pg.connect();
+  try {
+    const res = await pg.query(sql, params);
+    await pg.end();
+    return res.rows;
+  } catch (err) {
+    await pg.end();
+    throw err;
+  }
+}
 
 let firebaseCertCache = { expiresAt: 0, certs: null };
 let sheetsJwtClient = null;
@@ -176,12 +239,9 @@ async function getAdminPermissionsCached() {
     can_send_broadcast: false
   };
   try {
-    const pg = new PgClient({ connectionString: NEON_DB_URL });
-    await pg.connect();
-    const res = await pg.query("SELECT setting_value FROM app_settings WHERE setting_key = 'snmc_admin_permissions' LIMIT 1;");
-    await pg.end();
-    if (res.rows.length > 0 && res.rows[0].setting_value) {
-      perms = { ...perms, ...JSON.parse(res.rows[0].setting_value) };
+    const rows = await queryNeon("SELECT setting_value FROM app_settings WHERE setting_key = 'snmc_admin_permissions' LIMIT 1;");
+    if (rows.length > 0 && rows[0].setting_value) {
+      perms = { ...perms, ...JSON.parse(rows[0].setting_value) };
     }
   } catch (err) {
     console.warn("[Backend] Error fetching admin permissions from Neon DB:", err.message);
@@ -219,7 +279,10 @@ async function getFirebaseCerts() {
 }
 
 const jwt = require("jsonwebtoken");
-const JWT_SECRET = process.env.JWT_SECRET || "SMSPL@PrintTrackJWTSecret2026";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.warn("[Security] JWT_SECRET environment variable is not defined!");
+}
 
 async function verifyToken(authHeader) {
   const match = String(authHeader || "").match(/^Bearer\s+(.+)$/i);
@@ -243,7 +306,7 @@ async function verifyToken(authHeader) {
         hospitals: decoded.hospitals || []
       };
     }
-  } catch (_) {}
+  } catch (_) { }
 
   // 2. If not local JWT, verify Firebase ID Token
   const parts = token.split(".");
@@ -643,7 +706,7 @@ async function sendFcmMessage(token, payload) {
   return res.json();
 }
 
-// ── Read User-to-Hospital Mappings from Dedicated Manpower Google Sheet (manpower!A1:AD45) ──
+// ── Read User-to-Hospital Mappings from Dedicated Manpower Google Sheet (manpower!A1:AD) ──
 async function getUserHospitalPermissions(email) {
   if (!email) return { hospitals: [], isSuperAdmin: false, isAll: false };
   const cleanEmail = email.toLowerCase().trim();
@@ -657,7 +720,7 @@ async function getUserHospitalPermissions(email) {
     const data = await fetchSheetDataPublic(`'${MANPOWER_TAB}'!${MANPOWER_RANGE}`, MANPOWER_SHEET_ID);
     if (data && data.values && data.values.length > 1) {
       const headers = data.values[0].map(h => String(h || "").toLowerCase().trim());
-      
+
       const emailIdx = headers.findIndex(h => h === "office email" || h.includes("office email"));
       const fallbackEmailIdx = headers.findIndex(h => h === "email id" || h.includes("email id") || h === "email");
       const nameIdx = headers.findIndex(h => h === "name" || h.includes("name"));
@@ -670,7 +733,7 @@ async function getUserHospitalPermissions(email) {
       for (const row of rows) {
         const primaryEmail = (emailIdx !== -1 ? String(row[emailIdx] || "") : "").toLowerCase().trim();
         const fallbackEmail = (fallbackEmailIdx !== -1 ? String(row[fallbackEmailIdx] || "") : "").toLowerCase().trim();
-        
+
         if (primaryEmail === cleanEmail || fallbackEmail === cleanEmail) {
           const project = projIdx !== -1 ? String(row[projIdx] || "").trim().toUpperCase() : "";
           const status = statusIdx !== -1 ? String(row[statusIdx] || "").trim().toUpperCase() : "";
@@ -683,21 +746,21 @@ async function getUserHospitalPermissions(email) {
           const isDirector = cleanEmail === "softtech2009@gmail.com" || role.toLowerCase().includes("director");
           const isProjectAllowed = isSuper || isDirector || !project || project === "SNMC";
           const isStatusActive = status === "ACTIVE" || status === "YES" || status === "1" || status === "TRUE" || !status; // default allow if active/unspecified
-          
+
           const isLoginAllowed = isSuper || isDirector || (isProjectAllowed && isStatusActive);
           const hospitals = (hospStr === "ALL" || isSuper || isDirector) ? ["ALL"] : hospStr.split(",").map(h => h.trim()).filter(Boolean);
 
-          return { 
-            hospitals: hospitals.length ? hospitals : ["ALL"], 
-            isSuperAdmin: isSuper, 
+          return {
+            hospitals: hospitals.length ? hospitals : ["ALL"],
+            isSuperAdmin: isSuper,
             isDirector: isDirector,
-            isAll: hospitals.includes("ALL") || isSuper || isDirector, 
-            isLoginAllowed, 
-            memberType: role, 
-            role, 
+            isAll: hospitals.includes("ALL") || isSuper || isDirector,
+            isLoginAllowed,
+            memberType: role,
+            role,
             name,
             project,
-            status 
+            status
           };
         }
       }
@@ -725,7 +788,7 @@ async function getUserHospitalPermissions(email) {
         }
       }
     }
-  } catch (_) {}
+  } catch (_) { }
 
   // Default fallback if not mapped
   return { hospitals: [], isSuperAdmin: false, isAll: false, isLoginAllowed: false, memberType: "Unregistered" };
@@ -766,7 +829,7 @@ function isOriginAllowed(origin) {
 }
 
 exports.handler = async function (event, context) {
-  const origin = event.headers.origin || "";
+  const origin = (event && event.headers && event.headers.origin) ? event.headers.origin : "";
   const allowedOrigin = isOriginAllowed(origin);
 
   // CORS Headers — restricted to known origins & LAN only
@@ -791,12 +854,13 @@ exports.handler = async function (event, context) {
     try {
       const parsedBody = JSON.parse(event.body);
       if (parsedBody && parsedBody.action) action = parsedBody.action;
-    } catch (_) {}
+    } catch (_) { }
   }
   if (!action) action = "printerdetails";
 
   try {
-    const claims = await verifyToken(event.headers.authorization || event.headers.Authorization);
+    const authHeader = (event.headers && (event.headers.authorization || event.headers.Authorization)) || "";
+    const claims = await verifyToken(authHeader);
     const userEmail = (claims.email || "").toLowerCase();
 
     // ── Enforce Server-Side User Hospital Permissions ──
@@ -823,15 +887,15 @@ exports.handler = async function (event, context) {
         });
 
       // Server-Side Hospital Authorization Filtering
-      const filteredRows = hasAllAccess 
-        ? allRows 
+      const filteredRows = hasAllAccess
+        ? allRows
         : allRows.filter(r => isHospitalAllowedServer(r["Hospital"], allowedHospitals, false));
 
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ 
-          headers: rawHeaders, 
+        body: JSON.stringify({
+          headers: rawHeaders,
           rows: filteredRows,
           userHospital: hasAllAccess ? "ALL" : allowedHospitals.join(", "),
           isSuperAdmin: userIsSuperAdmin
@@ -877,21 +941,21 @@ exports.handler = async function (event, context) {
         });
 
       // Server-Side Hospital Authorization Filtering
-      const filteredRows = hasAllAccess 
-        ? allRows 
+      const filteredRows = hasAllAccess
+        ? allRows
         : allRows.filter(r => {
-            const hospCol = r["Hospital Name"] || r["Hospital Name "] || r["Hospital"] || "";
-            const counterVal = (r["counter Number"] || r["Counter Number"] || r["Counter"] || "").trim().toUpperCase();
-            const cleanCounter = counterVal.split(" ")[0].trim();
-            const inferredHospital = hospCol || counterHospitalLookup[counterVal] || counterHospitalLookup[cleanCounter] || "";
-            return isHospitalAllowedServer(inferredHospital, allowedHospitals, false);
-          });
+          const hospCol = r["Hospital Name"] || r["Hospital Name "] || r["Hospital"] || "";
+          const counterVal = (r["counter Number"] || r["Counter Number"] || r["Counter"] || "").trim().toUpperCase();
+          const cleanCounter = counterVal.split(" ")[0].trim();
+          const inferredHospital = hospCol || counterHospitalLookup[counterVal] || counterHospitalLookup[cleanCounter] || "";
+          return isHospitalAllowedServer(inferredHospital, allowedHospitals, false);
+        });
 
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ 
-          headers: rawHeaders, 
+        body: JSON.stringify({
+          headers: rawHeaders,
           rows: filteredRows,
           userHospital: hasAllAccess ? "ALL" : allowedHospitals.join(", "),
           isSuperAdmin: userIsSuperAdmin
@@ -964,8 +1028,8 @@ exports.handler = async function (event, context) {
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ 
-          headers: rawHeaders, 
+        body: JSON.stringify({
+          headers: rawHeaders,
           rows: filteredRows,
           userHospital: hasAllAccess ? "ALL" : allowedHospitals.join(", "),
           isSuperAdmin: userIsSuperAdmin
@@ -984,7 +1048,7 @@ exports.handler = async function (event, context) {
       const payload = JSON.parse(event.body || "{}");
       const row = payload.row;
       if (!Array.isArray(row) || row.length < 13) {
-        const err = new Error("Invalid stock payload: row array of 13 to 15 columns is required.");
+        const err = new Error("Invalid stock payload: row array of 13 to 16 columns is required.");
         err.statusCode = 400;
         throw err;
       }
@@ -1115,7 +1179,7 @@ exports.handler = async function (event, context) {
       });
     }
 
-    // ── 10. Live Fetch Employees from Dedicated Manpower Google Sheet (A1:AD45) ──
+    // ── 10. Live Fetch Employees from Dedicated Manpower Google Sheet (A1:AD) ──
     if (action === "getEmployees" && event.httpMethod === "GET") {
       const data = await fetchSheetDataPublic(`'${MANPOWER_TAB}'!${MANPOWER_RANGE}`, MANPOWER_SHEET_ID);
       if (!data || !data.values || data.values.length === 0) {
@@ -1200,8 +1264,8 @@ exports.handler = async function (event, context) {
         })
         .filter(Boolean);
 
-      const filtered = hasAllAccess 
-        ? employees 
+      const filtered = hasAllAccess
+        ? employees
         : employees.filter(e => isHospitalAllowedServer(e.hospital, allowedHospitals, false) || e.hospital === "ALL");
 
       return jsonResponse(200, headers, { employees: filtered, isSuperAdmin: userIsSuperAdmin });
@@ -1224,7 +1288,10 @@ exports.handler = async function (event, context) {
       const phone = String(payload.phone || "").trim();
       const photoUrl = String(payload.photoUrl || "").trim();
       const project = String(payload.project || "SNMC").trim();
-      const status = String(payload.status || "Active").trim();
+      const loginAllowed = String(payload.loginAllowed || "YES").toUpperCase().trim();
+      const status = payload.status
+        ? String(payload.status).trim()
+        : (loginAllowed === "NO" ? "INACTIVE" : "ACTIVE");
 
       if (!name && !email) {
         const err = new Error("Name or Email address is required.");
@@ -1232,9 +1299,44 @@ exports.handler = async function (event, context) {
         throw err;
       }
 
+      // Fetch current sheet data to determine next row index and generate ID
+      const sheetData = await fetchSheetDataPublic(`'${MANPOWER_TAB}'!${MANPOWER_RANGE}`, MANPOWER_SHEET_ID);
+      const existingRows = (sheetData && sheetData.values) ? sheetData.values : [];
+      const targetRowIndex = existingRows.length + 1; // 1-based row number
+      const nextSNo = existingRows.length > 1 ? String(existingRows.length) : "1";
+
+      // Calculate next sequential 3-digit serial from existing employee IDs (Column B)
+      let maxSerial = 0;
+      for (let i = 1; i < existingRows.length; i++) {
+        const rowId = String(existingRows[i]?.[1] || "").trim();
+        // Match 3 or 4 trailing digits at end of SMSPL...
+        const m = rowId.match(/(\d{3,4})$/);
+        if (m) {
+          const num = parseInt(m[1], 10);
+          if (num > maxSerial) maxSerial = num;
+        }
+      }
+      const nextSerial = maxSerial + 1;
+      const serialStr = String(nextSerial).padStart(3, "0");
+
+      // Format: SMSPL + YYYYMMDD (from payload.joiningDate or today) + 3-digit serial
+      let joiningDatePart = "";
+      if (payload.joiningDate && /^\d{4}-?\d{2}-?\d{2}$/.test(payload.joiningDate)) {
+        joiningDatePart = payload.joiningDate.replace(/-/g, "");
+      } else {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+        joiningDatePart = `${yyyy}${mm}${dd}`;
+      }
+      const empId = payload.id || `SMSPL${joiningDatePart}${serialStr}`;
+
       // Build row for manpower (30 columns A to AD)
       const newRow = new Array(30).fill("");
-      newRow[1] = payload.id || ""; // B: Employee ID
+      newRow[0] = nextSNo;          // A: S. No.
+      newRow[1] = empId;            // B: Employee ID
+      newRow[2] = payload.joiningDate || ""; // C: DOA
       newRow[3] = name;             // D: Name
       newRow[4] = role;             // E: Designation
       newRow[5] = phone;            // F: Contact No.
@@ -1245,8 +1347,35 @@ exports.handler = async function (event, context) {
       newRow[27] = project;         // AB: PROJECT
       newRow[29] = status;          // AD: STATUS
 
-      await appendSheetRow(MANPOWER_TAB, "A:AD", newRow, MANPOWER_SHEET_ID);
-      return jsonResponse(200, headers, { ok: true, name, email, hospital, role, phone, photoUrl, project, status });
+      await updateSheetRow(MANPOWER_TAB, `A${targetRowIndex}:AD${targetRowIndex}`, newRow, MANPOWER_SHEET_ID);
+
+      // Sync to Neon DB users table
+      try {
+        const cleanPhone = phone ? phone.replace(/\D/g, "").slice(-10) : "";
+        const roleLower = role.toLowerCase().includes("superadmin") ? "superadmin" : (role.toLowerCase().includes("admin") ? "admin" : "operator");
+        const isUserActive = (status === "ACTIVE" || status === "Active") ? 1 : 0;
+        const existingNeon = await queryNeon("SELECT id FROM users WHERE LOWER(email) = $1 OR LOWER(username) = $2 LIMIT 1;", [email.toLowerCase(), empId.toLowerCase()]);
+        if (existingNeon.length > 0) {
+          await queryNeon(
+            `UPDATE users SET username = $1, name = $2, role = $3, office_name = $4, phone = $5, mobile = $5, is_active = $6, updated_at = NOW() WHERE id = $7;`,
+            [empId, name, roleLower, hospital, cleanPhone, isUserActive, existingNeon[0].id]
+          );
+        } else {
+          // Default password is clean 10-digit phone or username
+          const defaultPwd = cleanPhone || empId;
+          const bcrypt = require("bcryptjs");
+          const pwdHash = await bcrypt.hash(defaultPwd, 10);
+          await queryNeon(
+            `INSERT INTO users (username, email, name, role, office_name, phone, mobile, is_active, password, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, NOW(), NOW());`,
+            [empId, email, name, roleLower, hospital, cleanPhone, isUserActive, pwdHash]
+          );
+        }
+      } catch (dbErr) {
+        console.warn("[addEmployee] Neon DB user sync warning:", dbErr.message);
+      }
+
+      return jsonResponse(200, headers, { ok: true, id: empId, sNo: nextSNo, name, email, hospital, role, phone, photoUrl, project, status, rowIndex: targetRowIndex });
     }
 
     // ── 12. Update Existing Employee / Team Member in Manpower Google Sheet ──
@@ -1259,6 +1388,7 @@ exports.handler = async function (event, context) {
       }
 
       const payload = JSON.parse(event.body || "{}");
+      const empId = String(payload.id || "").trim();
       const originalEmail = String(payload.originalEmail || payload.email || "").toLowerCase().trim();
       const email = String(payload.email || "").toLowerCase().trim();
       const name = String(payload.name || "").trim();
@@ -1277,20 +1407,40 @@ exports.handler = async function (event, context) {
         throw err;
       }
 
-      if (!targetRowIndex || isNaN(targetRowIndex) || targetRowIndex < 2) {
-        const idx = sheetData.values.findIndex((r, i) => {
-          if (i === 0) return false;
-          const rEmail = String(r[9] || r[8] || "").toLowerCase().trim();
-          const rName = String(r[3] || "").toLowerCase().trim();
-          return (originalEmail && rEmail === originalEmail) || (name && rName === name.toLowerCase());
-        });
-        if (idx !== -1) {
-          targetRowIndex = idx + 1;
+      // Priority 1: Match by Employee ID (Column B, index 1)
+      let matchedIdx = -1;
+      if (empId) {
+        matchedIdx = sheetData.values.findIndex((r, i) => i > 0 && String(r[1] || "").trim() === empId);
+      }
+
+      // Priority 2: Verify targetRowIndex if provided
+      if (matchedIdx === -1 && targetRowIndex >= 2 && targetRowIndex <= sheetData.values.length) {
+        const checkRow = sheetData.values[targetRowIndex - 1];
+        const rowId = String(checkRow?.[1] || "").trim();
+        const rowName = String(checkRow?.[3] || "").trim().toLowerCase();
+        if ((empId && rowId === empId) || (name && rowName === name.toLowerCase())) {
+          matchedIdx = targetRowIndex - 1;
         }
       }
 
+      // Priority 3: Fallback match by original email or exact full name (avoiding empty emails)
+      if (matchedIdx === -1) {
+        matchedIdx = sheetData.values.findIndex((r, i) => {
+          if (i === 0) return false;
+          const rEmail = String(r[9] || r[8] || "").toLowerCase().trim();
+          const rName = String(r[3] || "").toLowerCase().trim();
+          const validEmailMatch = originalEmail && rEmail && !rEmail.includes("no-email") && rEmail === originalEmail;
+          const validNameMatch = name && rName && rName === name.toLowerCase();
+          return validEmailMatch || validNameMatch;
+        });
+      }
+
+      if (matchedIdx !== -1) {
+        targetRowIndex = matchedIdx + 1;
+      }
+
       if (!targetRowIndex || targetRowIndex < 2) {
-        const err = new Error(`Employee record "${originalEmail || name}" not found in manpower sheet.`);
+        const err = new Error(`Employee record "${empId || originalEmail || name}" not found in manpower sheet.`);
         err.statusCode = 404;
         throw err;
       }
@@ -1301,11 +1451,11 @@ exports.handler = async function (event, context) {
         updatedRow[c] = existingRow[c] || "";
       }
 
-      if (payload.id) updatedRow[1] = payload.id;
+      if (empId) updatedRow[1] = empId;
       if (name) updatedRow[3] = name;
       if (role) updatedRow[4] = role;
       if (phone) updatedRow[5] = phone;
-      if (email) {
+      if (email && !email.includes("no-email")) {
         updatedRow[8] = email;
         updatedRow[9] = email;
       }
@@ -1315,7 +1465,30 @@ exports.handler = async function (event, context) {
       if (status) updatedRow[29] = status;
 
       await updateSheetRow(MANPOWER_TAB, `A${targetRowIndex}:AD${targetRowIndex}`, updatedRow, MANPOWER_SHEET_ID);
-      return jsonResponse(200, headers, { ok: true, name, email, hospital, role, phone, photoUrl, rowIndex: targetRowIndex });
+
+      // Sync updated employee data to Neon DB users table
+      try {
+        const cleanPhone = phone ? phone.replace(/\D/g, "").slice(-10) : "";
+        const roleLower = role.toLowerCase().includes("superadmin") ? "superadmin" : (role.toLowerCase().includes("admin") ? "admin" : "operator");
+        const isUserActive = (status.toUpperCase() === "ACTIVE" || status.toUpperCase() === "YES" || status.toUpperCase() === "1") ? 1 : 0;
+        await queryNeon(
+          `UPDATE users 
+           SET name = COALESCE($1, name),
+               email = CASE WHEN $2 != '' AND $2 NOT LIKE '%no-email%' THEN $2 ELSE email END,
+               phone = $3,
+               mobile = $3,
+               office_name = $4,
+               role = $5,
+               is_active = $6,
+               updated_at = NOW()
+           WHERE (username = $7 AND $7 != '') OR (LOWER(email) = $8 AND $8 != '' AND $8 NOT LIKE '%no-email%');`,
+          [name, email, cleanPhone, hospital, roleLower, isUserActive, empId, originalEmail || email]
+        );
+      } catch (dbErr) {
+        console.warn("[updateEmployee] Neon DB user sync warning:", dbErr.message);
+      }
+
+      return jsonResponse(200, headers, { ok: true, id: empId, name, email, hospital, role, phone, photoUrl, rowIndex: targetRowIndex });
     }
 
     // ── 13. Delete / Clear Employee from Manpower Google Sheet ──
@@ -1391,8 +1564,8 @@ exports.handler = async function (event, context) {
 
       // Fallback: If Google Drive API had an issue, use clean base64 data URL
       if (!finalPhotoUrl) {
-        finalPhotoUrl = base64Data.startsWith("data:") 
-          ? base64Data 
+        finalPhotoUrl = base64Data.startsWith("data:")
+          ? base64Data
           : `data:${mimeType};base64,${base64Data}`;
       }
 
@@ -1425,7 +1598,7 @@ exports.handler = async function (event, context) {
       // 3. Also persist in Neon DB avatar column if user exists
       try {
         await queryNeon(`UPDATE users SET avatar = $1, updated_at = NOW() WHERE LOWER(email) = $2;`, [finalPhotoUrl, targetEmail]);
-      } catch (_) {}
+      } catch (_) { }
 
       return jsonResponse(200, headers, { ok: true, photoUrl: finalPhotoUrl, email: targetEmail });
     }
@@ -1438,7 +1611,7 @@ exports.handler = async function (event, context) {
         if (rows.length > 0 && rows[0].setting_value) {
           ocrMethod = String(rows[0].setting_value).toLowerCase().trim();
         }
-      } catch (_) {}
+      } catch (_) { }
       return jsonResponse(200, headers, { success: true, ocrMethod, hasGeminiKey: !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_SHEETS_API_KEY) });
     }
 
@@ -1488,6 +1661,99 @@ exports.handler = async function (event, context) {
       }
     }
 
+    // ── 18. Action: aiInsight (Gemini-powered WhatsApp Anomaly Analysis) ──
+    if (action === "aiInsight" && event.httpMethod === "POST") {
+      const body      = JSON.parse(event.body || "{}");
+      const stats     = body.stats    || {};
+      const hospital  = body.hospital || "Hospital";
+      const period    = body.period   || "Today";
+      const isFiltered = !!body.isFiltered;
+
+      const { delivered = 0, issued = 0, prints = 0, entries = 0 } = stats;
+      // ── PAAS Physical Accountability Audit ─────────────────────────────
+      // Business: We (SNMC) deliver paper → hospital store → counters → printed.
+      // Printer meter is the ONLY tamper-proof record of actual consumption.
+      //
+      // THE ONLY RELIABLE EQUATION:
+      //   physicalGap = delivered − prints
+      //   = sheets that arrived at hospital but NEVER went through any printer
+      //   MUST be physically in store right now, OR they were stolen/misused
+      //
+      // DO NOT USE issued/unissued — issue entries are admittedly incomplete,
+      // so "Unissued Balance = delivered − issued" gives a FALSE picture.
+      //
+      // issueGap = prints − issued (shows how many prints happened without a
+      //   formal issue log entry — proves register is incomplete, not theft by itself)
+
+      const physicalGap  = delivered - prints;                          // sheets not printed (should be in store)
+      const issueGap     = Math.max(0, prints - issued);                // prints without issue entry (register gap)
+      const physGapRims  = (Math.abs(physicalGap) / 500).toFixed(1);   // in Rims
+      const issueGapRims = (issueGap / 500).toFixed(1);
+
+      const prompt = `You are a strict accountability auditor for SNMC PrintTrack, a PAAS (Printer-as-a-Service) operation at Dr. S.N. Medical College, Jodhpur, Rajasthan.
+
+PAAS flow: SNMC delivers paper → Hospital store receives → Store issues to counters → Printers consume.
+The PRINTER METER READING is the only tamper-proof record of actual paper consumption.
+
+Your job: Write a SHORT (max 2 lines, WhatsApp-ready) audit finding in Hindi+English.
+IMPORTANT: Do NOT use "Unissued Balance" or "Issue Rate" in your reasoning — issue entries are admittedly incomplete and will give a misleading picture.
+
+=== THE ONLY RELIABLE AUDIT EQUATION ===
+Physical Gap = Paper Delivered − Prints Recorded
+= Paper that was physically delivered to hospital but NEVER passed through any printer.
+These sheets MUST be physically present in the store right now.
+If they are not found in physical stock verification → THEFT / MISUSE / LOSS suspected.
+The Store Keeper AND the Rim Distributor are jointly accountable for this gap.
+
+=== DATA FOR ${hospital} — Period: ${period} ===
+Paper Delivered (Stock In)        : ${delivered.toLocaleString("en-IN")} sheets   [Ground truth — vendor supplied]
+Prints Recorded (Printer Meters)  : ${prints.toLocaleString("en-IN")} pages       [Tamper-proof machine count]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHYSICAL GAP (Delivered − Printed): ${physicalGap.toLocaleString("en-IN")} sheets (≈${physGapRims} Rims)
+${physicalGap > 0
+  ? `These ${physicalGap.toLocaleString("en-IN")} sheets were delivered but never printed. They MUST be in store physically.`
+  : physicalGap < 0
+    ? `Prints EXCEED delivered — meter includes pre-system history or delivery entries are missing.`
+    : `All delivered paper is accounted for in printer meters. ✓`}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Issue Register Gap                : ${issueGap.toLocaleString("en-IN")} sheets (≈${issueGapRims} Rims) printed without formal issue entry
+Data mode                         : ${isFiltered ? "Date-filtered (specific period)" : "All-time cumulative (since tracking started)"}
+
+=== WHAT TO WRITE ===
+${physicalGap > 0
+  ? `FINDING: ${physicalGap.toLocaleString("en-IN")} sheets (≈${physGapRims} Rims) physically delivered हुईं लेकिन किसी भी printer से print नहीं हुईं। ये sheets store में होनी चाहिए — तुरंत physical stock count करें। अगर store में नहीं मिलतीं → Store Keeper और Rim Distributor की जवाबदेही बनती है।`
+  : physicalGap < 0
+    ? `FINDING: Recorded prints (${prints.toLocaleString("en-IN")}) exceed delivered paper (${delivered.toLocaleString("en-IN")}) — meter में पुरानी reading शामिल हो सकती है या कुछ delivery entries missing हैं। Verify करें।`
+    : `FINDING: Physical accountability balanced — all delivered sheets are accounted for in printer meters.`}
+
+Also mention if issue register has significant gaps (issueGap = ${issueGap.toLocaleString("en-IN")} sheets without formal issue entry).
+
+=== FORMAT ===
+Max 2 lines plain text. No bullets. No asterisks. No markdown. No underscores.
+Include specific numbers (sheets and Rims). Be direct — like a CAG audit finding.
+End with: — SNMC PrintTrack AI`;
+
+      try {
+        const insight = await callGeminiText(prompt, 0.15);
+        return jsonResponse(200, headers, { success: true, insight });
+      } catch (aiErr) {
+        console.error("[aiInsight] Gemini call failed:", aiErr.message);
+        // Rule-based fallback — correct PAAS equation
+        let fallback;
+        if (delivered === 0) {
+          fallback = `⚠️ कोई delivery record नहीं — Stock In entries दर्ज करें। — SNMC PrintTrack`;
+        } else if (physicalGap > 0) {
+          fallback = `⚠️ Audit: ${physicalGap.toLocaleString("en-IN")} sheets (≈${physGapRims} Rims) deliver हुईं लेकिन किसी printer से print नहीं हुईं — तुरंत physical stock count करें। Store में नहीं मिलीं तो Store Keeper व Rim Distributor जवाबदेह होंगे। — SNMC PrintTrack`;
+        } else if (physicalGap < 0) {
+          const overRims = (Math.abs(physicalGap) / 500).toFixed(1);
+          fallback = `⚠️ Prints (${prints.toLocaleString("en-IN")}) > Delivered (${delivered.toLocaleString("en-IN")}) — ${Math.abs(physicalGap).toLocaleString("en-IN")} sheets (${overRims} Rims) का हिसाब नहीं। Delivery entries verify करें। — SNMC PrintTrack`;
+        } else {
+          fallback = `✅ Physical accountability balanced — सभी delivered sheets printer meters में accounted हैं। — SNMC PrintTrack`;
+        }
+        return jsonResponse(200, headers, { success: true, insight: fallback, fallback: true });
+      }
+    }
+
     return {
       statusCode: 400,
       headers,
@@ -1500,8 +1766,8 @@ exports.handler = async function (event, context) {
     // Sanitize error message to prevent leaking internal stack/credentials
     const userSafeMsg = statusCode === 401 ? "Unauthorized: Please log in again."
       : statusCode === 403 ? (err.message || "Forbidden: Access denied.")
-      : statusCode === 400 ? (err.message || "Bad Request.")
-      : "An internal server error occurred. Please try again later.";
+        : statusCode === 400 ? (err.message || "Bad Request.")
+          : "An internal server error occurred. Please try again later.";
     return jsonResponse(statusCode, headers, { error: userSafeMsg });
   }
 };

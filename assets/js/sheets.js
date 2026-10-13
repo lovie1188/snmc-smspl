@@ -3,8 +3,6 @@
 // PrintTrack PWA — Accesses Google Sheets via Netlify API / OAuth
 // ============================================================
 
-const { id: SHEET_ID, dailyTab: DAILY_TAB, printerTab: PRINTER_TAB, dailyRange: DAILY_RANGE } = APP_CONFIG.sheets;
-
 // ── Core API request wrapper ──
 // ALL Sheets I/O is proxied through the authenticated Netlify function.
 // The browser never calls the Sheets API directly and never holds a Sheets

@@ -28,7 +28,7 @@ function loadEnvFallback() {
         }
       });
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 loadEnvFallback();
 const { Client: PgClient } = require("pg");
@@ -37,8 +37,14 @@ const bcrypt = require("bcryptjs");
 const { createVerify } = require("crypto");
 const { JWT } = require("google-auth-library");
 
-const NEON_DB_URL = process.env.NEON_DATABASE_URL || "postgresql://neondb_owner:npg_0urCjOWDdp9f@ep-long-violet-az1arbtf-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
-const JWT_SECRET = process.env.JWT_SECRET || "SMSPL@PrintTrackJWTSecret2026";
+const NEON_DB_URL = process.env.NEON_DATABASE_URL;
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!NEON_DB_URL) {
+  console.warn("[Security] NEON_DATABASE_URL environment variable is not defined!");
+}
+if (!JWT_SECRET) {
+  console.warn("[Security] JWT_SECRET environment variable is not defined!");
+}
 const SUPER_ADMINS = (process.env.SUPER_ADMIN_EMAILS || "softtech.lovejeet@gmail.com")
   .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "gen-lang-client-0070625213";
@@ -81,7 +87,7 @@ async function fetchManpowerSheet() {
     const apiKey = process.env.GOOGLE_SHEETS_API_KEY;
     if (!authHeaders && !apiKey) return null;
     const query = authHeaders ? "" : `?key=${apiKey}`;
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${MANPOWER_SHEET_ID}/values/${encodeURIComponent(MANPOWER_RANGE)}${query}`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${MANPOWER_SHEET_ID}/values/${encodeURIComponent(`'${MANPOWER_TAB}'!${MANPOWER_RANGE}`)}${query}`;
     const res = await fetch(url, authHeaders ? { headers: authHeaders } : undefined);
     if (!res.ok) return null;
     return await res.json();
@@ -155,6 +161,55 @@ async function lookupManpowerRecord(identifier) {
   return null;
 }
 
+// Generates next user ID in standardized format: SMSPL + YYYYMMDD + 3-digit serial
+async function generateUniqueUserId(joiningDateStr) {
+  let maxSerial = 0;
+
+  // 1. Check max serial from Manpower sheet
+  try {
+    const data = await fetchManpowerSheet();
+    if (data && data.values) {
+      for (let i = 1; i < data.values.length; i++) {
+        const rowId = String(data.values[i]?.[1] || "").trim();
+        const m = rowId.match(/(\d{3,4})$/);
+        if (m) {
+          const num = parseInt(m[1], 10);
+          if (num > maxSerial) maxSerial = num;
+        }
+      }
+    }
+  } catch (_) { }
+
+  // 2. Check max serial from Neon DB users table username column
+  try {
+    const dbUsers = await queryNeon("SELECT username FROM users WHERE username LIKE 'SMSPL%' ORDER BY id DESC LIMIT 50;");
+    for (const u of dbUsers) {
+      const uName = String(u.username || "").trim();
+      const m = uName.match(/(\d{3,4})$/);
+      if (m) {
+        const num = parseInt(m[1], 10);
+        if (num > maxSerial) maxSerial = num;
+      }
+    }
+  } catch (_) { }
+
+  const nextSerial = maxSerial + 1;
+  const serialStr = String(nextSerial).padStart(3, "0");
+
+  let datePart = "";
+  if (joiningDateStr && /^\d{4}-?\d{2}-?\d{2}$/.test(joiningDateStr)) {
+    datePart = joiningDateStr.replace(/-/g, "");
+  } else {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    datePart = `${yyyy}${mm}${dd}`;
+  }
+
+  return `SMSPL${datePart}${serialStr}`;
+}
+
 function base64UrlDecode(value) {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
   const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
@@ -213,7 +268,7 @@ async function verifyFirebaseToken(token) {
 // Dedicated Manpower Sheet ID & Tab for cross-verification
 const MANPOWER_SHEET_ID = "1FrHbNqlJF1BpFdlVLsUMYVIGC9z0N_JS3vjrYAhwazA";
 const MANPOWER_TAB = "manpower";
-const MANPOWER_RANGE = "A1:AD45";
+const MANPOWER_RANGE = "A1:AD";
 
 // Allowed origins
 const ALLOWED_ORIGINS = [
@@ -294,7 +349,7 @@ exports.handler = async function (event, context) {
     try {
       const parsedBody = JSON.parse(event.body);
       if (parsedBody && parsedBody.action) action = parsedBody.action;
-    } catch (_) {}
+    } catch (_) { }
   }
   if (!action) action = "login";
 
@@ -314,7 +369,7 @@ exports.handler = async function (event, context) {
     if (action === "toggleGoogleAuth" && event.httpMethod === "POST") {
       const authUser = verifyAuthToken(event.headers.authorization || event.headers.Authorization);
       const isSuper = authUser && (SUPER_ADMINS.includes(authUser.email.toLowerCase()) || authUser.role === "SuperAdmin" || authUser.role === "superadmin");
-      
+
       if (!isSuper) {
         return jsonResponse(403, headers, { success: false, error: "Forbidden: SuperAdmin access required." });
       }
@@ -360,12 +415,12 @@ exports.handler = async function (event, context) {
         if (rows.length > 0 && rows[0].setting_value) {
           try {
             perms = { ...perms, ...JSON.parse(rows[0].setting_value) };
-          } catch (_) {}
+          } catch (_) { }
         }
         return jsonResponse(200, headers, { success: true, permissions: perms });
       } catch (e) {
-        return jsonResponse(200, headers, { 
-          success: true, 
+        return jsonResponse(200, headers, {
+          success: true,
           permissions: {
             can_add_entry: true,
             can_edit_history: false,
@@ -384,7 +439,7 @@ exports.handler = async function (event, context) {
     if (action === "saveAdminPermissions" && event.httpMethod === "POST") {
       const authUser = verifyAuthToken(event.headers.authorization || event.headers.Authorization);
       const isSuper = authUser && (SUPER_ADMINS.includes(authUser.email.toLowerCase()) || authUser.role === "SuperAdmin" || authUser.role === "superadmin");
-      
+
       if (!isSuper) {
         return jsonResponse(403, headers, { success: false, error: "Forbidden: SuperAdmin access required to modify admin permissions." });
       }
@@ -434,31 +489,32 @@ exports.handler = async function (event, context) {
       if (!user) {
         const mpUser = await lookupManpowerRecord(usernameOrEmail);
         if (!mpUser || !mpUser.isAllowed) {
-          return jsonResponse(401, headers, { 
-            success: false, 
-            error: "Account not registered or access is inactive in Manpower Directory." 
+          return jsonResponse(401, headers, {
+            success: false,
+            error: "Account not registered or access is inactive in Manpower Directory."
           });
         }
 
         // For first-time login, default password is the registered mobile number (cleaned 10 digits)
         const defaultPassword = mpUser.cleanPhone;
         if (!defaultPassword || password !== defaultPassword) {
-          return jsonResponse(401, headers, { 
-            success: false, 
-            error: "Invalid password. For first-time login, please use your 10-digit registered mobile number." 
+          return jsonResponse(401, headers, {
+            success: false,
+            error: "Invalid password. For first-time login, please use your 10-digit registered mobile number."
           });
         }
 
         // Auto-provision into Neon DB
         const newHash = await bcrypt.hash(defaultPassword, 10);
         const userRole = mpUser.isSuperAdmin ? "superadmin" : (mpUser.designation.toLowerCase().includes("admin") ? "admin" : "operator");
+        const empId = mpUser.empId || await generateUniqueUserId();
         const inserted = await queryNeon(`
           INSERT INTO users (
             username, email, name, role, office_name, phone, mobile, is_active, password, created_at, updated_at
           ) VALUES ($1, $2, $3, $4, $5, $6, $6, 1, $7, NOW(), NOW())
           RETURNING id, username, email, name, role as role_name, office_name, phone, mobile, is_active, avatar, firebase_uid;
         `, [
-          mpUser.empId || usernameOrEmail,
+          empId,
           mpUser.email,
           mpUser.name,
           userRole,
@@ -545,7 +601,7 @@ exports.handler = async function (event, context) {
       const authHeader = reqHeaders.authorization || reqHeaders.Authorization || "";
       const authUser = verifyAuthToken(authHeader);
       const isSuper = authUser && (SUPER_ADMINS.includes(authUser.email.toLowerCase()) || authUser.role === "SuperAdmin" || authUser.role === "superadmin");
-      
+
       if (!isSuper) {
         return jsonResponse(403, headers, { success: false, error: "Forbidden: SuperAdmin access required." });
       }
@@ -582,7 +638,7 @@ exports.handler = async function (event, context) {
         await queryNeon(`UPDATE users SET password = $1, is_active = 1, updated_at = NOW() WHERE id = $2;`, [newHash, existing[0].id]);
       } else {
         // Create user in Neon DB from manpower info
-        const empId = mpUser ? mpUser.empId : targetEmail.split("@")[0];
+        const empId = (mpUser && mpUser.empId) ? mpUser.empId : await generateUniqueUserId();
         const empName = mpUser ? mpUser.name : "Employee";
         const empRole = mpUser ? (mpUser.designation.toLowerCase().includes("admin") ? "admin" : "operator") : "operator";
         const empOffice = mpUser ? mpUser.hospital : "MDM";
@@ -655,9 +711,9 @@ exports.handler = async function (event, context) {
 
       // Token email must match target email
       if (verifiedUser.email !== targetEmail) {
-        return jsonResponse(403, headers, { 
-          success: false, 
-          error: `Verified Google account (${verifiedUser.email}) does not match the target email (${targetEmail}).` 
+        return jsonResponse(403, headers, {
+          success: false,
+          error: `Verified Google account (${verifiedUser.email}) does not match the target email (${targetEmail}).`
         });
       }
 

@@ -51,14 +51,18 @@ const APP_CONFIG = {
       return "";
     }
 
-    // 3. Local Development (Running under Netlify CLI dev server port 8888 or 8080)
-    if ((host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") && (port === "8080" || port === "8888")) {
+    // 3. Local Development under Netlify CLI dev server (port 8888) or direct Node backend (port 8085)
+    if ((host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") && (port === "8888" || port === "8085")) {
       return "";
     }
 
-    // 4. Local Development on XAMPP / Apache: route to local Node backend on port 8080 if available
+    // 4. Local Development on XAMPP (e.g. http://localhost/SNMC)
     if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
-      return "http://localhost:8080";
+      // If local dev server flag is explicitly disabled, or fallback requested:
+      if (window.__USE_NETLIFY_CLOUD__ === true) {
+        return "https://snmc-smspl.netlify.app";
+      }
+      return "http://localhost:8085";
     }
 
     // 5. Default Production Cloud Backend

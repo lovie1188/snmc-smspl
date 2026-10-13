@@ -9,7 +9,7 @@ const url = require("url");
 const fs = require("fs");
 const path = require("path");
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 8085;
 
 // Load .env variables
 const envPath = path.resolve(__dirname, ".env");
@@ -32,12 +32,19 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-// Import handlers
-const sheetsHandler = require("./netlify/functions/sheets.js").handler;
-let authHandler = null;
-try {
-  authHandler = require("./netlify/functions/auth.js").handler;
-} catch (_) {}
+function getSheetsHandler() {
+  delete require.cache[require.resolve("./netlify/functions/sheets.js")];
+  return require("./netlify/functions/sheets.js").handler;
+}
+
+function getAuthHandler() {
+  try {
+    delete require.cache[require.resolve("./netlify/functions/auth.js")];
+    return require("./netlify/functions/auth.js").handler;
+  } catch (_) {
+    return null;
+  }
+}
 
 const server = http.createServer(async (req, res) => {
   const parsedUrl = url.parse(req.url, true);
@@ -70,7 +77,8 @@ const server = http.createServer(async (req, res) => {
       };
 
       try {
-        const result = await sheetsHandler(event, {});
+        const handler = getSheetsHandler();
+        const result = await handler(event, {});
         const status = result.statusCode || 200;
         const headers = result.headers || { "Content-Type": "application/json" };
         res.writeHead(status, headers);
@@ -84,7 +92,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Handle auth function: /.netlify/functions/auth or /api/auth
-  if (pathname.includes("auth") && authHandler) {
+  if (pathname.includes("auth")) {
     let body = "";
     req.on("data", chunk => { body += chunk; });
     req.on("end", async () => {
@@ -97,7 +105,13 @@ const server = http.createServer(async (req, res) => {
       };
 
       try {
-        const result = await authHandler(event, {});
+        const handler = getAuthHandler();
+        if (!handler) {
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Auth handler not available" }));
+          return;
+        }
+        const result = await handler(event, {});
         const status = result.statusCode || 200;
         const headers = result.headers || { "Content-Type": "application/json" };
         res.writeHead(status, headers);
@@ -110,12 +124,57 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // MIME types for static asset serving
+  const MIME_TYPES = {
+    ".html": "text/html; charset=UTF-8",
+    ".css": "text/css; charset=UTF-8",
+    ".js": "application/javascript; charset=UTF-8",
+    ".json": "application/json; charset=UTF-8",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".webp": "image/webp",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf"
+  };
+
+  // Static File Serving for /SNMC/ or root
+  let relPath = pathname;
+  if (relPath.startsWith("/SNMC") || relPath.startsWith("/snmc")) {
+    relPath = relPath.slice(5);
+  }
+  if (relPath === "" || relPath === "/") {
+    relPath = "/index.html";
+  }
+
+  const safePath = path.normalize(relPath).replace(/^(\.\.[\/\\])+/, "");
+  const filePath = path.join(__dirname, safePath);
+
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = MIME_TYPES[ext] || "application/octet-stream";
+    res.writeHead(200, { "Content-Type": contentType });
+    fs.createReadStream(filePath).pipe(res);
+    return;
+  }
+
   // Fallback 404
   res.writeHead(404, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ error: `Not found: ${pathname}` }));
 });
 
-server.listen(PORT, () => {
+server.on("error", (err) => {
+  console.error(`[Local Dev Backend ERROR]: ${err.message}`);
+  if (err.code === "EADDRINUSE") {
+    console.error(`[Local Dev Backend] Port ${PORT} is already in use!`);
+  }
+});
+
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`[Local Dev Backend] Running locally on http://localhost:${PORT}`);
   console.log(`[Local Dev Backend] Serving /.netlify/functions/sheets & auth with full Gemini Vision & Sheets API!`);
 });

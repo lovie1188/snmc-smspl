@@ -364,7 +364,7 @@ function canSendNotification() {
 
 // ── Init: Subscribe user on app load & check sender permissions ──
 async function initNotifications() {
-  const user = firebase.auth().currentUser;
+  const user = (typeof firebase !== "undefined" && firebase.auth && firebase.auth().currentUser) || (typeof currentUser !== "undefined" ? currentUser : (typeof getStoredUser === "function" ? getStoredUser() : null));
   if (!user) return;
   const userEmail = (user.email || '').toLowerCase().trim();
   const clientIsSuper = isSuperAdmin(userEmail);
