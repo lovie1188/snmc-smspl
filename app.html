@@ -204,6 +204,21 @@
     .toast-info {
       background: #2563eb;
     }
+
+    .app-version-badge {
+      font-size: 0.58rem;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      color: #2563eb;
+      background: rgba(37, 99, 235, 0.1);
+      border: 1px solid rgba(37, 99, 235, 0.25);
+      padding: 1px 6px;
+      border-radius: 6px;
+      line-height: 1.2;
+      user-select: none;
+      display: inline-block;
+      vertical-align: middle;
+    }
   </style>
 </head>
 
@@ -220,7 +235,10 @@
     <div class="header-brand">
       <div class="icon">🖨️</div>
       <div>
-        <div class="title">PrintTrack</div>
+        <div class="title" style="display:flex; align-items:center; gap:6px;">
+          <span>PrintTrack</span>
+          <span class="app-version-badge" title="Active Release Version">v50</span>
+        </div>
         <div class="subtitle">SNMC Daily Tracker</div>
       </div>
     </div>
