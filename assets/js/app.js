@@ -401,7 +401,7 @@ function calculateHospitalMetrics() {
   if (delRimsEl)   animateCountUp(delRimsEl, activeStats.stockRims.toLocaleString("en-IN"), 400);
   if (issSheetsEl) animateCountUp(issSheetsEl, activeStats.issued.toLocaleString("en-IN"), 400);
   // Issued Rims: consistent 1-decimal format (matches delivered-rims display)
-  if (issRimsEl)   issRimsEl.textContent = (activeStats.issued / 500).toFixed(1);
+  if (issRimsEl)   animateCountUp(issRimsEl, (activeStats.issued / 500).toFixed(1), 400);
   if (prnCountEl)  animateCountUp(prnCountEl, activeStats.prints.toLocaleString("en-IN"), 400);
   if (entriesEl)   animateCountUp(entriesEl, activeStats.entries.toLocaleString("en-IN"), 400);
 

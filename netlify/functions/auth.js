@@ -40,13 +40,16 @@ const { JWT } = require("google-auth-library");
 const NEON_DB_URL = process.env.NEON_DATABASE_URL;
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!NEON_DB_URL) {
-  console.warn("[Security] NEON_DATABASE_URL environment variable is not defined!");
+  console.error("[FATAL] NEON_DATABASE_URL is not set — all DB operations will fail.");
 }
 if (!JWT_SECRET) {
-  console.warn("[Security] JWT_SECRET environment variable is not defined!");
+  console.error("[FATAL] JWT_SECRET is not set — all authentication will fail.");
 }
-const SUPER_ADMINS = (process.env.SUPER_ADMIN_EMAILS || "softtech.lovejeet@gmail.com")
+const SUPER_ADMINS = (process.env.SUPER_ADMIN_EMAILS || "")
   .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+if (SUPER_ADMINS.length === 0) {
+  console.error("[Security] SUPER_ADMIN_EMAILS env var is not set — no SuperAdmin access will be granted.");
+}
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "gen-lang-client-0070625213";
 const FIREBASE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
 
@@ -300,6 +303,9 @@ function jsonResponse(statusCode, headers, body) {
 
 // Neon Database Query Helper
 async function queryNeon(sql, params = []) {
+  if (!NEON_DB_URL) {
+    throw new Error("SERVER_CONFIG_ERROR: NEON_DATABASE_URL environment variable is not configured.");
+  }
   const pg = new PgClient({ connectionString: NEON_DB_URL });
   await pg.connect();
   try {
@@ -307,7 +313,7 @@ async function queryNeon(sql, params = []) {
     await pg.end();
     return res.rows;
   } catch (err) {
-    await pg.end();
+    try { await pg.end(); } catch (_) {}
     throw err;
   }
 }
@@ -539,8 +545,9 @@ exports.handler = async function (event, context) {
         const fixedHash = user.password.replace(/^\$2y\$/, "$2a$");
         try {
           isMatch = await bcrypt.compare(password, fixedHash);
-        } catch (_) {
-          isMatch = (password === user.password);
+        } catch (bcryptErr) {
+          console.error("[Auth] bcrypt.compare threw unexpectedly:", bcryptErr.message);
+          isMatch = false; // Never fall back to plain-text compare
         }
       } else {
         // If password is not yet set in DB, check against registered mobile from Manpower sheet

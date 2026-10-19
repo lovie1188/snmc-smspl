@@ -49,9 +49,12 @@ const MANPOWER_TAB = "manpower";
 const MANPOWER_RANGE = "A1:AD";
 
 const GOOGLE_DRIVE_PHOTO_FOLDER_ID = "129N1_3z_802vJ-9I5nH9jMmSBinpbzGY";
-// Server-authoritative SuperAdmin list (override per environment via SUPER_ADMIN_EMAILS).
-const SUPER_ADMINS = (process.env.SUPER_ADMIN_EMAILS || "softtech.lovejeet@gmail.com")
+// Server-authoritative SuperAdmin list — set SUPER_ADMIN_EMAILS env var (comma-separated).
+const SUPER_ADMINS = (process.env.SUPER_ADMIN_EMAILS || "")
   .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+if (SUPER_ADMINS.length === 0) {
+  console.error("[Security] SUPER_ADMIN_EMAILS env var is not set — no SuperAdmin access will be granted.");
+}
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "gen-lang-client-0070625213";
 const FIREBASE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
 const { createVerify } = require("crypto");
@@ -59,12 +62,19 @@ const { JWT } = require("google-auth-library");
 const { Client: PgClient } = require("pg");
 
 /**
- * Calls Gemini Vision API with base64 image data
+ * Calls Gemini Vision API with base64 image data.
+ * Vision/image analysis requires Gemini — DeepSeek and Groq do not support inline image input.
+ * Key chain: GEMINI_API_KEY → GEMINI_API_KEY_2
  */
 async function callGeminiVision(base64Image, mimeType = "image/jpeg") {
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_SHEETS_API_KEY || "";
-  if (!geminiKey) {
-    throw new Error("No Gemini API key configured in server environment.");
+  // Build key chain: try primary key first, then backup key
+  const geminiKeys = [
+    { label: "GEMINI_API_KEY",   value: process.env.GEMINI_API_KEY   || "" },
+    { label: "GEMINI_API_KEY_2", value: process.env.GEMINI_API_KEY_2 || "" },
+  ].filter(k => k.value);
+
+  if (geminiKeys.length === 0) {
+    throw new Error("No Gemini API key configured (set GEMINI_API_KEY or GEMINI_API_KEY_2).");
   }
 
   // Strip prefix data URL if present
@@ -110,94 +120,186 @@ Return ONLY a valid, raw JSON object without markdown fences, with exactly these
     }
   };
 
-  // Active model fallback chain verified for this API key:
-  const models = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-2.5-flash"];
+  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-1.5-flash"];
   let lastError = null;
 
-  for (const model of models) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+  // Outer loop: per API key — inner loop: per model
+  for (const { label, value: apiKey } of geminiKeys) {
+    for (const model of models) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
 
-      if (!resp.ok) {
-        const errText = await resp.text();
-        console.warn(`[Gemini Vision] Model ${model} returned HTTP ${resp.status}:`, errText);
-        lastError = new Error(`Gemini ${model} HTTP ${resp.status}: ${errText}`);
-        continue;
-      }
+        if (!resp.ok) {
+          const errText = await resp.text();
+          console.warn(`[Gemini Vision] ${label}/${model} HTTP ${resp.status}:`, errText.slice(0, 200));
+          lastError = new Error(`Gemini ${model} HTTP ${resp.status}: ${errText}`);
+          continue;
+        }
 
-      const resData = await resp.json();
-      const rawCandidateText = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      if (!rawCandidateText) {
-        lastError = new Error("Empty response from Gemini Vision.");
-        continue;
-      }
+        const resData = await resp.json();
+        const rawCandidateText = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        if (!rawCandidateText) {
+          lastError = new Error("Empty response from Gemini Vision.");
+          continue;
+        }
 
-      // Parse JSON
-      let cleaned = rawCandidateText.trim();
-      if (cleaned.startsWith("```")) {
-        cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+        // Parse JSON
+        let cleaned = rawCandidateText.trim();
+        if (cleaned.startsWith("```")) {
+          cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+        }
+        const parsed = JSON.parse(cleaned);
+        console.log(`[Gemini Vision] Success via ${label} (${model})`);
+        return parsed;
+      } catch (e) {
+        console.warn(`[Gemini Vision] ${label}/${model} failed:`, e.message);
+        lastError = e;
       }
-      const parsed = JSON.parse(cleaned);
-      return parsed;
-    } catch (e) {
-      console.warn(`[Gemini Vision] Model ${model} attempt failed:`, e.message);
-      lastError = e;
     }
+    console.warn(`[Gemini Vision] All models exhausted for ${label} — trying next key.`);
   }
 
-  throw lastError || new Error("Gemini Vision processing failed across all models.");
+  throw lastError || new Error("Gemini Vision failed across all keys and models.");
 }
 
 /**
- * Calls Gemini API with a text-only prompt (no image)
- * Used for AI-generated insights, anomaly analysis, and smart summaries
+ * Calls AI text API with a 3-provider fallback chain: Gemini → DeepSeek → Groq.
+ * Used for AI-generated insights, anomaly analysis, and smart summaries.
+ * Keys: GEMINI_API_KEY, DEEPSEEK_API, GROQ_API_KEY (set in env vars)
  */
 async function callGeminiText(promptText, temperature = 0.4) {
-  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_SHEETS_API_KEY || "";
-  if (!geminiKey) {
-    throw new Error("No Gemini API key configured in server environment.");
-  }
-
-  const payload = {
-    contents: [{ parts: [{ text: promptText }] }],
-    generationConfig: { temperature, maxOutputTokens: 300 }
-  };
-
-  const models = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-2.5-flash"];
   let lastError = null;
 
-  for (const model of models) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+  // ── Provider 1: Google Gemini (key chain: KEY → KEY_2) ────────────────────
+  const geminiKeys = [
+    { label: "GEMINI_API_KEY",   value: process.env.GEMINI_API_KEY   || "" },
+    { label: "GEMINI_API_KEY_2", value: process.env.GEMINI_API_KEY_2 || "" },
+  ].filter(k => k.value);
 
+  if (geminiKeys.length > 0) {
+    const payload = {
+      contents: [{ parts: [{ text: promptText }] }],
+      generationConfig: { temperature, maxOutputTokens: 300 }
+    };
+    const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-1.5-flash"];
+
+    for (const { label, value: apiKey } of geminiKeys) {
+      for (const model of models) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+          const resp = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (!resp.ok) {
+            const errText = await resp.text();
+            console.warn(`[AI Text] ${label}/${model} HTTP ${resp.status}:`, errText.slice(0, 200));
+            lastError = new Error(`Gemini ${model} HTTP ${resp.status}`);
+            continue;
+          }
+          const resData = await resp.json();
+          const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          if (!text) { lastError = new Error("Empty response from Gemini."); continue; }
+          console.log(`[AI Text] Success via ${label} (${model})`);
+          return text.trim();
+        } catch (e) {
+          console.warn(`[AI Text] ${label}/${model} failed:`, e.message);
+          lastError = e;
+        }
+      }
+      console.warn(`[AI Text] All models failed for ${label} — trying next key.`);
+    }
+    console.warn("[AI Text] All Gemini keys exhausted — trying DeepSeek.");
+  } else {
+    console.warn("[AI Text] No GEMINI_API_KEY set — skipping Gemini.");
+  }
+
+  // ── Provider 2: DeepSeek ───────────────────────────────────────────────────
+  const deepseekKey = process.env.DEEPSEEK_API || "";
+  if (deepseekKey) {
+    try {
+      const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${deepseekKey}`
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [{ role: "user", content: promptText }],
+          max_tokens: 300,
+          temperature
+        })
+      });
       if (!resp.ok) {
         const errText = await resp.text();
-        console.warn(`[Gemini Text] Model ${model} returned HTTP ${resp.status}:`, errText);
-        lastError = new Error(`Gemini ${model} HTTP ${resp.status}`);
-        continue;
+        console.warn(`[AI Text] DeepSeek HTTP ${resp.status}:`, errText.slice(0, 200));
+        lastError = new Error(`DeepSeek HTTP ${resp.status}`);
+      } else {
+        const resData = await resp.json();
+        const text = resData?.choices?.[0]?.message?.content || "";
+        if (text) {
+          console.log("[AI Text] Success via DeepSeek.");
+          return text.trim();
+        }
+        lastError = new Error("Empty response from DeepSeek.");
       }
-
-      const resData = await resp.json();
-      const text = resData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      if (!text) { lastError = new Error("Empty response from Gemini Text."); continue; }
-      return text.trim();
     } catch (e) {
-      console.warn(`[Gemini Text] Model ${model} attempt failed:`, e.message);
+      console.warn("[AI Text] DeepSeek failed:", e.message);
       lastError = e;
     }
+    console.warn("[AI Text] DeepSeek failed — trying Groq.");
+  } else {
+    console.warn("[AI Text] DEEPSEEK_API not set — skipping DeepSeek.");
   }
-  throw lastError || new Error("Gemini Text processing failed across all models.");
+
+  // ── Provider 3: Groq ───────────────────────────────────────────────────────
+  const groqKey = process.env.GROQ_API_KEY || "";
+  if (groqKey) {
+    try {
+      const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${groqKey}`
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          messages: [{ role: "user", content: promptText }],
+          max_tokens: 300,
+          temperature
+        })
+      });
+      if (!resp.ok) {
+        const errText = await resp.text();
+        console.warn(`[AI Text] Groq HTTP ${resp.status}:`, errText.slice(0, 200));
+        lastError = new Error(`Groq HTTP ${resp.status}`);
+      } else {
+        const resData = await resp.json();
+        const text = resData?.choices?.[0]?.message?.content || "";
+        if (text) {
+          console.log("[AI Text] Success via Groq.");
+          return text.trim();
+        }
+        lastError = new Error("Empty response from Groq.");
+      }
+    } catch (e) {
+      console.warn("[AI Text] Groq failed:", e.message);
+      lastError = e;
+    }
+  } else {
+    console.warn("[AI Text] GROQ_API_KEY not set — skipping Groq.");
+  }
+
+  throw lastError || new Error("All AI providers failed (Gemini, DeepSeek, Groq).");
 }
+
 
 const NEON_DB_URL = process.env.NEON_DATABASE_URL;
 
@@ -1612,7 +1714,7 @@ exports.handler = async function (event, context) {
           ocrMethod = String(rows[0].setting_value).toLowerCase().trim();
         }
       } catch (_) { }
-      return jsonResponse(200, headers, { success: true, ocrMethod, hasGeminiKey: !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_SHEETS_API_KEY) });
+      return jsonResponse(200, headers, { success: true, ocrMethod, hasGeminiKey: !!(process.env.GEMINI_API_KEY) });
     }
 
     // ── 16. Action: saveScannerSettings (SuperAdmin Only) ──
