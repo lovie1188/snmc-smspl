@@ -43,6 +43,29 @@ const STOCK_RANGE = "A:P";
 const USER_HOSPITALS_TAB = "user_hospitals";
 const USER_HOSPITALS_RANGE = "A:H";
 
+// ── Toner Tracking Module ──────────────────────────────────────────────────
+const TONER_STOCK_TAB   = "toner_stock";   // HO Inventory Ledger
+const TONER_STOCK_RANGE = "A:K";
+const TONER_LOG_TAB     = "toner_log";     // Printer Installation Log
+const TONER_LOG_RANGE   = "A:O";
+
+// Approved Konica Minolta toner models — update as per procurement.
+const KONICA_MINOLTA_TONERS = [
+  "TN-324K (BizHub C258/C308/C368) — Black",
+  "TN-324C (BizHub C258/C308/C368) — Cyan",
+  "TN-324M (BizHub C258/C308/C368) — Magenta",
+  "TN-324Y (BizHub C258/C308/C368) — Yellow",
+  "TN-321K (BizHub C224/C284/C364) — Black",
+  "TN-321C (BizHub C224/C284/C364) — Cyan",
+  "TN-321M (BizHub C224/C284/C364) — Magenta",
+  "TN-321Y (BizHub C224/C284/C364) — Yellow",
+  "TN-118 (BizHub 226/266/306) — Black",
+  "TN-217 (BizHub 223/283/363) — Black",
+  "DR-311 (BizHub C224/C284/C364/C258/C308/C368) — Drum Unit",
+  "DR-512 (BizHub 226/266/306) — Drum Unit",
+  "Other (specify in Notes)"
+];
+
 // ── New Manpower Sheet Integration (Dedicated Employee & Team Master) ──
 const MANPOWER_SHEET_ID = "1FrHbNqlJF1BpFdlVLsUMYVIGC9z0N_JS3vjrYAhwazA";
 const MANPOWER_TAB = "manpower";
@@ -1855,6 +1878,278 @@ End with: — SNMC PrintTrack AI`;
         return jsonResponse(200, headers, { success: true, insight: fallback, fallback: true });
       }
     }
+
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ── TONER TRACKING MODULE ─────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // ── T1. GET /tonerModels — return approved Konica Minolta toner list ──────
+    if (action === "tonerModels" && event.httpMethod === "GET") {
+      return jsonResponse(200, headers, { success: true, models: KONICA_MINOLTA_TONERS });
+    }
+
+    // ── T2. GET /tonerStock — HO Inventory Ledger (RECEIVED + DISPATCHED) ─────
+    if (action === "tonerStock" && event.httpMethod === "GET") {
+      const data = await fetchSheetDataPublic(`'${TONER_STOCK_TAB}'!${TONER_STOCK_RANGE}`);
+      if (!data || !data.values || data.values.length < 2) {
+        return jsonResponse(200, headers, { success: true, rows: [], headers: [] });
+      }
+      const sheetHeaders = data.values[0].map(h => String(h || "").trim());
+      const rows = data.values.slice(1)
+        .filter(row => row.some(c => String(c || "").trim() !== ""))
+        .map((row, idx) => {
+          const obj = { _rowIndex: idx + 2 }; // 1-indexed sheet row (header=1)
+          sheetHeaders.forEach((h, i) => { obj[h] = String(row[i] || "").trim(); });
+          return obj;
+        });
+      return jsonResponse(200, headers, { success: true, rows, headers: sheetHeaders });
+    }
+
+    // ── T3. POST /appendTonerStock — RECEIVED or DISPATCHED entry ─────────────
+    // Also auto-syncs RECEIVED entries to the main stock tab as "Toner" category.
+    if (action === "appendTonerStock" && event.httpMethod === "POST") {
+      let body;
+      try { body = JSON.parse(event.body || "{}"); } catch {
+        return jsonResponse(400, headers, { success: false, error: "Invalid JSON body." });
+      }
+
+      const { entryType, tonerModel, color, qty, hospital, unitCost, supplier, notes } = body;
+
+      // Validate required fields
+      if (!entryType || !["RECEIVED", "DISPATCHED"].includes(String(entryType).toUpperCase())) {
+        return jsonResponse(400, headers, { success: false, error: "entryType must be RECEIVED or DISPATCHED." });
+      }
+      if (!tonerModel || !qty) {
+        return jsonResponse(400, headers, { success: false, error: "tonerModel and qty are required." });
+      }
+      const qtyNum = parseInt(qty, 10);
+      if (isNaN(qtyNum) || qtyNum <= 0) {
+        return jsonResponse(400, headers, { success: false, error: "qty must be a positive integer." });
+      }
+
+      const dateStr = new Date().toLocaleDateString("en-IN", {
+        timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric"
+      });
+
+      // toner_stock tab columns: A=Date, B=EntryType, C=TonerModel, D=Color, E=Qty,
+      //   F=Hospital, G=UnitCost, H=Supplier/Invoice, I=RecordedBy, J=Source, K=Notes
+      const stockRow = [
+        dateStr,
+        String(entryType).toUpperCase(),
+        tonerModel,
+        color || "",
+        String(qtyNum),
+        hospital || "",
+        unitCost ? String(unitCost) : "",
+        supplier || "",
+        claims.name || claims.email || "",
+        "toner_form",
+        notes || ""
+      ];
+      await appendSheetRow(TONER_STOCK_TAB, TONER_STOCK_RANGE, stockRow);
+
+      // ── Auto-sync: RECEIVED → also write to main stock tab as "Toner" category ──
+      // stock tab columns (A:P): Date|Hospital|Category|Item|Qty|Unit|TotalSheets|InvoiceNo|Amount|Notes|Source|...
+      if (String(entryType).toUpperCase() === "RECEIVED") {
+        try {
+          const stockMainRow = [
+            dateStr,            // A: Date
+            hospital || "HO/Warehouse",  // B: Hospital
+            "Toner",            // C: Category
+            tonerModel,         // D: Item/Description
+            String(qtyNum),     // E: Qty
+            "Cartridge",        // F: Unit
+            "",                 // G: (TotalSheets — N/A for toner)
+            supplier || "",     // H: Invoice No / Supplier
+            unitCost ? String(unitCost) : "",  // I: Amount/Unit Cost
+            notes || "",        // J: Notes
+            "toner_sync",       // K: Source
+            claims.name || claims.email || "",  // L: RecordedBy
+            "", "", "", ""      // M-P: spare cols
+          ];
+          await appendSheetRow(STOCK_TAB, STOCK_RANGE, stockMainRow);
+          console.log("[Toner Sync] Auto-synced RECEIVED entry to stock tab.");
+        } catch (syncErr) {
+          // Non-fatal: log but don't fail the main request
+          console.warn("[Toner Sync] Failed to auto-sync to stock tab:", syncErr.message);
+        }
+      }
+
+      return jsonResponse(200, headers, { success: true, message: "Toner stock entry recorded." });
+    }
+
+    // ── T4. GET /tonerLog — Printer Installation Log ───────────────────────────
+    if (action === "tonerLog" && event.httpMethod === "GET") {
+      const data = await fetchSheetDataPublic(`'${TONER_LOG_TAB}'!${TONER_LOG_RANGE}`);
+      if (!data || !data.values || data.values.length < 2) {
+        return jsonResponse(200, headers, { success: true, rows: [], headers: [] });
+      }
+      const sheetHeaders = data.values[0].map(h => String(h || "").trim());
+      let rows = data.values.slice(1)
+        .filter(row => row.some(c => String(c || "").trim() !== ""))
+        .map((row, idx) => {
+          const obj = { _rowIndex: idx + 2 };
+          sheetHeaders.forEach((h, i) => { obj[h] = String(row[i] || "").trim(); });
+          return obj;
+        });
+
+      // Filter by hospital if user doesn't have ALL access
+      if (!hasAllAccess) {
+        rows = rows.filter(r => isHospitalAllowedServer(r["Hospital"], allowedHospitals, false));
+      }
+
+      return jsonResponse(200, headers, { success: true, rows, headers: sheetHeaders });
+    }
+
+    // ── T5. POST /appendTonerInstall — Install toner on a printer ─────────────
+    if (action === "appendTonerInstall" && event.httpMethod === "POST") {
+      let body;
+      try { body = JSON.parse(event.body || "{}"); } catch {
+        return jsonResponse(400, headers, { success: false, error: "Invalid JSON body." });
+      }
+
+      const { hospital, counterNo, printerSerial, printerModel, tonerModel, color, openingMeter, notes } = body;
+
+      if (!hospital || !counterNo || !tonerModel || openingMeter === undefined || openingMeter === null || openingMeter === "") {
+        return jsonResponse(400, headers, { success: false, error: "hospital, counterNo, tonerModel, and openingMeter are required." });
+      }
+
+      const meterNum = parseInt(String(openingMeter).replace(/,/g, ""), 10);
+      if (isNaN(meterNum) || meterNum < 0) {
+        return jsonResponse(400, headers, { success: false, error: "openingMeter must be a non-negative integer." });
+      }
+
+      const dateStr = new Date().toLocaleDateString("en-IN", {
+        timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric"
+      });
+
+      // toner_log columns: A=InstallDate, B=Hospital, C=CounterNo, D=PrinterSerial, E=PrinterModel,
+      //   F=TonerModel, G=Color, H=OpeningMeter, I=InstalledBy, J=RemovalDate,
+      //   K=ClosingMeter, L=PagesYield, M=Status, N=RemovedBy, O=Notes
+      const logRow = [
+        dateStr,
+        hospital,
+        String(counterNo),
+        printerSerial || "",
+        printerModel || "",
+        tonerModel,
+        color || "",
+        String(meterNum),
+        claims.name || claims.email || "",
+        "",   // J: RemovalDate (empty — active)
+        "",   // K: ClosingMeter
+        "",   // L: PagesYield (computed on close)
+        "Active",
+        "",   // N: RemovedBy
+        notes || ""
+      ];
+      await appendSheetRow(TONER_LOG_TAB, TONER_LOG_RANGE, logRow);
+      return jsonResponse(200, headers, { success: true, message: "Toner installation recorded." });
+    }
+
+    // ── T6. POST /closeTonerEntry — Mark toner replaced, set closing meter ────
+    if (action === "closeTonerEntry" && event.httpMethod === "POST") {
+      let body;
+      try { body = JSON.parse(event.body || "{}"); } catch {
+        return jsonResponse(400, headers, { success: false, error: "Invalid JSON body." });
+      }
+
+      const { rowIndex, closingMeter, notes } = body;
+      if (!rowIndex || closingMeter === undefined || closingMeter === null || closingMeter === "") {
+        return jsonResponse(400, headers, { success: false, error: "rowIndex and closingMeter are required." });
+      }
+
+      const rowIdx = parseInt(String(rowIndex), 10);
+      if (isNaN(rowIdx) || rowIdx < 2) {
+        return jsonResponse(400, headers, { success: false, error: "Invalid rowIndex." });
+      }
+
+      // First, read existing row to get openingMeter and compute pagesYield
+      const readData = await fetchSheetDataPublic(`'${TONER_LOG_TAB}'!A${rowIdx}:O${rowIdx}`);
+      if (!readData || !readData.values || !readData.values[0]) {
+        return jsonResponse(404, headers, { success: false, error: "Toner log entry not found." });
+      }
+      const existingRow = readData.values[0];
+      const openingMeter = parseInt(String(existingRow[7] || "0").replace(/,/g, ""), 10);
+      const closingMeterNum = parseInt(String(closingMeter).replace(/,/g, ""), 10);
+      if (isNaN(closingMeterNum) || closingMeterNum < openingMeter) {
+        return jsonResponse(400, headers, {
+          success: false,
+          error: `Closing meter (${closingMeterNum}) must be ≥ opening meter (${openingMeter}).`
+        });
+      }
+      const pagesYield = closingMeterNum - openingMeter;
+      const removalDateStr = new Date().toLocaleDateString("en-IN", {
+        timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric"
+      });
+
+      // Build updated full row (A:O)
+      const updatedRow = [...existingRow];
+      while (updatedRow.length < 15) updatedRow.push("");
+      updatedRow[9]  = removalDateStr;              // J: RemovalDate
+      updatedRow[10] = String(closingMeterNum);     // K: ClosingMeter
+      updatedRow[11] = String(pagesYield);          // L: PagesYield
+      updatedRow[12] = "Replaced";                  // M: Status
+      updatedRow[13] = claims.name || claims.email || ""; // N: RemovedBy
+      if (notes) updatedRow[14] = notes;            // O: Notes
+
+      await updateSheetRow(TONER_LOG_TAB, `A${rowIdx}:O${rowIdx}`, updatedRow);
+      return jsonResponse(200, headers, {
+        success: true,
+        message: "Toner entry closed.",
+        pagesYield,
+        openingMeter,
+        closingMeter: closingMeterNum
+      });
+    }
+
+    // ── T7. GET /getTonerSettings — Near-end alert threshold from Neon DB ─────
+    if (action === "getTonerSettings" && event.httpMethod === "GET") {
+      let threshold = 1000; // default pages remaining for 🔴 alert
+      let warnThreshold = 2000; // default pages remaining for 🟡 warning
+      try {
+        const rows = await queryNeon("SELECT setting_value FROM app_settings WHERE setting_key = 'toner_alert_settings' LIMIT 1;");
+        if (rows.length > 0 && rows[0].setting_value) {
+          const saved = JSON.parse(rows[0].setting_value);
+          threshold = saved.threshold ?? threshold;
+          warnThreshold = saved.warnThreshold ?? warnThreshold;
+        }
+      } catch (e) {
+        console.warn("[Toner Settings] Could not read from Neon DB:", e.message);
+      }
+      return jsonResponse(200, headers, { success: true, threshold, warnThreshold });
+    }
+
+    // ── T8. POST /saveTonerSettings — SuperAdmin only, save threshold ──────────
+    if (action === "saveTonerSettings" && event.httpMethod === "POST") {
+      if (!userIsSuperAdmin) {
+        return jsonResponse(403, headers, { success: false, error: "SuperAdmin access required to change toner alert settings." });
+      }
+      let body;
+      try { body = JSON.parse(event.body || "{}"); } catch {
+        return jsonResponse(400, headers, { success: false, error: "Invalid JSON body." });
+      }
+
+      const threshold = parseInt(String(body.threshold || "1000"), 10);
+      const warnThreshold = parseInt(String(body.warnThreshold || "2000"), 10);
+
+      if (isNaN(threshold) || threshold < 0 || isNaN(warnThreshold) || warnThreshold < 0) {
+        return jsonResponse(400, headers, { success: false, error: "threshold and warnThreshold must be non-negative integers." });
+      }
+      if (warnThreshold <= threshold) {
+        return jsonResponse(400, headers, { success: false, error: "warnThreshold must be greater than threshold (red alert level)." });
+      }
+
+      const settingValue = JSON.stringify({ threshold, warnThreshold, updatedBy: userEmail, updatedAt: new Date().toISOString() });
+      await queryNeon(
+        `INSERT INTO app_settings (setting_key, setting_value) VALUES ($1, $2)
+         ON CONFLICT (setting_key) DO UPDATE SET setting_value = $2;`,
+        ["toner_alert_settings", settingValue]
+      );
+      return jsonResponse(200, headers, { success: true, message: "Toner alert settings saved.", threshold, warnThreshold });
+    }
+    // ── END TONER TRACKING MODULE ──────────────────────────────────────────────
 
     return {
       statusCode: 400,

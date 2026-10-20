@@ -3095,3 +3095,77 @@ body {
 
 
 
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* ── Toner Tracker Module Styles (v51) ─────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+.toner-kpi {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s;
+}
+.toner-kpi.highlight {
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border-color: #bae6fd;
+}
+.toner-kpi-icon { font-size: 1.15rem; }
+.toner-kpi-val {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+}
+.toner-kpi-lbl {
+  font-size: 0.69rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Status badges in active installations table */
+.toner-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.toner-active  { background: rgba(5,150,105,0.10); color: #059669; }
+.toner-ok      { background: rgba(5,150,105,0.10); color: #059669; }
+.toner-warn    { background: rgba(234,179,8,0.12);  color: #b45309; }
+.toner-critical{ background: rgba(220,38,38,0.10);  color: #dc2626; }
+
+/* RECEIVED / DISPATCHED badges in ledger */
+.toner-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.toner-badge-received   { background: rgba(37,99,235,0.10); color: #1d4ed8; }
+.toner-badge-dispatched { background: rgba(124,58,237,0.10); color: #7c3aed; }
+
+/* Table row hover */
+#toner-active-tbody tr:hover,
+#toner-stock-tbody tr:hover,
+#toner-history-tbody tr:hover {
+  background: #f8fafc;
+}
+#toner-active-tbody td,
+#toner-stock-tbody td,
+#toner-history-tbody td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}

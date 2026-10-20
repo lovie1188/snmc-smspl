@@ -1,8 +1,8 @@
-// ============================================================
-// PrintTrack — Service Worker with FCM Push Support
+﻿// ============================================================
+// PrintTrack â€” Service Worker with FCM Push Support
 // ============================================================
 
-const CACHE_NAME = 'printtrack-v50';
+const CACHE_NAME = 'printtrack-v51';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -19,12 +19,13 @@ const ASSETS_TO_CACHE = [
   './assets/js/modules/stock-ledger.js',
   './assets/js/modules/hardware-printers.js',
   './assets/js/modules/vision-scanner.js',
+  './assets/js/modules/toner-tracker.js',
   './assets/js/app.js',
   './assets/js/notifications.js',
   './assets/js/admob.js'
 ];
 
-// ── Install ──
+// â”€â”€ Install â”€â”€
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -41,7 +42,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// ── Activate ──
+// â”€â”€ Activate â”€â”€
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -50,7 +51,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ── Fetch Strategy (Robust Offline & Query-Param Aware) ──
+// â”€â”€ Fetch Strategy (Robust Offline & Query-Param Aware) â”€â”€
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   
@@ -64,7 +65,7 @@ self.addEventListener('fetch', (event) => {
       url.hostname.includes('github.com') ||
       url.hostname.includes('githubusercontent.com')) return;
 
-  // Never cache API calls — pass straight to network
+  // Never cache API calls â€” pass straight to network
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/.netlify/functions/')) {
     return;
   }
@@ -91,7 +92,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static Assets (JS, CSS, Images, Manifest) — Stale-While-Revalidate / Cache-First with Safe Fallback
+  // Static Assets (JS, CSS, Images, Manifest) â€” Stale-While-Revalidate / Cache-First with Safe Fallback
   event.respondWith(
     caches.match(event.request).then(async (cachedResponse) => {
       if (cachedResponse) return cachedResponse;
@@ -112,7 +113,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// ── Push Notification Handler ──
+// â”€â”€ Push Notification Handler â”€â”€
 self.addEventListener('push', (event) => {
   let data = { title: 'PrintTrack Alert', body: 'You have a new notification.' };
 
@@ -141,8 +142,8 @@ self.addEventListener('push', (event) => {
       timestamp: Date.now()
     },
     actions: [
-      { action: 'open', title: '📂 Open App' },
-      { action: 'dismiss', title: '✕ Dismiss' }
+      { action: 'open', title: 'ðŸ“‚ Open App' },
+      { action: 'dismiss', title: 'âœ• Dismiss' }
     ]
   };
 
@@ -151,7 +152,7 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// ── Notification Click Handler ──
+// â”€â”€ Notification Click Handler â”€â”€
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
@@ -175,7 +176,7 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// ── Background Sync (optional — for offline queued entries) ──
+// â”€â”€ Background Sync (optional â€” for offline queued entries) â”€â”€
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-entries') {
     // Background sync for offline entries (future feature)

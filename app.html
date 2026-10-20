@@ -1,17 +1,17 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>PrintTrack — Dashboard</title>
+  <title>PrintTrack â€” Dashboard</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#f8fafc">
   <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
-  <link rel="stylesheet" href="assets/css/app.css?v=50">
+  <link rel="stylesheet" href="assets/css/app.css?v=51">
 
   <style>
-    /* ── SuperAdmin Notification Panel ── */
+    /* â”€â”€ SuperAdmin Notification Panel â”€â”€ */
     #superadmin-notif-panel {
       display: none;
       background: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(236, 72, 153, 0.06));
@@ -100,7 +100,7 @@
       background: rgba(124, 58, 237, 0.14);
     }
 
-    /* ── In-App Notification Banner ── */
+    /* â”€â”€ In-App Notification Banner â”€â”€ */
     .notif-banner {
       position: fixed;
       top: 16px;
@@ -171,7 +171,7 @@
       margin-top: -2px;
     }
 
-    /* ── Toast messages ── */
+    /* â”€â”€ Toast messages â”€â”€ */
     .toast-msg {
       position: fixed;
       bottom: 90px;
@@ -226,14 +226,14 @@
 
   <!-- App Loading Screen -->
   <div id="app-loader">
-    <div class="logo-spin">🖨️</div>
+    <div class="logo-spin">ðŸ–¨ï¸</div>
     <p style="color: var(--text-muted); font-size: 0.85rem; font-weight:600;">Loading PrintTrack...</p>
   </div>
 
   <!-- Native Header -->
   <header class="app-header">
     <div class="header-brand">
-      <div class="icon">🖨️</div>
+      <div class="icon">ðŸ–¨ï¸</div>
       <div>
         <div class="title" style="display:flex; align-items:center; gap:6px;">
           <span>PrintTrack</span>
@@ -248,12 +248,12 @@
       <!-- Active Hospital Switcher / Badge -->
       <button id="hospital-badge-btn" class="hospital-active-badge" onclick="openHospitalSwitcherModal()"
         title="Switch Hospital">
-        🏥 <span id="current-hospital-label">All</span>
+        ðŸ¥ <span id="current-hospital-label">All</span>
       </button>
 
-      <!-- Bell icon — visible to all for enabling notifications -->
+      <!-- Bell icon â€” visible to all for enabling notifications -->
       <button id="notif-bell-btn" title="Enable Notifications" onclick="handleBellClick()">
-        🔔
+        ðŸ””
         <span class="bell-dot"></span>
       </button>
 
@@ -277,7 +277,7 @@
               <div style="display:flex; align-items:center; gap:6px;">
                 <span class="d-name" id="drop-user-name">User Name</span>
                 <span id="superadmin-badge"
-                  style="display:none; background: linear-gradient(135deg, #7c3aed, #ec4899); color:#fff; font-size:0.55rem; font-weight:800; padding:2px 6px; border-radius:10px;">⚡
+                  style="display:none; background: linear-gradient(135deg, #7c3aed, #ec4899); color:#fff; font-size:0.55rem; font-weight:800; padding:2px 6px; border-radius:10px;">âš¡
                   ADMIN</span>
               </div>
               <div class="d-email" id="drop-user-email">user@gmail.com</div>
@@ -325,6 +325,16 @@
             <span>Received Paper Stock</span>
           </button>
 
+          <button class="dropdown-item" onclick="showTab('toner'); loadTonerPage(); closeDropdown();">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+            <span>ðŸ–¤ Toner Tracker</span>
+          </button>
+
           <button class="dropdown-item" onclick="showTab('history'); loadHistory(); closeDropdown();">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -352,7 +362,7 @@
               stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
-            <span>⚡ Admin Control Center</span>
+            <span>âš¡ Admin Control Center</span>
           </button>
 
           <button class="dropdown-item" id="nav-notif-dropdown" onclick="showTab('notifications'); closeDropdown();">
@@ -448,7 +458,7 @@
             <div>
               <div class="kpi-card-header">
                 <span class="kpi-card-title">1. Paper Delivered</span>
-                <div class="kpi-card-icon">📦</div>
+                <div class="kpi-card-icon">ðŸ“¦</div>
               </div>
               <div class="kpi-main-val" id="kpi-delivered-sheets">0</div>
               <div class="kpi-sub-text">Total Paper Received in Stock</div>
@@ -464,7 +474,7 @@
             <div>
               <div class="kpi-card-header">
                 <span class="kpi-card-title">2. Paper Issued</span>
-                <div class="kpi-card-icon">📝</div>
+                <div class="kpi-card-icon">ðŸ“</div>
               </div>
               <div class="kpi-main-val" id="kpi-issued-sheets">0</div>
               <div class="kpi-sub-text">Allocated to Counters</div>
@@ -480,7 +490,7 @@
             <div>
               <div class="kpi-card-header">
                 <span class="kpi-card-title">3. Prints Made</span>
-                <div class="kpi-card-icon">🖨️</div>
+                <div class="kpi-card-icon">ðŸ–¨ï¸</div>
               </div>
               <div class="kpi-main-val" id="kpi-prints-count">0</div>
               <div class="kpi-sub-text">Actual Meter Consumption</div>
@@ -510,9 +520,9 @@
           </div>
         </div>
 
-        <!-- ⚠️ Amber Low Stock Reorder Alert Banner (Auto shown if stock < 10 Rims / 5000 Sheets) -->
+        <!-- âš ï¸ Amber Low Stock Reorder Alert Banner (Auto shown if stock < 10 Rims / 5000 Sheets) -->
         <div id="low-stock-alert-banner" class="low-stock-alert-banner" style="display:none;">
-          <div class="alert-icon">⚠️</div>
+          <div class="alert-icon">âš ï¸</div>
           <div class="alert-content">
             <div class="alert-title">Low Stock Re-Order Alert!</div>
             <div class="alert-desc" id="low-stock-alert-text">Available unissued paper balance is critically low (&lt;
@@ -548,7 +558,7 @@
       <div class="skynex-grid" id="quick-action-grid">
 
         <div class="skynex-widget w-blue" onclick="showTab('entry')">
-          <div class="w-icon">📝</div>
+          <div class="w-icon">ðŸ“</div>
           <div>
             <div class="w-title">New Entry</div>
             <div class="w-sub">Log daily reading &amp; rims</div>
@@ -556,7 +566,7 @@
         </div>
 
         <div class="skynex-widget w-purple" onclick="showTab('history'); loadHistory();">
-          <div class="w-icon">📊</div>
+          <div class="w-icon">ðŸ“Š</div>
           <div>
             <div class="w-title">View History</div>
             <div class="w-sub">Check past daily logs</div>
@@ -565,7 +575,7 @@
 
         <!-- NEW WIDGETS -->
         <div class="skynex-widget w-amber" onclick="showTab('stock'); loadStockPage();">
-          <div class="w-icon">📦</div>
+          <div class="w-icon">ðŸ“¦</div>
           <div>
             <div class="w-title">Stock Ledger</div>
             <div class="w-sub">Track paper stock</div>
@@ -573,7 +583,7 @@
         </div>
 
         <div class="skynex-widget w-teal" onclick="showTab('printers'); loadPrintersPage();">
-          <div class="w-icon">🖨️</div>
+          <div class="w-icon">ðŸ–¨ï¸</div>
           <div>
             <div class="w-title">Printer Status</div>
             <div class="w-sub">Check active printers</div>
@@ -582,7 +592,7 @@
 
         <div class="skynex-widget w-green admin-only" id="widget-team-directory"
           onclick="showTab('employees'); loadEmployeesPage();" style="display:none;">
-          <div class="w-icon">👥</div>
+          <div class="w-icon">ðŸ‘¥</div>
           <div>
             <div class="w-title">Team Directory</div>
             <div class="w-sub">Manage staff & cards</div>
@@ -590,7 +600,7 @@
         </div>
 
         <div class="skynex-widget w-indigo" onclick="openIdCardOffcanvas(currentUser)">
-          <div class="w-icon">🪪</div>
+          <div class="w-icon">ðŸªª</div>
           <div>
             <div class="w-title">My ID Card</div>
             <div class="w-sub">View digital ID pass</div>
@@ -614,15 +624,15 @@
           </div>
           <div class="wizard-mode-pills">
             <button type="button" class="wizard-mode-pill" id="btn-mode-wizard" onclick="setEntryMode('wizard')">
-              📷 Guided Wizard
+              ðŸ“· Guided Wizard
             </button>
             <button type="button" class="wizard-mode-pill active" id="btn-mode-manual" onclick="setEntryMode('manual')">
-              ✍️ Direct Form
+              âœï¸ Direct Form
             </button>
           </div>
         </div>
 
-        <!-- ── PROGRESS STEPPER BAR (Wizard Mode) ── -->
+        <!-- â”€â”€ PROGRESS STEPPER BAR (Wizard Mode) â”€â”€ -->
         <div class="wizard-stepper-wrap" id="wizard-stepper-wrap" style="display:none;">
           <div class="wizard-step-node active" id="step-node-1" onclick="goToWizardStep(1)">
             <div class="step-num">1</div>
@@ -653,7 +663,7 @@
               <label style="margin-bottom:0;">Entry Date <span class="req">*</span></label>
               <span id="entry-date-role-badge"
                 style="font-size:0.62rem; font-weight:800; padding:2px 8px; border-radius:10px; background:#f1f5f9; color:var(--text-muted);">
-                🔒 TODAY ONLY
+                ðŸ”’ TODAY ONLY
               </span>
             </div>
             <input type="date" id="entry-date-input" class="native-input" style="background:#f8fafc; font-weight:700;"
@@ -663,9 +673,9 @@
           <!-- Hidden input for real counter selection -->
           <input type="hidden" id="counter-select" name="counter" required>
 
-          <!-- ═════════════════════════════════════════════════════════ -->
-          <!-- ── WIZARD STEP 1: SCAN DISPLAY OR UPLOAD PHOTO ────────── -->
-          <!-- ═════════════════════════════════════════════════════════ -->
+          <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+          <!-- â”€â”€ WIZARD STEP 1: SCAN DISPLAY OR UPLOAD PHOTO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+          <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
           <div class="wizard-step-panel" id="wizard-panel-1" style="display:none;">
             <div class="step-intro-box">
               <div class="step-badge">STEP 1 OF 4</div>
@@ -674,42 +684,42 @@
                 gallery.</div>
             </div>
 
-            <!-- ── STEP 1A: CAMERA LAUNCH CARD (Click opens fullscreen camera) ── -->
+            <!-- â”€â”€ STEP 1A: CAMERA LAUNCH CARD (Click opens fullscreen camera) â”€â”€ -->
             <div id="wizard-camera-launch-card" class="wizard-launch-card">
               <div class="launch-camera-icon-wrap" onclick="openFullscreenCamera()"
                 title="Tap to launch fullscreen camera">
-                📷
+                ðŸ“·
               </div>
               <div class="launch-camera-title">Tap to Open Fullscreen Camera</div>
               <div class="launch-camera-sub">Scan the printer display reading &amp; handwritten serial number in high
                 resolution.</div>
               <div class="launch-actions-row">
                 <button type="button" class="btn-launch-camera" onclick="openFullscreenCamera()">
-                  📷 Open Camera
+                  ðŸ“· Open Camera
                 </button>
                 <label class="btn-launch-gallery" title="Choose from phone gallery">
-                  📁 Pick Gallery Photo
+                  ðŸ“ Pick Gallery Photo
                   <input type="file" id="wizard-file-input-launch" accept="image/*" style="display:none;"
                     onchange="handleWizardFileUpload(event)">
                 </label>
               </div>
             </div>
 
-            <!-- ── STEP 1B: POST-CAPTURE PROCESS OPTIONS CARD (Shown after photo captured) ── -->
+            <!-- â”€â”€ STEP 1B: POST-CAPTURE PROCESS OPTIONS CARD (Shown after photo captured) â”€â”€ -->
             <div id="wizard-post-capture-card" class="post-capture-card" style="display:none;">
               <div class="post-capture-header">
                 <div class="post-capture-thumb-box">
                   <img id="post-capture-preview-img" alt="Captured reading">
                 </div>
                 <div class="post-capture-info">
-                  <div class="post-capture-title">📸 Photo Captured Ready</div>
+                  <div class="post-capture-title">ðŸ“¸ Photo Captured Ready</div>
                   <div class="post-capture-sub">Choose how you want to process this photo:</div>
                 </div>
               </div>
 
               <div class="post-capture-options-grid">
                 <button type="button" class="btn-process-option primary" onclick="triggerSmartScanFromPostCapture()">
-                  <span style="font-size:1.3rem;">⚡</span>
+                  <span style="font-size:1.3rem;">âš¡</span>
                   <div>
                     <div style="font-size:0.88rem; font-weight:800;">Smart Scan Display (AI OCR)</div>
                     <div style="font-size:0.7rem; opacity:0.85; font-weight:500;">Auto-extract reading &amp; serial
@@ -717,7 +727,7 @@
                   </div>
                 </button>
                 <button type="button" class="btn-process-option adjust" onclick="openAdjusterFromPostCapture()">
-                  <span style="font-size:1.3rem;">📐</span>
+                  <span style="font-size:1.3rem;">ðŸ“</span>
                   <div>
                     <div style="font-size:0.88rem; font-weight:800;">Adjust &amp; Straighten Photo</div>
                     <div style="font-size:0.7rem; opacity:0.85; font-weight:500;">Rotate, zoom, crop &amp; enhance
@@ -725,14 +735,14 @@
                   </div>
                 </button>
                 <button type="button" class="btn-process-option retake" onclick="openFullscreenCamera()">
-                  <span style="font-size:1.3rem;">🔄</span>
+                  <span style="font-size:1.3rem;">ðŸ”„</span>
                   <div>
                     <div style="font-size:0.88rem; font-weight:800;">Retake Photo</div>
                     <div style="font-size:0.7rem; opacity:0.85; font-weight:500;">Open fullscreen camera again</div>
                   </div>
                 </button>
                 <button type="button" class="btn-process-option secondary" onclick="goToWizardStep(3)">
-                  <span style="font-size:1.3rem;">✍️</span>
+                  <span style="font-size:1.3rem;">âœï¸</span>
                   <div>
                     <div style="font-size:0.88rem; font-weight:800;">Use Photo &amp; Enter Manually</div>
                     <div style="font-size:0.7rem; opacity:0.85; font-weight:500;">Skip OCR and fill readings manually
@@ -752,16 +762,16 @@
               </div>
             </div>
 
-            <!-- ── INTERACTIVE IMAGE ADJUSTER & ANGLE CORRECTION VIEW ── -->
+            <!-- â”€â”€ INTERACTIVE IMAGE ADJUSTER & ANGLE CORRECTION VIEW â”€â”€ -->
             <div id="wizard-adjuster-container" class="wizard-adjuster-card" style="display:none;">
               <div class="adjuster-header">
                 <div class="adjuster-title">
-                  <span>📐 Adjust, Straighten &amp; Crop</span>
-                  <span class="adjuster-hint">Drag to Pan • Pinch or Slider to Zoom</span>
+                  <span>ðŸ“ Adjust, Straighten &amp; Crop</span>
+                  <span class="adjuster-hint">Drag to Pan â€¢ Pinch or Slider to Zoom</span>
                 </div>
                 <button type="button" class="btn-adjuster-reset" onclick="resetAdjuster()"
                   title="Reset all adjustments">
-                  🔄 Reset
+                  ðŸ”„ Reset
                 </button>
               </div>
 
@@ -782,58 +792,58 @@
                 </div>
               </div>
 
-              <!-- Fine Angle Correction Slider (-45° to +45°) -->
+              <!-- Fine Angle Correction Slider (-45Â° to +45Â°) -->
               <div class="adjuster-control-row">
                 <div class="control-label">
-                  <span>📐 Angle / Straighten:</span>
-                  <strong id="angle-value-lbl">0°</strong>
+                  <span>ðŸ“ Angle / Straighten:</span>
+                  <strong id="angle-value-lbl">0Â°</strong>
                 </div>
                 <div class="slider-with-btns">
-                  <button type="button" class="btn-step-adjust" onclick="nudgeAngle(-1)" title="-1 degree">−1°</button>
+                  <button type="button" class="btn-step-adjust" onclick="nudgeAngle(-1)" title="-1 degree">âˆ’1Â°</button>
                   <input type="range" id="adjuster-angle-slider" min="-45" max="45" value="0" step="0.5"
                     oninput="onAngleSliderChange(this.value)">
-                  <button type="button" class="btn-step-adjust" onclick="nudgeAngle(1)" title="+1 degree">+1°</button>
+                  <button type="button" class="btn-step-adjust" onclick="nudgeAngle(1)" title="+1 degree">+1Â°</button>
                   <button type="button" class="btn-zero-angle" onclick="onAngleSliderChange(0)"
-                    title="Set 0 degree">0°</button>
+                    title="Set 0 degree">0Â°</button>
                 </div>
               </div>
 
               <!-- Zoom Slider (1x to 4x) -->
               <div class="adjuster-control-row">
                 <div class="control-label">
-                  <span>🔍 Zoom:</span>
+                  <span>ðŸ” Zoom:</span>
                   <strong id="zoom-value-lbl">1.0x</strong>
                 </div>
                 <div class="slider-with-btns">
-                  <button type="button" class="btn-step-adjust" onclick="nudgeZoom(-0.1)" title="Zoom out">−</button>
+                  <button type="button" class="btn-step-adjust" onclick="nudgeZoom(-0.1)" title="Zoom out">âˆ’</button>
                   <input type="range" id="adjuster-zoom-slider" min="1" max="4" value="1" step="0.05"
                     oninput="onZoomSliderChange(this.value)">
                   <button type="button" class="btn-step-adjust" onclick="nudgeZoom(0.1)" title="Zoom in">+</button>
                 </div>
               </div>
 
-              <!-- Floating Quick Action Buttons: 90° Rotations & LCD Contrast Filter -->
+              <!-- Floating Quick Action Buttons: 90Â° Rotations & LCD Contrast Filter -->
               <div class="adjuster-actions-pills">
-                <button type="button" class="btn-adjuster-pill" onclick="rotate90(-90)" title="Rotate 90° Left">
-                  ⟲ 90° Left
+                <button type="button" class="btn-adjuster-pill" onclick="rotate90(-90)" title="Rotate 90Â° Left">
+                  âŸ² 90Â° Left
                 </button>
-                <button type="button" class="btn-adjuster-pill" onclick="rotate90(90)" title="Rotate 90° Right">
-                  ⟳ 90° Right
+                <button type="button" class="btn-adjuster-pill" onclick="rotate90(90)" title="Rotate 90Â° Right">
+                  âŸ³ 90Â° Right
                 </button>
                 <button type="button" class="btn-adjuster-pill" id="btn-toggle-contrast"
                   onclick="toggleLcdContrastFilter()" title="Enhance LCD contrast">
-                  🌓 LCD Filter: OFF
+                  ðŸŒ“ LCD Filter: OFF
                 </button>
               </div>
 
               <!-- Adjuster Footer Actions -->
               <div class="adjuster-footer-nav">
                 <button type="button" class="btn-adjuster-retake" onclick="cancelAdjusterAndRetake()">
-                  📸 Retake Photo
+                  ðŸ“¸ Retake Photo
                 </button>
                 <button type="button" class="btn-adjuster-scan" id="btn-apply-adjuster-scan"
                   onclick="applyAdjusterCropAndScan()">
-                  ⚡ Smart Scan Display ➔
+                  âš¡ Smart Scan Display âž”
                 </button>
               </div>
             </div>
@@ -841,15 +851,15 @@
             <!-- Skip Link -->
             <div class="wizard-skip-link-wrap" id="wizard-skip-wrap">
               <button type="button" class="btn-link-skip" onclick="skipWizardToManual()">
-                ✍️ Skip scanning &amp; enter printer manually ➔
+                âœï¸ Skip scanning &amp; enter printer manually âž”
               </button>
             </div>
           </div>
 
 
-          <!-- ═════════════════════════════════════════════════════════ -->
-          <!-- ── WIZARD STEP 2: VERIFICATION SLIDE (Confirm Read) ───── -->
-          <!-- ═════════════════════════════════════════════════════════ -->
+          <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+          <!-- â”€â”€ WIZARD STEP 2: VERIFICATION SLIDE (Confirm Read) â”€â”€â”€â”€â”€ -->
+          <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
           <div class="wizard-step-panel" id="wizard-panel-2" style="display:none;">
             <div class="step-intro-box">
               <div class="step-badge">STEP 2 OF 4</div>
@@ -868,13 +878,13 @@
               <div class="verify-data-grid">
                 <div class="vdata-card">
                   <div class="vdata-label">IDENTIFIED PRINTER / COUNTER</div>
-                  <div class="vdata-val" id="verify-counter-val">—</div>
+                  <div class="vdata-val" id="verify-counter-val">â€”</div>
                   <div class="vdata-sub" id="verify-counter-sub">Matched from printer directory</div>
                 </div>
 
                 <div class="vdata-card highlight">
                   <div class="vdata-label">METER READING (CLOSING)</div>
-                  <div class="vdata-val big" id="verify-reading-val">—</div>
+                  <div class="vdata-val big" id="verify-reading-val">â€”</div>
                   <div class="vdata-sub" id="verify-reading-sub">Extracted from TOTAL COUNT</div>
                 </div>
               </div>
@@ -884,23 +894,23 @@
             <div class="wizard-nav-bar" style="justify-content:space-between;">
               <button type="button" class="btn-wizard-prev" onclick="returnToAdjusterStep()"
                 title="Back to Adjuster without losing photo">
-                ⬅️ Back to Adjuster
+                â¬…ï¸ Back to Adjuster
               </button>
               <button type="button" class="btn-wizard-prev"
                 style="background:#fef2f2; color:#ef4444; border-color:#fecaca;" onclick="goToWizardStep(1)"
                 title="Discard and take a new photo">
-                📸 Retake Photo
+                ðŸ“¸ Retake Photo
               </button>
               <button type="button" class="btn-wizard-next" onclick="confirmStep2AndProceed()">
-                Confirm &amp; Next ➡️
+                Confirm &amp; Next âž¡ï¸
               </button>
             </div>
           </div>
 
 
-          <!-- ═════════════════════════════════════════════════════════ -->
-          <!-- ── WIZARD STEP 3: PRINTER & CONDITIONAL STOCK / RIMS ──── -->
-          <!-- ═════════════════════════════════════════════════════════ -->
+          <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+          <!-- â”€â”€ WIZARD STEP 3: PRINTER & CONDITIONAL STOCK / RIMS â”€â”€â”€â”€ -->
+          <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
           <div class="wizard-step-panel manual-mode-view" id="wizard-panel-3" style="display:block;">
             <div class="step-intro-box" style="display:none;">
               <div class="step-badge">STEP 3 OF 4</div>
@@ -913,7 +923,7 @@
               <label>Counter Number <span class="req">*</span></label>
               <div class="counter-picker-trigger" id="counter-picker-btn" onclick="openCounterPickerModal()">
                 <div class="picker-placeholder" id="counter-picker-label">
-                  <span style="color: var(--text-muted);">— Select Counter No. —</span>
+                  <span style="color: var(--text-muted);">â€” Select Counter No. â€”</span>
                 </div>
                 <div class="picker-arrow">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -929,20 +939,20 @@
                 <div class="spc-header">
                   <div class="spc-badge-wrap">
                     <span class="spc-hosp-badge" id="spc-hosp">MDM HOSPITAL</span>
-                    <span class="spc-status-badge">🟢 VERIFIED COUNTER</span>
+                    <span class="spc-status-badge">ðŸŸ¢ VERIFIED COUNTER</span>
                   </div>
-                  <button type="button" class="spc-change-btn" onclick="openCounterPickerModal()">🔄 Change</button>
+                  <button type="button" class="spc-change-btn" onclick="openCounterPickerModal()">ðŸ”„ Change</button>
                 </div>
                 <div class="spc-main-info">
-                  <div class="spc-icon">🖨️</div>
+                  <div class="spc-icon">ðŸ–¨ï¸</div>
                   <div class="spc-details">
                     <div class="spc-counter-title" id="spc-counter-title">Counter 01</div>
-                    <div class="spc-counter-sub" id="spc-counter-sub">OPD Registration • Ground Floor</div>
+                    <div class="spc-counter-sub" id="spc-counter-sub">OPD Registration â€¢ Ground Floor</div>
                   </div>
                 </div>
                 <div class="spc-serial-banner">
                   <span class="spc-serial-lbl">MACHINE SERIAL NO. (S/N)</span>
-                  <div class="spc-serial-val" id="spc-serial">—</div>
+                  <div class="spc-serial-val" id="spc-serial">â€”</div>
                 </div>
                 <div class="spc-meta-grid">
                   <div class="spc-meta-item">
@@ -963,7 +973,7 @@
                 <input type="checkbox" id="chk-toggle-rim" onchange="handleRimCheckboxChange(this.checked)">
                 <div class="rim-checkbox-custom"></div>
                 <div>
-                  <div class="rim-toggle-title">📦 Issue or Receive Paper Stock Today?</div>
+                  <div class="rim-toggle-title">ðŸ“¦ Issue or Receive Paper Stock Today?</div>
                   <div class="rim-toggle-sub">Check this only if paper rims were supplied or returned at this counter
                   </div>
                 </div>
@@ -999,18 +1009,18 @@
             <!-- Wizard Navigation Buttons -->
             <div class="wizard-nav-bar">
               <button type="button" class="btn-wizard-prev" onclick="goToWizardStep(2)">
-                ⬅️ Previous
+                â¬…ï¸ Previous
               </button>
               <button type="button" class="btn-wizard-next" onclick="proceedToStep4()">
-                Next: Meter Readings ➡️
+                Next: Meter Readings âž¡ï¸
               </button>
             </div>
           </div>
 
 
-          <!-- ═════════════════════════════════════════════════════════ -->
-          <!-- ── WIZARD STEP 4: METER READINGS & FINAL SUBMIT ───────── -->
-          <!-- ═════════════════════════════════════════════════════════ -->
+          <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+          <!-- â”€â”€ WIZARD STEP 4: METER READINGS & FINAL SUBMIT â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+          <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
           <div class="wizard-step-panel manual-mode-view" id="wizard-panel-4" style="display:block;">
             <div class="step-intro-box" style="display:none;">
               <div class="step-badge">STEP 4 OF 4</div>
@@ -1039,12 +1049,12 @@
             <!-- Real-Time Validation Alert Message -->
             <div id="reading-validation-error" class="validation-message"
               style="display:none; color:#ef4444; background:#fef2f2; border:1px solid #fecaca; padding:10px 14px; border-radius:10px; font-size:0.82rem; font-weight:700; margin:10px 0;">
-              ⚠️ Closing Reading cannot be less than Opening Reading!
+              âš ï¸ Closing Reading cannot be less than Opening Reading!
             </div>
 
-            <!-- Real-Time Calculation: Net Prints (Closing − Opening) => Column H: BALANCE -->
+            <!-- Real-Time Calculation: Net Prints (Closing âˆ’ Opening) => Column H: BALANCE -->
             <div class="form-group" style="margin-top: 10px;">
-              <label>Net Prints / Balance (Closing − Opening) <span
+              <label>Net Prints / Balance (Closing âˆ’ Opening) <span
                   style="font-size:0.72rem; color:var(--text-muted);">(Column H)</span></label>
               <input type="number" class="native-input" id="paper-balance" readonly placeholder="0 Pages Printed"
                 style="background:#f0fdf4; font-weight:800; font-size:1.15rem; color:#10b981; border-color:#86efac;">
@@ -1060,10 +1070,10 @@
             <!-- Wizard Navigation Buttons -->
             <div class="wizard-nav-bar" id="wizard-panel-4-nav">
               <button type="button" class="btn-wizard-prev" onclick="goToWizardStep(3)" style="display:none;">
-                ⬅️ Previous
+                â¬…ï¸ Previous
               </button>
               <button type="submit" class="btn-native-submit" id="submit-btn" style="flex:1;">
-                🚀 Save Daily Entry
+                ðŸš€ Save Daily Entry
               </button>
             </div>
           </div>
@@ -1124,12 +1134,12 @@
             <button class="arrow-btn"
               style="width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #15803d; background: rgba(22, 163, 74, 0.1);"
               onclick="exportHistoryToExcel()">
-              📊 Excel
+              ðŸ“Š Excel
             </button>
             <button class="arrow-btn"
               style="width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #b91c1c; background: rgba(220, 38, 38, 0.1);"
               onclick="exportHistoryToPDF()">
-              📄 PDF
+              ðŸ“„ PDF
             </button>
           </div>
         </div>
@@ -1138,7 +1148,7 @@
         <div class="history-controls">
           <div class="history-search-row">
             <input type="text" id="history-search-input" class="native-input"
-              placeholder="🔍 Search Counter / Hospital..." oninput="filterHistoryTable()"
+              placeholder="ðŸ” Search Counter / Hospital..." oninput="filterHistoryTable()"
               style="font-size: 0.8rem; padding: 8px 12px;">
             <input type="date" id="history-date-filter" class="native-input" onchange="filterHistoryTable()"
               style="font-size: 0.8rem; padding: 8px 12px;">
@@ -1148,8 +1158,8 @@
             <span id="history-count-badge">Showing entries</span>
             <div class="history-view-toggles">
               <button type="button" class="view-toggle-btn active" id="btn-view-cards"
-                onclick="setHistoryViewMode('cards')">📱 Cards</button>
-              <button type="button" class="view-toggle-btn" id="btn-view-table" onclick="setHistoryViewMode('table')">📊
+                onclick="setHistoryViewMode('cards')">ðŸ“± Cards</button>
+              <button type="button" class="view-toggle-btn" id="btn-view-table" onclick="setHistoryViewMode('table')">ðŸ“Š
                 Table</button>
             </div>
           </div>
@@ -1172,7 +1182,7 @@
         </div>
 
         <div id="no-history" style="display:none; text-align:center; padding:36px; color:var(--text-muted);">
-          <div style="font-size:2rem; margin-bottom:8px;">📝</div>
+          <div style="font-size:2rem; margin-bottom:8px;">ðŸ“</div>
           <p>No entries found matching filters.</p>
         </div>
 
@@ -1195,9 +1205,9 @@
           <div class="form-group">
             <label>Notification Format</label>
             <select class="native-select" id="notif-type-select" onchange="toggleNotifTypeFields()">
-              <option value="text" selected>💬 Text Alert</option>
-              <option value="voice">🗣️ Voice Alert (Text-to-Speech)</option>
-              <option value="image">🖼️ Image + Text Alert</option>
+              <option value="text" selected>ðŸ’¬ Text Alert</option>
+              <option value="voice">ðŸ—£ï¸ Voice Alert (Text-to-Speech)</option>
+              <option value="image">ðŸ–¼ï¸ Image + Text Alert</option>
             </select>
           </div>
 
@@ -1225,24 +1235,24 @@
           <div class="form-group">
             <label>Alert Sound Beep Duration</label>
             <select class="native-select" id="notif-beep-duration">
-              <option value="short">🔊 Short Beep (1 Beep)</option>
-              <option value="medium" selected>🔉 Medium Beep (3 Beeps)</option>
-              <option value="long">🔊 Long Beep (6 Beeps)</option>
+              <option value="short">ðŸ”Š Short Beep (1 Beep)</option>
+              <option value="medium" selected>ðŸ”‰ Medium Beep (3 Beeps)</option>
+              <option value="long">ðŸ”Š Long Beep (6 Beeps)</option>
             </select>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
             <button type="button" class="btn-native-submit" style="background: var(--purple);"
               onclick="handleTestNotification()">
-              🔕 Test Sound &amp; Voice
+              ðŸ”• Test Sound &amp; Voice
             </button>
             <button type="submit" class="btn-native-submit" id="notif-send-btn">
-              📤 Broadcast Push
+              ðŸ“¤ Broadcast Push
             </button>
           </div>
 
           <div style="font-size: 0.7rem; color: var(--text-muted); text-align: center; margin-top: 8px;">
-            🔒 Broadcasts are ephemeral and NOT saved to any database tab.
+            ðŸ”’ Broadcasts are ephemeral and NOT saved to any database tab.
           </div>
         </form>
       </div>
@@ -1260,7 +1270,7 @@
             <input type="email" class="native-input" id="approve-email-input" placeholder="user@gmail.com">
             <button type="button" class="btn-native-submit" style="width: auto; padding: 0 16px; white-space: nowrap;"
               onclick="handleApproveSenderClick()">
-              ➕ Approve
+              âž• Approve
             </button>
           </div>
         </div>
@@ -1281,7 +1291,7 @@
         <!-- Search & Filter Controls -->
         <div class="history-controls">
           <input type="text" id="printer-search-input" class="native-input"
-            placeholder="🔍 Search Counter / Serial No / Location..." oninput="filterPrintersList()"
+            placeholder="ðŸ” Search Counter / Serial No / Location..." oninput="filterPrintersList()"
             style="font-size: 0.8rem; padding: 8px 12px;">
 
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
@@ -1296,24 +1306,24 @@
             <div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
               <div class="history-view-toggles">
                 <button type="button" class="view-toggle-btn active" id="btn-printers-cards"
-                  onclick="setPrintersViewMode('cards')">📱 Cards</button>
+                  onclick="setPrintersViewMode('cards')">ðŸ“± Cards</button>
                 <button type="button" class="view-toggle-btn" id="btn-printers-table"
-                  onclick="setPrintersViewMode('table')">📊 Table</button>
+                  onclick="setPrintersViewMode('table')">ðŸ“Š Table</button>
               </div>
               <button type="button" class="arrow-btn"
                 style="width: auto; padding: 4px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; gap: 4px; color: #1e40af; background: rgba(59, 130, 246, 0.1);"
                 onclick="copyPrintersTableData()" title="Copy entire table data to clipboard">
-                📋 Copy
+                ðŸ“‹ Copy
               </button>
               <button type="button" class="arrow-btn"
                 style="width: auto; padding: 4px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; gap: 4px; color: #0f172a; background: rgba(15, 23, 42, 0.08);"
                 onclick="sharePrintersData()" title="Share printers summary">
-                🔗 Share
+                ðŸ”— Share
               </button>
               <button type="button" class="arrow-btn"
                 style="width: auto; padding: 4px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; gap: 4px; color: #15803d; background: rgba(22, 163, 74, 0.1);"
                 onclick="exportPrintersToExcel()" title="Export to Excel spreadsheet">
-                📊 Excel
+                ðŸ“Š Excel
               </button>
             </div>
           </div>
@@ -1343,7 +1353,7 @@
 
         <!-- Empty State -->
         <div id="no-printers" style="display:none; text-align:center; padding:36px; color:var(--text-muted);">
-          <div style="font-size:2rem; margin-bottom:8px;">🖨️</div>
+          <div style="font-size:2rem; margin-bottom:8px;">ðŸ–¨ï¸</div>
           <p>No printers found matching criteria.</p>
         </div>
       </div>
@@ -1362,17 +1372,17 @@
             <button class="arrow-btn"
               style="width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #15803d; background: rgba(22, 163, 74, 0.1);"
               onclick="shareStockSummaryWhatsApp()" title="Share Stock Summary on WhatsApp">
-              💬 WhatsApp
+              ðŸ’¬ WhatsApp
             </button>
             <button class="arrow-btn"
               style="width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #0284c7; background: rgba(2, 132, 199, 0.1);"
               onclick="exportStockToExcel()" title="Export Stock Ledger to Excel">
-              📊 Excel
+              ðŸ“Š Excel
             </button>
             <button type="button" id="btn-add-stock-entry" class="arrow-btn admin-only"
               style="display:none; width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #ffffff; background: linear-gradient(135deg, #0284c7, #2563eb); border: none; box-shadow: 0 2px 8px rgba(37,99,235,0.3);"
               onclick="openAddStockModal()">
-              ➕ Add Stock
+              âž• Add Stock
             </button>
           </div>
         </div>
@@ -1394,21 +1404,21 @@
         <!-- Hospital Breakdown Row (MDM, MGH, UMMED) -->
         <div class="stock-hosp-breakdown-grid" id="stock-hosp-breakdown">
           <div class="shb-item">
-            <div class="shb-title">🏥 MDM Hospital</div>
+            <div class="shb-title">ðŸ¥ MDM Hospital</div>
             <div class="shb-stats">
-              <span id="shb-mdm-rims">0 Rims</span> • <span id="shb-mdm-sheets">0 Pgs</span>
+              <span id="shb-mdm-rims">0 Rims</span> â€¢ <span id="shb-mdm-sheets">0 Pgs</span>
             </div>
           </div>
           <div class="shb-item">
-            <div class="shb-title">🏥 MGH Hospital</div>
+            <div class="shb-title">ðŸ¥ MGH Hospital</div>
             <div class="shb-stats">
-              <span id="shb-mgh-rims">0 Rims</span> • <span id="shb-mgh-sheets">0 Pgs</span>
+              <span id="shb-mgh-rims">0 Rims</span> â€¢ <span id="shb-mgh-sheets">0 Pgs</span>
             </div>
           </div>
           <div class="shb-item">
-            <div class="shb-title">🏥 UMMED Hospital</div>
+            <div class="shb-title">ðŸ¥ UMMED Hospital</div>
             <div class="shb-stats">
-              <span id="shb-ummed-rims">0 Rims</span> • <span id="shb-ummed-sheets">0 Pgs</span>
+              <span id="shb-ummed-rims">0 Rims</span> â€¢ <span id="shb-ummed-sheets">0 Pgs</span>
             </div>
           </div>
         </div>
@@ -1417,7 +1427,7 @@
         <div class="history-controls">
           <div class="history-search-row">
             <input type="text" id="stock-search-input" class="native-input"
-              placeholder="🔍 Search Invoice No / Hospital..." oninput="filterStockList()"
+              placeholder="ðŸ” Search Invoice No / Hospital..." oninput="filterStockList()"
               style="font-size: 0.8rem; padding: 8px 12px;">
             <input type="date" id="stock-date-filter" class="native-input" onchange="filterStockList()"
               style="font-size: 0.8rem; padding: 8px 12px;">
@@ -1433,10 +1443,10 @@
           <div class="hospital-filter-pills" id="stock-category-pills" style="margin-top: 6px;">
             <button type="button" class="pill-btn active" onclick="filterStockByCategory('ALL', this)">All
               Items</button>
-            <button type="button" class="pill-btn" onclick="filterStockByCategory('Paper', this)">📄 Paper Rims</button>
-            <button type="button" class="pill-btn" onclick="filterStockByCategory('Toner', this)">🖨️ Toner
+            <button type="button" class="pill-btn" onclick="filterStockByCategory('Paper', this)">ðŸ“„ Paper Rims</button>
+            <button type="button" class="pill-btn" onclick="filterStockByCategory('Toner', this)">ðŸ–¨ï¸ Toner
               Cartridges</button>
-            <button type="button" class="pill-btn" onclick="filterStockByCategory('Accessories', this)">🔌 Accessories
+            <button type="button" class="pill-btn" onclick="filterStockByCategory('Accessories', this)">ðŸ”Œ Accessories
               &amp; Parts</button>
           </div>
         </div>
@@ -1445,11 +1455,140 @@
         <div id="stock-cards-container" class="history-cards-container"></div>
 
         <div id="no-stock" style="display:none; text-align:center; padding:36px; color:var(--text-muted);">
-          <div style="font-size:2rem; margin-bottom:8px;">📦</div>
+          <div style="font-size:2rem; margin-bottom:8px;">ðŸ“¦</div>
           <p>No stock records found.</p>
         </div>
       </div>
     </section>
+
+    <!-- TAB: TONER TRACKING MODULE -->
+    <section id="tab-toner" class="tab-panel">
+      <div class="skynex-card">
+        <div class="skynex-card-title" style="flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div style="font-size: 1rem; font-weight: 800;">ðŸ–¤ Toner Tracker</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Konica Minolta Toner Lifecycle â€” HO â†’ Hospital â†’ Printer</div>
+          </div>
+          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+            <button class="arrow-btn"
+              style="width:auto; padding:6px 12px; border-radius:20px; font-size:0.75rem; font-weight:700; color:#fff; background:linear-gradient(135deg,#1e3a5f,#2563eb); border:none; box-shadow:0 2px 8px rgba(37,99,235,0.3);"
+              onclick="openReceiveTonerModal()">
+              ðŸ“¥ Receive
+            </button>
+            <button class="arrow-btn"
+              style="width:auto; padding:6px 12px; border-radius:20px; font-size:0.75rem; font-weight:700; color:#fff; background:linear-gradient(135deg,#7c3aed,#a855f7); border:none; box-shadow:0 2px 8px rgba(124,58,237,0.3);"
+              onclick="openDispatchTonerModal()">
+              ðŸ“¤ Dispatch
+            </button>
+            <button class="arrow-btn"
+              style="width:auto; padding:6px 12px; border-radius:20px; font-size:0.75rem; font-weight:700; color:#fff; background:linear-gradient(135deg,#059669,#10b981); border:none; box-shadow:0 2px 8px rgba(5,150,105,0.3);"
+              onclick="openInstallTonerModal()">
+              ðŸ–¨ï¸ Install
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading spinner -->
+        <div id="toner-loading" style="display:none; justify-content:center; align-items:center; padding:32px;">
+          <div style="width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+        </div>
+
+        <div id="toner-content">
+          <!-- KPI Cards -->
+          <div id="toner-kpi-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;margin-top:4px;"></div>
+
+          <!-- Active Installations -->
+          <div style="font-size:0.88rem;font-weight:800;color:#0f172a;margin-bottom:8px;">ðŸ–¨ï¸ Active Toner Installations</div>
+          <div style="overflow-x:auto;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:16px;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.77rem;">
+              <thead>
+                <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Installed</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Hospital</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Counter</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Toner</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Opening Meter</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Status</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;"></th>
+                </tr>
+              </thead>
+              <tbody id="toner-active-tbody"></tbody>
+            </table>
+            <div id="toner-active-empty" style="text-align:center;padding:28px;color:var(--text-muted);display:none;">
+              <div style="font-size:1.8rem;margin-bottom:6px;">ðŸ–¨ï¸</div>
+              <p style="font-size:0.82rem;">No active toner installations recorded yet.</p>
+            </div>
+          </div>
+
+          <!-- Stock Ledger (RECEIVED / DISPATCHED) -->
+          <div style="font-size:0.88rem;font-weight:800;color:#0f172a;margin-bottom:8px;">ðŸ“‹ HO Stock Ledger</div>
+          <div style="overflow-x:auto;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:16px;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.77rem;">
+              <thead>
+                <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Date</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Type</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Toner Model</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Qty</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Hospital</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Supplier</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">By</th>
+                </tr>
+              </thead>
+              <tbody id="toner-stock-tbody"></tbody>
+            </table>
+            <div id="toner-stock-empty" style="text-align:center;padding:28px;color:var(--text-muted);display:none;">
+              <div style="font-size:1.8rem;margin-bottom:6px;">ðŸ“¦</div>
+              <p style="font-size:0.82rem;">No toner stock entries yet. Use "ðŸ“¥ Receive" to add the first entry.</p>
+            </div>
+          </div>
+
+          <!-- Replacement Performance History -->
+          <div style="font-size:0.88rem;font-weight:800;color:#0f172a;margin-bottom:8px;">ðŸ“Š Replacement History &amp; Yield</div>
+          <div style="overflow-x:auto;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:16px;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.77rem;">
+              <thead>
+                <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Period</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Hospital</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Counter</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Toner</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Meter Range</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Yield</th>
+                  <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Removed By</th>
+                </tr>
+              </thead>
+              <tbody id="toner-history-tbody"></tbody>
+            </table>
+            <div id="toner-history-empty" style="text-align:center;padding:28px;color:var(--text-muted);display:none;">
+              <div style="font-size:1.8rem;margin-bottom:6px;">ðŸ“Š</div>
+              <p style="font-size:0.82rem;">No completed toner replacements yet.</p>
+            </div>
+          </div>
+
+          <!-- SuperAdmin: Alert Threshold Settings -->
+          <div id="toner-settings-panel" style="display:none; margin-top:4px; background:linear-gradient(135deg,rgba(124,58,237,0.06),rgba(236,72,153,0.06)); border:1.5px solid rgba(124,58,237,0.2); border-radius:16px; padding:14px;">
+            <div style="font-size:0.88rem;font-weight:800;color:#7c3aed;margin-bottom:10px;">âš¡ SuperAdmin: Near-End Alert Thresholds</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+              <div>
+                <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">ðŸ”´ Critical (pages remaining)</label>
+                <input type="number" id="toner-threshold-input" class="native-input" value="1000" min="0" style="font-size:0.82rem;padding:8px 10px;">
+              </div>
+              <div>
+                <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">ðŸŸ¡ Warning (pages remaining)</label>
+                <input type="number" id="toner-warn-threshold-input" class="native-input" value="2000" min="0" style="font-size:0.82rem;padding:8px 10px;">
+              </div>
+            </div>
+            <button class="arrow-btn" onclick="saveTonerSettings()"
+              style="width:auto;padding:8px 18px;border-radius:20px;font-size:0.78rem;font-weight:700;color:#fff;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;">
+              ðŸ’¾ Save Thresholds
+            </button>
+            <div style="font-size:0.7rem;color:#94a3b8;margin-top:8px;">These thresholds are saved to Neon DB and apply to all users instantly.</div>
+          </div>
+
+        </div><!-- /toner-content -->
+      </div><!-- /skynex-card -->
+    </section><!-- /tab-toner -->
 
     <!-- TAB 6: EMPLOYEE / CONTACT DIRECTORY & ID CARD GENERATOR (ADMIN MODULE) -->
     <section id="tab-employees" class="tab-panel">
@@ -1465,12 +1604,12 @@
             <button class="arrow-btn" id="add-employee-top-btn"
               style="width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #1e40af; background: rgba(59, 130, 246, 0.1);"
               onclick="openAddEmployeeModal()">
-              ➕ Add Member
+              âž• Add Member
             </button>
             <button class="arrow-btn"
               style="width: auto; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; gap: 4px; color: #15803d; background: rgba(22, 163, 74, 0.1);"
               onclick="exportEmployeesToExcel()">
-              📊 Excel
+              ðŸ“Š Excel
             </button>
           </div>
         </div>
@@ -1478,7 +1617,7 @@
         <!-- Search & Hospital Filter Controls -->
         <div class="history-controls">
           <input type="text" id="employee-search-input" class="native-input"
-            placeholder="🔍 Search Employee Name / Email / Phone / Role..." oninput="filterEmployeesList()"
+            placeholder="ðŸ” Search Employee Name / Email / Phone / Role..." oninput="filterEmployeesList()"
             style="font-size: 0.8rem; padding: 8px 12px;">
 
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
@@ -1502,7 +1641,7 @@
 
         <!-- Empty State -->
         <div id="no-employees" style="display:none; text-align:center; padding:36px; color:var(--text-muted);">
-          <div style="font-size:2rem; margin-bottom:8px;">👥</div>
+          <div style="font-size:2rem; margin-bottom:8px;">ðŸ‘¥</div>
           <p>No employee records found.</p>
         </div>
       </div>
@@ -1513,7 +1652,7 @@
       <div class="skynex-card" style="border-top: 4px solid #7c3aed;">
         <div class="skynex-card-title" style="flex-wrap: wrap; gap: 8px;">
           <div>
-            <div style="font-size: 1.1rem; font-weight: 800; color: #7c3aed;">⚡ SuperAdmin Control Center</div>
+            <div style="font-size: 1.1rem; font-weight: 800; color: #7c3aed;">âš¡ SuperAdmin Control Center</div>
             <div style="font-size: 0.74rem; color: var(--text-muted);">Master security policies, allowlist audit,
               password resets &amp; system diagnostics</div>
           </div>
@@ -1527,7 +1666,7 @@
           style="margin-top: 14px; background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 16px; padding: 16px;">
           <div
             style="font-size: 0.88rem; font-weight: 800; color: #6b21a8; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-            <span>🔐 Login Screen Security Configuration</span>
+            <span>ðŸ” Login Screen Security Configuration</span>
           </div>
           <div style="font-size: 0.76rem; color: #475569; margin-bottom: 12px; line-height: 1.4;">
             Control whether users see the <strong>"Sign in with Google"</strong> button on the welcome login page. When
@@ -1557,7 +1696,7 @@
           style="margin-top: 16px; background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 16px; padding: 16px;">
           <div
             style="font-size: 0.88rem; font-weight: 800; color: #0284c7; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-            <span>🤖 Scanner Engine &amp; OCR Method</span>
+            <span>ðŸ¤– Scanner Engine &amp; OCR Method</span>
           </div>
           <div style="font-size: 0.76rem; color: #475569; margin-bottom: 12px; line-height: 1.4;">
             Choose whether the mobile camera scanner uses <strong>Method 2: Gemini AI Vision (Recommended)</strong> or
@@ -1571,7 +1710,7 @@
               <div style="display: flex; align-items: center; gap: 8px;">
                 <input type="radio" name="ocrMethodRadio" value="vision" id="radio-method-vision"
                   onchange="handleOcrMethodChange('vision')" checked style="accent-color: #0284c7;">
-                <strong style="color: #0284c7; font-size: 0.82rem;">Method 2: AI Vision ⚡</strong>
+                <strong style="color: #0284c7; font-size: 0.82rem;">Method 2: AI Vision âš¡</strong>
               </div>
               <span style="font-size: 0.68rem; color: #64748b; margin-left: 24px;">Cloud Gemini Vision API. Superior
                 dot-matrix &amp; sticker recognition. Zero client load.</span>
@@ -1600,12 +1739,12 @@
             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
             <div
               style="font-size: 0.9rem; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 6px;">
-              <span>🛡️ Admin Role Granular Permission Matrix</span>
+              <span>ðŸ›¡ï¸ Admin Role Granular Permission Matrix</span>
             </div>
             <button type="button" class="btn-native-submit" id="btn-save-admin-perms"
               onclick="handleSaveAdminPermissions()"
               style="width: auto; padding: 5px 14px; font-size: 0.74rem; background: #16a34a; border-radius: 12px; font-weight: 700;">
-              💾 Save Permissions
+              ðŸ’¾ Save Permissions
             </button>
           </div>
           <div style="font-size: 0.74rem; color: #15803d; margin-bottom: 12px; line-height: 1.4;">
@@ -1708,7 +1847,7 @@
           <div
             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
             <div>
-              <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a;">👥 Staff Allowlist &amp; Password Audit
+              <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a;">ðŸ‘¥ Staff Allowlist &amp; Password Audit
               </div>
               <div style="font-size: 0.72rem; color: var(--text-muted);">Real-time audit of Google Sheet (manpower tab)
                 vs Neon DB login capability</div>
@@ -1716,7 +1855,7 @@
             <button type="button" class="arrow-btn"
               style="width: auto; padding: 5px 12px; border-radius: 14px; font-size: 0.72rem; font-weight: 700; color: #7c3aed; background: rgba(124,58,237,0.1);"
               onclick="loadAdminCenterPage()">
-              🔄 Refresh Audit
+              ðŸ”„ Refresh Audit
             </button>
           </div>
 
@@ -1747,17 +1886,17 @@
         <!-- Section 3: Centralized Diagnostics & Connection Status -->
         <div
           style="margin-top: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px;">
-          <div style="font-size: 0.84rem; font-weight: 800; color: #0f172a; margin-bottom: 8px;">⚙️ Centralized
+          <div style="font-size: 0.84rem; font-weight: 800; color: #0f172a; margin-bottom: 8px;">âš™ï¸ Centralized
             Infrastructure Diagnostics</div>
           <div
             style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size: 0.74rem;">
             <div style="background: #ffffff; padding: 10px 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
               <span style="color:#64748b; display:block;">Auth Database:</span>
-              <strong style="color:#059669;">🟢 Neon PostgreSQL Connected</strong>
+              <strong style="color:#059669;">ðŸŸ¢ Neon PostgreSQL Connected</strong>
             </div>
             <div style="background: #ffffff; padding: 10px 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
               <span style="color:#64748b; display:block;">Master Sheet:</span>
-              <strong style="color:#0284c7;">📊 manpower!A1:AD</strong>
+              <strong style="color:#0284c7;">ðŸ“Š manpower!A1:AD</strong>
             </div>
             <div style="background: #ffffff; padding: 10px 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
               <span style="color:#64748b; display:block;">Service Account:</span>
@@ -1822,7 +1961,196 @@
     </button>
   </nav>
 
-  <!-- ── 2-Row Mobile-Optimized Counter Picker Modal ── -->
+  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+  <!-- â”€â”€ TONER TRACKER MODALS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+
+  <!-- Modal: Receive Toner (HO/Warehouse Purchase) -->
+  <div id="receive-toner-modal" class="modal-overlay" style="display:none;" onclick="closeReceiveTonerModal()">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width:420px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">ðŸ“¥ Receive Toner Cartridge</div>
+          <div class="modal-subtitle">Record HO/Warehouse purchase receipt</div>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeReceiveTonerModal()">âœ•</button>
+      </div>
+      <form id="receive-toner-form" onsubmit="event.preventDefault(); submitReceiveToner();" style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Toner Model *</label>
+          <select id="receive-toner-model" class="native-input" style="font-size:0.82rem;" required>
+            <option value="">-- Select Toner Model --</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Quantity *</label>
+            <input type="number" id="receive-toner-qty" class="native-input" min="1" placeholder="e.g. 2" style="font-size:0.82rem;" required>
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Color / Type</label>
+            <input type="text" id="receive-toner-color" class="native-input" placeholder="e.g. Black" style="font-size:0.82rem;">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Hospital / Location</label>
+          <input type="text" id="receive-toner-hospital" class="native-input" placeholder="HO/Warehouse (default)" style="font-size:0.82rem;">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Unit Cost â‚¹</label>
+            <input type="number" id="receive-toner-cost" class="native-input" min="0" placeholder="e.g. 4500" style="font-size:0.82rem;">
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Supplier / Invoice No.</label>
+            <input type="text" id="receive-toner-supplier" class="native-input" placeholder="Invoice / Vendor" style="font-size:0.82rem;">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Notes</label>
+          <input type="text" id="receive-toner-notes" class="native-input" placeholder="Optional" style="font-size:0.82rem;">
+        </div>
+        <button id="receive-toner-submit-btn" type="submit" class="submit-btn" style="margin-top:4px;">âœ… Save Receipt</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Dispatch Toner (HO â†’ Hospital) -->
+  <div id="dispatch-toner-modal" class="modal-overlay" style="display:none;" onclick="closeDispatchTonerModal()">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width:420px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">ðŸ“¤ Dispatch Toner to Hospital</div>
+          <div class="modal-subtitle">Send toner from HO stock to a hospital</div>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeDispatchTonerModal()">âœ•</button>
+      </div>
+      <form id="dispatch-toner-form" onsubmit="event.preventDefault(); submitDispatchToner();" style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Toner Model *</label>
+          <select id="dispatch-toner-model" class="native-input" style="font-size:0.82rem;" required>
+            <option value="">-- Select Toner Model --</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Quantity *</label>
+            <input type="number" id="dispatch-toner-qty" class="native-input" min="1" placeholder="e.g. 1" style="font-size:0.82rem;" required>
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Color / Type</label>
+            <input type="text" id="dispatch-toner-color" class="native-input" placeholder="e.g. Black" style="font-size:0.82rem;">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Destination Hospital *</label>
+          <select id="dispatch-toner-hospital" class="native-input" style="font-size:0.82rem;" required>
+            <option value="">-- Select Hospital --</option>
+            <option value="MDM">MDM Hospital</option>
+            <option value="MGH">MGH Hospital</option>
+            <option value="UMMED">UMMED Hospital</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Notes</label>
+          <input type="text" id="dispatch-toner-notes" class="native-input" placeholder="Optional" style="font-size:0.82rem;">
+        </div>
+        <button id="dispatch-toner-submit-btn" type="submit" class="submit-btn" style="margin-top:4px;">âœ… Save Dispatch</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Install Toner on Printer -->
+  <div id="install-toner-modal" class="modal-overlay" style="display:none;" onclick="closeInstallTonerModal()">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width:440px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">ðŸ–¨ï¸ Install Toner on Printer</div>
+          <div class="modal-subtitle">Record new toner cartridge installation</div>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeInstallTonerModal()">âœ•</button>
+      </div>
+      <form id="install-toner-form" onsubmit="event.preventDefault(); submitInstallToner();" style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Hospital *</label>
+            <select id="install-toner-hospital" class="native-input" style="font-size:0.82rem;" required>
+              <option value="">-- Select --</option>
+              <option value="MDM">MDM</option>
+              <option value="MGH">MGH</option>
+              <option value="UMMED">UMMED</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Counter No. *</label>
+            <input type="text" id="install-toner-counter" class="native-input" placeholder="e.g. C-14" style="font-size:0.82rem;" required>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Printer Serial No.</label>
+            <input type="text" id="install-toner-serial" class="native-input" placeholder="e.g. ACN12345" style="font-size:0.82rem;">
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Printer Model</label>
+            <input type="text" id="install-toner-printer-model" class="native-input" placeholder="e.g. BizHub C258" style="font-size:0.82rem;">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Toner Model *</label>
+          <select id="install-toner-model" class="native-input" style="font-size:0.82rem;" required>
+            <option value="">-- Select Toner Model --</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Color / Type</label>
+            <input type="text" id="install-toner-color" class="native-input" placeholder="e.g. Black" style="font-size:0.82rem;">
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Opening Meter Reading *</label>
+            <input type="number" id="install-toner-opening-meter" class="native-input" min="0" placeholder="e.g. 17606" style="font-size:0.82rem;" required>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Notes</label>
+          <input type="text" id="install-toner-notes" class="native-input" placeholder="Optional" style="font-size:0.82rem;">
+        </div>
+        <button id="install-toner-submit-btn" type="submit" class="submit-btn" style="margin-top:4px;">âœ… Record Installation</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Replace / Close Toner (mark replaced, enter closing meter) -->
+  <div id="close-toner-modal" class="modal-overlay" style="display:none;" onclick="closeCloseTonerModal()">
+    <div class="modal-card" onclick="event.stopPropagation()" style="max-width:380px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">ðŸ”„ Replace Toner Cartridge</div>
+          <div class="modal-subtitle" id="close-toner-counter-display">Enter closing meter reading</div>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeCloseTonerModal()">âœ•</button>
+      </div>
+      <form onsubmit="event.preventDefault(); submitCloseToner();" style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <input type="hidden" id="close-toner-row-index">
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Closing Meter Reading *</label>
+          <input type="number" id="close-toner-closing-meter" class="native-input" min="0" placeholder="Current printer total count" style="font-size:0.82rem;" required>
+          <div style="font-size:0.7rem;color:#94a3b8;margin-top:4px;">Must be â‰¥ opening meter. Pages yield = closing âˆ’ opening.</div>
+        </div>
+        <div>
+          <label style="font-size:0.75rem;font-weight:700;color:#64748b;display:block;margin-bottom:4px;">Notes</label>
+          <input type="text" id="close-toner-notes" class="native-input" placeholder="Reason for replacement, condition, etc." style="font-size:0.82rem;">
+        </div>
+        <button id="close-toner-submit-btn" type="submit" class="submit-btn" style="margin-top:4px;background:linear-gradient(135deg,#dc2626,#f97316);">âœ… Confirm Replacement</button>
+      </form>
+    </div>
+  </div>
+  <!-- â”€â”€ END TONER TRACKER MODALS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+
+  <!-- â”€â”€ 2-Row Mobile-Optimized Counter Picker Modal â”€â”€ -->
   <div id="counter-picker-modal" class="modal-overlay" style="display:none;" onclick="closeCounterPickerModal(event)">
     <div class="modal-card" onclick="event.stopPropagation()">
       <div class="modal-header">
@@ -1830,12 +2158,12 @@
           <div class="modal-title">Select Counter &amp; Printer</div>
           <div class="modal-subtitle">Tap an option to select</div>
         </div>
-        <button type="button" class="modal-close-btn" onclick="closeCounterPickerModal()">✕</button>
+        <button type="button" class="modal-close-btn" onclick="closeCounterPickerModal()">âœ•</button>
       </div>
 
       <div style="padding: 10px 16px 4px;">
         <input type="text" id="counter-picker-search" class="native-input"
-          placeholder="🔍 Search Counter / Serial / Location..." oninput="filterCounterPickerOptions()"
+          placeholder="ðŸ” Search Counter / Serial / Location..." oninput="filterCounterPickerOptions()"
           style="font-size:0.85rem; padding:8px 12px;">
       </div>
 
@@ -1843,7 +2171,7 @@
     </div>
   </div>
 
-  <!-- ── Dedicated Printer Deep-Dive Details Modal ── -->
+  <!-- â”€â”€ Dedicated Printer Deep-Dive Details Modal â”€â”€ -->
   <div id="printer-detail-modal" class="modal-overlay" style="display:none;" onclick="closePrinterDetailModal(event)">
     <div class="modal-card" id="printer-detail-modal-card" onclick="event.stopPropagation()">
       <div class="modal-header">
@@ -1871,7 +2199,7 @@
               <line x1="3" y1="21" x2="10" y2="14" />
             </svg>
           </button>
-          <button type="button" class="modal-close-btn" onclick="closePrinterDetailModal()">✕</button>
+          <button type="button" class="modal-close-btn" onclick="closePrinterDetailModal()">âœ•</button>
         </div>
       </div>
 
@@ -1885,7 +2213,7 @@
     </div>
   </div>
 
-  <!-- ── Digital Employee ID Card Offcanvas Drawer (Printable / Exportable) ── -->
+  <!-- â”€â”€ Digital Employee ID Card Offcanvas Drawer (Printable / Exportable) â”€â”€ -->
   <div id="id-card-offcanvas" class="offcanvas-overlay" style="display:none;" onclick="closeIdCardOffcanvas(event)">
     <div class="offcanvas-drawer" onclick="event.stopPropagation()">
       <div class="offcanvas-header">
@@ -1897,9 +2225,9 @@
           <button type="button" class="arrow-btn"
             style="width: auto; padding: 5px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 800; color: #1e40af; background: rgba(59, 130, 246, 0.1);"
             onclick="printIdCard()" title="Print / PDF">
-            🖨️ Print
+            ðŸ–¨ï¸ Print
           </button>
-          <button type="button" class="modal-close-btn" onclick="closeIdCardOffcanvas()">✕</button>
+          <button type="button" class="modal-close-btn" onclick="closeIdCardOffcanvas()">âœ•</button>
         </div>
       </div>
 
@@ -1928,7 +2256,7 @@
 
           <div class="id-card-photo-wrap">
             <div class="id-card-photo-box" id="idc-photo-container">
-              <div class="id-card-photo-placeholder" id="idc-avatar">—</div>
+              <div class="id-card-photo-placeholder" id="idc-avatar">â€”</div>
               <img id="idc-photo-img" style="display:none; width:100%; height:100%; object-fit:cover;" alt="Photo">
             </div>
           </div>
@@ -1938,7 +2266,7 @@
             <div class="id-card-name-divider"></div>
             <div class="id-card-person-role" id="idc-role">OPERATOR</div>
             <div class="id-card-person-phone">
-              <span class="phone-icon">📞</span> <strong id="idc-phone">+91 94140 XXXXX</strong>
+              <span class="phone-icon">ðŸ“ž</span> <strong id="idc-phone">+91 94140 XXXXX</strong>
             </div>
             <div class="id-card-person-hospital">
               Office : <strong id="idc-hospital">MDM Hospital</strong>
@@ -1972,17 +2300,17 @@
           <input type="file" id="id-card-photo-file" accept="image/*" style="display:none;"
             onchange="handlePhotoFileSelected(event)">
           <button type="button" class="btn-id-action upload" onclick="triggerPhotoUpload()">
-            📷 Upload Profile Photo
+            ðŸ“· Upload Profile Photo
           </button>
           <button type="button" class="btn-id-action print" onclick="printIdCard()">
-            🖨️ Print ID Card
+            ðŸ–¨ï¸ Print ID Card
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ── ID Card Profile Photo Adjuster Modal (Passport Crop & Adjust) ── -->
+  <!-- â”€â”€ ID Card Profile Photo Adjuster Modal (Passport Crop & Adjust) â”€â”€ -->
   <div id="id-photo-adjuster-modal" class="modal-overlay"
     style="display:none; position:fixed; inset:0; z-index:10005; background:rgba(15,23,42,0.75); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:12px;"
     onclick="closeIdPhotoAdjusterModal(event)">
@@ -1992,12 +2320,12 @@
       <div class="adjuster-header"
         style="margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.12); display:flex; justify-content:space-between; align-items:center;">
         <div class="adjuster-title">
-          <span style="font-size:0.95rem; font-weight:800; color:#ffffff;">📐 Adjust ID Card Photo</span>
-          <span class="adjuster-hint" style="font-size:0.68rem; color:#94a3b8;">Drag to Pan • Pinch or Slider to
+          <span style="font-size:0.95rem; font-weight:800; color:#ffffff;">ðŸ“ Adjust ID Card Photo</span>
+          <span class="adjuster-hint" style="font-size:0.68rem; color:#94a3b8;">Drag to Pan â€¢ Pinch or Slider to
             Zoom</span>
         </div>
         <button type="button" class="btn-adjuster-reset" onclick="resetIdPhotoAdjuster()" title="Reset adjustments">
-          🔄 Reset
+          ðŸ”„ Reset
         </button>
       </div>
 
@@ -2020,56 +2348,56 @@
       <!-- Fine Angle Correction Slider -->
       <div class="adjuster-control-row" style="margin-top:10px;">
         <div class="control-label">
-          <span>📐 Angle / Straighten:</span>
-          <strong id="id-photo-angle-lbl">0°</strong>
+          <span>ðŸ“ Angle / Straighten:</span>
+          <strong id="id-photo-angle-lbl">0Â°</strong>
         </div>
         <div class="slider-with-btns">
-          <button type="button" class="btn-step-adjust" onclick="nudgeIdPhotoAngle(-1)">−1°</button>
+          <button type="button" class="btn-step-adjust" onclick="nudgeIdPhotoAngle(-1)">âˆ’1Â°</button>
           <input type="range" id="id-photo-angle-slider" min="-45" max="45" value="0" step="0.5"
             oninput="onIdPhotoAngleSliderChange(this.value)">
-          <button type="button" class="btn-step-adjust" onclick="nudgeIdPhotoAngle(1)">+1°</button>
-          <button type="button" class="btn-zero-angle" onclick="onIdPhotoAngleSliderChange(0)">0°</button>
+          <button type="button" class="btn-step-adjust" onclick="nudgeIdPhotoAngle(1)">+1Â°</button>
+          <button type="button" class="btn-zero-angle" onclick="onIdPhotoAngleSliderChange(0)">0Â°</button>
         </div>
       </div>
 
       <!-- Zoom Slider -->
       <div class="adjuster-control-row">
         <div class="control-label">
-          <span>🔍 Zoom:</span>
+          <span>ðŸ” Zoom:</span>
           <strong id="id-photo-zoom-lbl">1.0x</strong>
         </div>
         <div class="slider-with-btns">
-          <button type="button" class="btn-step-adjust" onclick="nudgeIdPhotoZoom(-0.1)">−</button>
+          <button type="button" class="btn-step-adjust" onclick="nudgeIdPhotoZoom(-0.1)">âˆ’</button>
           <input type="range" id="id-photo-zoom-slider" min="1" max="4" value="1" step="0.05"
             oninput="onIdPhotoZoomSliderChange(this.value)">
           <button type="button" class="btn-step-adjust" onclick="nudgeIdPhotoZoom(0.1)">+</button>
         </div>
       </div>
 
-      <!-- 90° Rotations -->
+      <!-- 90Â° Rotations -->
       <div class="adjuster-actions-pills" style="margin-top:8px;">
         <button type="button" class="btn-adjuster-pill" onclick="rotateIdPhoto90(-90)">
-          ⟲ 90° Left
+          âŸ² 90Â° Left
         </button>
         <button type="button" class="btn-adjuster-pill" onclick="rotateIdPhoto90(90)">
-          ⟳ 90° Right
+          âŸ³ 90Â° Right
         </button>
       </div>
 
       <!-- Footer Buttons -->
       <div style="display:flex; gap:8px; margin-top:14px;">
         <button type="button" class="btn-adjuster-retake" style="flex:1;" onclick="closeIdPhotoAdjusterModal()">
-          ✕ Cancel
+          âœ• Cancel
         </button>
         <button type="button" class="btn-adjuster-scan" id="id-photo-upload-submit-btn"
           style="flex:2; background:#0284c7;" onclick="submitAdjustedIdPhoto()">
-          ☁️ Save &amp; Upload Photo
+          â˜ï¸ Save &amp; Upload Photo
         </button>
       </div>
     </div>
   </div>
 
-  <!-- ── Add/Edit Employee Modal ── -->
+  <!-- â”€â”€ Add/Edit Employee Modal â”€â”€ -->
   <div id="add-employee-modal" class="modal-overlay" style="display:none;" onclick="closeAddEmployeeModal(event)">
     <div class="modal-card" onclick="event.stopPropagation()">
       <div class="modal-header">
@@ -2077,7 +2405,7 @@
           <div class="modal-title" id="add-emp-modal-title">Add Team Member</div>
           <div class="modal-subtitle" id="add-emp-modal-sub">Save to Manpower Master directory</div>
         </div>
-        <button type="button" class="modal-close-btn" onclick="closeAddEmployeeModal()">✕</button>
+        <button type="button" class="modal-close-btn" onclick="closeAddEmployeeModal()">âœ•</button>
       </div>
 
       <form id="add-employee-form" onsubmit="handleSaveEmployee(event)" style="padding: 16px;">
@@ -2127,17 +2455,17 @@
         <div class="form-group">
           <label>Member Category <span class="req">*</span></label>
           <select id="emp-category-input" class="native-select" required onchange="toggleLoginAccessDefault()">
-            <option value="Both">👥 Both (Employee ID Card + App User)</option>
-            <option value="Employee">🪪 Employee Only (ID Card, No Login)</option>
-            <option value="Contact">📞 Contact Only (Phone Directory, No Login)</option>
+            <option value="Both">ðŸ‘¥ Both (Employee ID Card + App User)</option>
+            <option value="Employee">ðŸªª Employee Only (ID Card, No Login)</option>
+            <option value="Contact">ðŸ“ž Contact Only (Phone Directory, No Login)</option>
           </select>
         </div>
 
         <div class="form-group">
           <label>App Login Access <span class="req">*</span></label>
           <select id="emp-login-input" class="native-select" required>
-            <option value="YES">🟢 YES (Allow Google Sign-In &amp; Entry Access)</option>
-            <option value="NO">🔴 NO (Block App Login Access)</option>
+            <option value="YES">ðŸŸ¢ YES (Allow Google Sign-In &amp; Entry Access)</option>
+            <option value="NO">ðŸ”´ NO (Block App Login Access)</option>
           </select>
         </div>
 
@@ -2147,22 +2475,22 @@
             Cancel
           </button>
           <button type="submit" class="btn-native-submit" id="emp-save-btn">
-            💾 Save Member
+            ðŸ’¾ Save Member
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- ── Profile & Account Settings Modal ── -->
+  <!-- â”€â”€ Profile & Account Settings Modal â”€â”€ -->
   <div id="profile-modal" class="modal-overlay" onclick="closeProfileModal(event)"
     style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.6); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px;">
     <div class="modal-card" onclick="event.stopPropagation()"
       style="background:#ffffff; width:100%; max-width:440px; border-radius:24px; padding:24px 20px; box-shadow:0 20px 50px rgba(15,23,42,0.25);">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <div style="font-size:1.15rem; font-weight:800; color:#0f172a;">👤 My Profile &amp; Settings</div>
+        <div style="font-size:1.15rem; font-weight:800; color:#0f172a;">ðŸ‘¤ My Profile &amp; Settings</div>
         <button type="button" class="modal-close" onclick="closeProfileModal()"
-          style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b;">✕</button>
+          style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b;">âœ•</button>
       </div>
 
       <div style="background:#f8fafc; border-radius:18px; padding:16px; border:1px solid #e2e8f0; margin-bottom:16px;">
@@ -2193,7 +2521,7 @@
       <!-- Google Account Linking Section -->
       <div
         style="margin-bottom:16px; padding:12px 14px; border-radius:14px; background:#eff6ff; border:1px solid #bfdbfe;">
-        <div style="font-size:0.82rem; font-weight:700; color:#1e40af; margin-bottom:4px;">🔗 Google Account Connection
+        <div style="font-size:0.82rem; font-weight:700; color:#1e40af; margin-bottom:4px;">ðŸ”— Google Account Connection
         </div>
         <div style="font-size:0.74rem; color:#3b82f6; margin-bottom:10px; line-height:1.4;">
           Connect your Google account to enable 1-tap Google Sign-In and cloud photo uploads.
@@ -2217,7 +2545,7 @@
       <!-- SuperAdmin Exclusive Settings Section -->
       <div id="superadmin-settings-box"
         style="display:none; margin-bottom:16px; padding:12px 14px; border-radius:14px; background:#faf5ff; border:1px solid #e9d5ff;">
-        <div style="font-size:0.82rem; font-weight:800; color:#6b21a8; margin-bottom:6px;">⚡ SuperAdmin Control: Login
+        <div style="font-size:0.82rem; font-weight:800; color:#6b21a8; margin-bottom:6px;">âš¡ SuperAdmin Control: Login
           Screen</div>
         <div style="display:flex; align-items:center; justify-content:space-between;">
           <span style="font-size:0.75rem; color:#475569; font-weight:600;">Allow "Sign in with Google" on Login:</span>
@@ -2238,15 +2566,15 @@
     </div>
   </div>
 
-  <!-- ── SuperAdmin Reset Employee Password Modal ── -->
+  <!-- â”€â”€ SuperAdmin Reset Employee Password Modal â”€â”€ -->
   <div id="admin-reset-pwd-modal" class="modal-overlay" onclick="closeAdminResetPwdModal(event)"
     style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.6); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px;">
     <div class="modal-card" onclick="event.stopPropagation()"
       style="background:#ffffff; width:100%; max-width:440px; border-radius:24px; padding:24px 20px; box-shadow:0 20px 50px rgba(15,23,42,0.25);">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-        <div style="font-size:1.1rem; font-weight:800; color:#0f172a;">🔑 Manage Employee Password</div>
+        <div style="font-size:1.1rem; font-weight:800; color:#0f172a;">ðŸ”‘ Manage Employee Password</div>
         <button type="button" class="modal-close" onclick="closeAdminResetPwdModal()"
-          style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b;">✕</button>
+          style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b;">âœ•</button>
       </div>
 
       <div
@@ -2254,14 +2582,14 @@
         <div style="font-size:0.88rem; font-weight:700; color:#0f172a;" id="admin-reset-emp-name">Employee Name</div>
         <div style="font-size:0.78rem; color:#64748b;" id="admin-reset-emp-email">employee@gmail.com</div>
         <div style="font-size:0.76rem; color:#475569; margin-top:4px;">Registered Mobile: <strong
-            id="admin-reset-emp-phone">—</strong></div>
+            id="admin-reset-emp-phone">â€”</strong></div>
       </div>
 
       <!-- Quick 1-Click Default to Mobile Number Button -->
       <div style="margin-bottom:18px;">
         <button type="button" id="btn-quick-mobile-pwd" onclick="handleQuickResetToMobile()" class="btn-native-submit"
           style="background:#f0fdf4; color:#15803d; border:1.5px solid #86efac; font-size:0.84rem; padding:10px 14px; width:100%; font-weight:700;">
-          ⚡ Set Default to Registered Mobile
+          âš¡ Set Default to Registered Mobile
         </button>
         <div style="font-size:0.72rem; color:#64748b; margin-top:4px; text-align:center;">
           Sets employee's login password to their 10-digit mobile number in Neon DB.
@@ -2293,17 +2621,17 @@
           </button>
           <button type="submit" class="btn-native-submit" id="admin-save-custom-pwd-btn"
             style="background:var(--primary, #0284c7); color:#fff; width:60%;">
-            💾 Save Password
+            ðŸ’¾ Save Password
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- ── Generic In-App Confirmation Modal (Rule 05 Compliant) ── -->
+  <!-- â”€â”€ Generic In-App Confirmation Modal (Rule 05 Compliant) â”€â”€ -->
   <div id="app-confirm-modal" class="modal-overlay" style="display:none; z-index:10001;" onclick="closeAppConfirmModal(false)">
     <div class="modal-card" style="max-width:380px; text-align:center; padding:24px 20px;" onclick="event.stopPropagation()">
-      <div id="app-confirm-icon" style="font-size:2.5rem; margin-bottom:12px;">⚠️</div>
+      <div id="app-confirm-icon" style="font-size:2.5rem; margin-bottom:12px;">âš ï¸</div>
       <div id="app-confirm-title" style="font-size:1.1rem; font-weight:800; color:#0f172a; margin-bottom:8px;">Confirm Action</div>
       <div id="app-confirm-msg" style="font-size:0.85rem; color:#64748b; margin-bottom:20px; line-height:1.4;">Are you sure you want to proceed?</div>
       <div style="display:flex; gap:10px;">
@@ -2331,13 +2659,13 @@
     <div class="scanner-modal-card fullscreen-scanner">
       <div class="scanner-header">
         <div class="scanner-title-box">
-          <span style="font-size:1.25rem;">📷</span>
+          <span style="font-size:1.25rem;">ðŸ“·</span>
           <div>
             <div class="scanner-title">Scan Printer Display</div>
             <div class="scanner-sub">Align LCD reading &amp; serial number within guide box</div>
           </div>
         </div>
-        <button type="button" class="scanner-close-btn" onclick="closeScannerModal()" title="Close">✕</button>
+        <button type="button" class="scanner-close-btn" onclick="closeScannerModal()" title="Close">âœ•</button>
       </div>
 
       <!-- Viewfinder Area -->
@@ -2368,7 +2696,7 @@
       <!-- Viewfinder Camera Controls (visible when aiming) -->
       <div class="scanner-controls-bar" id="scanner-controls-bar">
         <label class="btn-scanner-action gallery-pick-btn" title="Upload photo from gallery">
-          📁 Gallery
+          ðŸ“ Gallery
           <input type="file" id="scanner-file-input" accept="image/*" style="display:none;"
             onchange="handleScannerFileUpload(event)">
         </label>
@@ -2380,28 +2708,28 @@
 
         <button type="button" class="btn-scanner-action switch-cam-btn" onclick="toggleCameraFacing()"
           title="Switch Camera">
-          🔄 Flip
+          ðŸ”„ Flip
         </button>
       </div>
 
       <!-- Full Data Verification & Recapture Card (visible after scanning) -->
       <div id="scanner-result-bar" class="scanner-result-bar" style="display:none;">
         <div class="sresult-header">
-          <div class="sresult-title">🔍 Scanned Data Verification</div>
+          <div class="sresult-title">ðŸ” Scanned Data Verification</div>
           <button type="button" class="btn-recapture" onclick="recaptureScanner()" title="Retake photo">
-            🔄 Recapture
+            ðŸ”„ Recapture
           </button>
         </div>
 
         <div class="sresult-grid">
           <div class="sresult-item">
             <span class="sresult-label">Identified Printer / Counter</span>
-            <div class="sresult-val" id="sresult-counter-val">—</div>
+            <div class="sresult-val" id="sresult-counter-val">â€”</div>
             <div class="sresult-sub" id="sresult-counter-sub">Matched with directory</div>
           </div>
           <div class="sresult-item">
             <span class="sresult-label">Closing Reading (Total Count)</span>
-            <div class="sresult-val highlight" id="sresult-reading-val">—</div>
+            <div class="sresult-val highlight" id="sresult-reading-val">â€”</div>
             <div class="sresult-sub" id="sresult-reading-sub">From LCD meter</div>
           </div>
         </div>
@@ -2411,17 +2739,17 @@
 
         <div class="sresult-actions">
           <button type="button" class="btn-scanner-retake" onclick="recaptureScanner()">
-            📸 Retake / Try Again
+            ðŸ“¸ Retake / Try Again
           </button>
           <button type="button" class="btn-apply-scan" onclick="applyScanResultToForm()">
-            ✅ Confirm &amp; Auto-Fill Form
+            âœ… Confirm &amp; Auto-Fill Form
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ── Add Stock Entry Modal (SuperAdmin Only) ── -->
+  <!-- â”€â”€ Add Stock Entry Modal (SuperAdmin Only) â”€â”€ -->
   <div id="add-stock-modal" class="modal-overlay" onclick="closeAddStockModal(event)"
     style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.6); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px;">
     <div class="modal-card" onclick="event.stopPropagation()"
@@ -2429,12 +2757,12 @@
       <div
         style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
         <div>
-          <div style="font-size:1.1rem; font-weight:800; color:#0f172a;">📦 Add Stock Receipt</div>
+          <div style="font-size:1.1rem; font-weight:800; color:#0f172a;">ðŸ“¦ Add Stock Receipt</div>
           <div style="font-size:0.75rem; color:#64748b;">Record new Paper Rims, Toner, or Accessories (Sheet: stock)
           </div>
         </div>
         <button type="button" class="modal-close" onclick="closeAddStockModal()"
-          style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b;">✕</button>
+          style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b;">âœ•</button>
       </div>
 
       <form id="add-stock-form" onsubmit="submitStockEntry(event)">
@@ -2445,10 +2773,10 @@
               / Item Type *</label>
             <select id="stock-new-itemtype" class="native-input" required onchange="handleStockItemTypeChange()"
               style="width:100%; font-size:0.82rem; padding:8px 10px;">
-              <option value="Paper">📄 Paper Rims</option>
-              <option value="Toner">🖨️ Toner Cartridge</option>
-              <option value="Accessories">🔌 Accessories / Other</option>
-              <option value="__NEW__">➕ Add New Category...</option>
+              <option value="Paper">ðŸ“„ Paper Rims</option>
+              <option value="Toner">ðŸ–¨ï¸ Toner Cartridge</option>
+              <option value="Accessories">ðŸ”Œ Accessories / Other</option>
+              <option value="__NEW__">âž• Add New Category...</option>
             </select>
           </div>
           <div>
@@ -2535,13 +2863,13 @@
           <div>
             <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Rate
               (excl. Tax)</label>
-            <input type="number" id="stock-new-rate" class="native-input" step="any" placeholder="₹ per unit"
+            <input type="number" id="stock-new-rate" class="native-input" step="any" placeholder="â‚¹ per unit"
               oninput="calculateStockTotals()" style="width:100%; font-size:0.82rem; padding:8px 10px;">
           </div>
           <div>
             <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Rate Inc
               of TAX</label>
-            <input type="number" id="stock-new-ratetax" class="native-input" step="any" placeholder="₹ per unit"
+            <input type="number" id="stock-new-ratetax" class="native-input" step="any" placeholder="â‚¹ per unit"
               oninput="calculateStockTotals()" style="width:100%; font-size:0.82rem; padding:8px 10px;">
           </div>
         </div>
@@ -2551,13 +2879,13 @@
           <div>
             <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Amount
               (Subtotal)</label>
-            <input type="number" id="stock-new-amount" class="native-input" step="any" placeholder="₹ 0.00"
+            <input type="number" id="stock-new-amount" class="native-input" step="any" placeholder="â‚¹ 0.00"
               style="width:100%; font-size:0.82rem; padding:8px 10px; background:#f8fafc;">
           </div>
           <div>
             <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:4px;">Invoice
               TOTAL (Inc Tax)</label>
-            <input type="number" id="stock-new-total" class="native-input" step="any" placeholder="₹ 0.00"
+            <input type="number" id="stock-new-total" class="native-input" step="any" placeholder="â‚¹ 0.00"
               style="width:100%; font-size:0.82rem; padding:8px 10px; font-weight:700; color:#0f172a; background:#f8fafc;">
           </div>
         </div>
@@ -2595,14 +2923,14 @@
           </button>
           <button type="submit" id="btn-submit-stock-entry" class="btn-native-submit"
             style="background:linear-gradient(135deg, #0284c7, #2563eb); color:#fff; width:auto; padding:10px 24px; font-weight:800; border:none; box-shadow:0 4px 12px rgba(37,99,235,0.3);">
-            💾 Save Stock Entry
+            ðŸ’¾ Save Stock Entry
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- ── Stock Item Detail Modal (View Full Invoice Breakdown) ── -->
+  <!-- â”€â”€ Stock Item Detail Modal (View Full Invoice Breakdown) â”€â”€ -->
   <div id="stock-detail-modal" class="modal-overlay" onclick="closeStockDetailModal(event)"
     style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.6); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px;">
     <div class="modal-card" onclick="event.stopPropagation()"
@@ -2614,7 +2942,7 @@
           <div style="font-size:0.75rem; color:#64748b;" id="sdm-date-sub">Date &amp; Goods Info</div>
         </div>
         <button type="button" class="modal-close" onclick="closeStockDetailModal()"
-          style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b;">✕</button>
+          style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#64748b;">âœ•</button>
       </div>
 
       <div id="sdm-body" style="font-size:0.8rem; display:flex; flex-direction:column; gap:10px;">
@@ -2630,20 +2958,20 @@
     </div>
   </div>
 
-  <!-- ═════════════════════════════════════════════════════════ -->
-  <!-- ── FULLSCREEN CAMERA VIEWFINDER MODAL ─────────────────── -->
-  <!-- ═════════════════════════════════════════════════════════ -->
+  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+  <!-- â”€â”€ FULLSCREEN CAMERA VIEWFINDER MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
   <div id="wizard-camera-fullscreen" class="wizard-camera-fullscreen" style="display:none;">
     <!-- Top Floating Header -->
     <div class="wcf-top-bar">
       <button type="button" class="wcf-btn-circle" onclick="closeFullscreenCamera()" title="Close Camera">
-        ✕
+        âœ•
       </button>
       <div class="wcf-badge">
-        📷 Align Display &amp; Serial No.
+        ðŸ“· Align Display &amp; Serial No.
       </div>
       <button type="button" class="wcf-btn-circle" onclick="toggleCameraFacing()" title="Flip Camera">
-        🔄
+        ðŸ”„
       </button>
     </div>
 
@@ -2674,7 +3002,7 @@
     <!-- Bottom Controls Bar -->
     <div class="wcf-bottom-bar">
       <label class="wcf-btn-sub" title="Pick from Gallery">
-        📁 Gallery
+        ðŸ“ Gallery
         <input type="file" id="wizard-file-input" accept="image/*" style="display:none;"
           onchange="handleWizardFileUpload(event)">
       </label>
@@ -2684,7 +3012,7 @@
       </button>
 
       <button type="button" class="wcf-btn-sub" onclick="closeFullscreenCamera()" title="Cancel">
-        ✕ Close
+        âœ• Close
       </button>
     </div>
   </div>
@@ -2699,19 +3027,20 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 
-  <script src="assets/js/config.js?v=50"></script>
-  <script src="assets/js/schema.js?v=50"></script>
-  <script src="assets/js/auth.js?v=50"></script>
-  <script src="assets/js/sheets.js?v=50"></script>
-  <script src="assets/js/db.js?v=50"></script>
-  <script src="assets/js/notifications.js?v=50"></script>
-  <script src="assets/js/admob.js?v=50"></script>
-  <script src="assets/js/ocr.js?v=50"></script>
-  <script src="assets/js/modules/team-directory.js?v=50"></script>
-  <script src="assets/js/modules/stock-ledger.js?v=50"></script>
-  <script src="assets/js/modules/hardware-printers.js?v=50"></script>
-  <script src="assets/js/modules/vision-scanner.js?v=50"></script>
-  <script src="assets/js/app.js?v=50"></script>
+  <script src="assets/js/config.js?v=51"></script>
+  <script src="assets/js/schema.js?v=51"></script>
+  <script src="assets/js/auth.js?v=51"></script>
+  <script src="assets/js/sheets.js?v=51"></script>
+  <script src="assets/js/db.js?v=51"></script>
+  <script src="assets/js/notifications.js?v=51"></script>
+  <script src="assets/js/admob.js?v=51"></script>
+  <script src="assets/js/ocr.js?v=51"></script>
+  <script src="assets/js/modules/team-directory.js?v=51"></script>
+  <script src="assets/js/modules/stock-ledger.js?v=51"></script>
+  <script src="assets/js/modules/hardware-printers.js?v=51"></script>
+  <script src="assets/js/modules/vision-scanner.js?v=51"></script>
+  <script src="assets/js/modules/toner-tracker.js?v=51"></script>
+  <script src="assets/js/app.js?v=51"></script>
 
   <script>
     function toggleUserDropdown(e) {
@@ -2746,7 +3075,7 @@
       }
     });
 
-    // ── PWA Install Prompt Handling ──
+    // â”€â”€ PWA Install Prompt Handling â”€â”€
     let deferredInstallPrompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -2760,16 +3089,16 @@
       if (!deferredInstallPrompt) {
         // Check if already in standalone mode
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-          showToast('✅ PrintTrack is already running in installed App mode!', 'info');
+          showToast('âœ… PrintTrack is already running in installed App mode!', 'info');
         } else {
-          showToast('ℹ️ To install: Tap browser menu (⋮) and choose "Install App" or "Add to Home Screen".', 'info');
+          showToast('â„¹ï¸ To install: Tap browser menu (â‹®) and choose "Install App" or "Add to Home Screen".', 'info');
         }
         return;
       }
       deferredInstallPrompt.prompt();
       const { outcome } = await deferredInstallPrompt.userChoice;
       if (outcome === 'accepted') {
-        showToast('🎉 Thank you for installing PrintTrack!', 'success');
+        showToast('ðŸŽ‰ Thank you for installing PrintTrack!', 'success');
       }
       deferredInstallPrompt = null;
     }
@@ -2784,7 +3113,7 @@
       }
     };
 
-    // ── Service Worker Registration ──
+    // â”€â”€ Service Worker Registration â”€â”€
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').then((reg) => {
@@ -2797,7 +3126,7 @@
       });
     }
 
-    // ── Bell click: request notification permission ──
+    // â”€â”€ Bell click: request notification permission â”€â”€
     async function handleBellClick() {
       await requestNotificationPermission();
     }
