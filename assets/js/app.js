@@ -590,15 +590,28 @@ ${utilBase}${aiInsightLine}
 
 // ── One-Click Executive Share: Printable PDF / Summary View ─
 function exportExecutivePDF() {
-  const scope = document.getElementById("kpi-active-scope")?.textContent || "All Hospitals";
-  const delivered = document.getElementById("kpi-delivered-sheets")?.textContent || "0";
-  const delRims = document.getElementById("kpi-delivered-rims")?.textContent || "0";
-  const issued = document.getElementById("kpi-issued-sheets")?.textContent || "0";
-  const issRims = document.getElementById("kpi-issued-rims")?.textContent || "0";
-  const prints = document.getElementById("kpi-prints-count")?.textContent || "0";
-  const entries = document.getElementById("kpi-entries-count")?.textContent || "0";
-  const balance = document.getElementById("kpi-stock-balance")?.textContent || "0 Sheets";
-  const util = document.getElementById("kpi-utilization-rate")?.textContent || "0%";
+  // M2 fix: read from window._lastActiveStats (set by calculateHospitalMetrics)
+  // rather than scraping DOM — avoids race condition with animateCountUp().
+  const st = window._lastActiveStats;
+  if (!st || (st.delivered === 0 && st.issued === 0 && st.prints === 0)) {
+    showToast("⚠️ No data loaded yet. Please wait for the dashboard to finish loading.", "warn");
+    return;
+  }
+
+  const scope    = window._lastActiveHospitalName || "All Hospitals (SNMC)";
+  const unissued = window._lastUnissuedSheets != null ? window._lastUnissuedSheets : Math.max(0, st.delivered - st.issued);
+  const rawUtil  = window._lastRawUtilPct != null ? window._lastRawUtilPct : (st.delivered > 0 ? Math.round((st.prints / st.delivered) * 100) : 0);
+  const utilStr  = Math.min(100, rawUtil) + "%";
+
+  const fmtIN = n => parseInt(n || 0).toLocaleString("en-IN");
+  const delivered = fmtIN(st.delivered);
+  const delRims   = fmtIN(st.stockRims);
+  const issued    = fmtIN(st.issued);
+  const issRims   = (st.issued / 500).toFixed(1);
+  const prints    = fmtIN(st.prints);
+  const entries   = fmtIN(st.entries);
+  const balance   = fmtIN(unissued) + " Sheets";
+  const util      = utilStr;
 
   const todayStr = new Date().toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' });
   const dateRangeStr = (summaryStartDate && summaryEndDate) 
@@ -813,7 +826,9 @@ function renderHistoryRows(rowsToRender) {
 
   // 2. Render Desktop Table View
   if (tbody) {
-    const displayHeaders = DAILY_DISPLAY_HEADERS;
+    const displayHeaders = (Array.isArray(DAILY_DISPLAY_HEADERS) && DAILY_DISPLAY_HEADERS.length > 0)
+      ? DAILY_DISPLAY_HEADERS
+      : ["Date", "counter Number", "Opening reading", "Closing Reading", "BALANCE", "Paper Issued", "Paper Recieved", "ISSUE / RECEIVE", "REMARK"];
     tbody.innerHTML = rowsToRender.map(row => {
       const cellsHtml = displayHeaders.map(h => {
         let val = row[h] !== undefined ? row[h] : "";
@@ -1352,7 +1367,9 @@ async function loadHistory() {
     }
     if (noData) noData.style.display = "none";
 
-    const displayHeaders = DAILY_DISPLAY_HEADERS;
+    const displayHeaders = (Array.isArray(DAILY_DISPLAY_HEADERS) && DAILY_DISPLAY_HEADERS.length > 0)
+      ? DAILY_DISPLAY_HEADERS
+      : ["Date", "counter Number", "Opening reading", "Closing Reading", "BALANCE", "Paper Issued", "Paper Recieved", "ISSUE / RECEIVE", "REMARK"];
 
     const thead = document.getElementById("history-head");
     if (thead) {

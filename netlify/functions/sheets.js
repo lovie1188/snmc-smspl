@@ -1,6 +1,6 @@
-// ============================================================
-// Netlify Serverless API Function — Google Sheets Backend
-// PrintTrack PWA — SNMC
+﻿// ============================================================
+// Netlify Serverless API Function â€” Google Sheets Backend
+// PrintTrack PWA â€” SNMC
 // Sheet ID: 1Zbx8wOV3FTTxEH0k4i_F2v7SA2_pSp3R6VACroY19H0
 // ============================================================
 
@@ -43,40 +43,40 @@ const STOCK_RANGE = "A:P";
 const USER_HOSPITALS_TAB = "user_hospitals";
 const USER_HOSPITALS_RANGE = "A:H";
 
-// ── Toner Tracking Module ──────────────────────────────────────────────────
+// â”€â”€ Toner Tracking Module â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const TONER_STOCK_TAB   = "toner_stock";   // HO Inventory Ledger
 const TONER_STOCK_RANGE = "A:K";
 const TONER_LOG_TAB     = "toner_log";     // Printer Installation Log
 const TONER_LOG_RANGE   = "A:O";
 
-// Approved Konica Minolta toner models — update as per procurement.
+// Approved Konica Minolta toner models â€” update as per procurement.
 const KONICA_MINOLTA_TONERS = [
-  "TN-324K (BizHub C258/C308/C368) — Black",
-  "TN-324C (BizHub C258/C308/C368) — Cyan",
-  "TN-324M (BizHub C258/C308/C368) — Magenta",
-  "TN-324Y (BizHub C258/C308/C368) — Yellow",
-  "TN-321K (BizHub C224/C284/C364) — Black",
-  "TN-321C (BizHub C224/C284/C364) — Cyan",
-  "TN-321M (BizHub C224/C284/C364) — Magenta",
-  "TN-321Y (BizHub C224/C284/C364) — Yellow",
-  "TN-118 (BizHub 226/266/306) — Black",
-  "TN-217 (BizHub 223/283/363) — Black",
-  "DR-311 (BizHub C224/C284/C364/C258/C308/C368) — Drum Unit",
-  "DR-512 (BizHub 226/266/306) — Drum Unit",
+  "TN-324K (BizHub C258/C308/C368) â€” Black",
+  "TN-324C (BizHub C258/C308/C368) â€” Cyan",
+  "TN-324M (BizHub C258/C308/C368) â€” Magenta",
+  "TN-324Y (BizHub C258/C308/C368) â€” Yellow",
+  "TN-321K (BizHub C224/C284/C364) â€” Black",
+  "TN-321C (BizHub C224/C284/C364) â€” Cyan",
+  "TN-321M (BizHub C224/C284/C364) â€” Magenta",
+  "TN-321Y (BizHub C224/C284/C364) â€” Yellow",
+  "TN-118 (BizHub 226/266/306) â€” Black",
+  "TN-217 (BizHub 223/283/363) â€” Black",
+  "DR-311 (BizHub C224/C284/C364/C258/C308/C368) â€” Drum Unit",
+  "DR-512 (BizHub 226/266/306) â€” Drum Unit",
   "Other (specify in Notes)"
 ];
 
-// ── New Manpower Sheet Integration (Dedicated Employee & Team Master) ──
+// â”€â”€ New Manpower Sheet Integration (Dedicated Employee & Team Master) â”€â”€
 const MANPOWER_SHEET_ID = "1FrHbNqlJF1BpFdlVLsUMYVIGC9z0N_JS3vjrYAhwazA";
 const MANPOWER_TAB = "manpower";
 const MANPOWER_RANGE = "A1:AD";
 
 const GOOGLE_DRIVE_PHOTO_FOLDER_ID = "129N1_3z_802vJ-9I5nH9jMmSBinpbzGY";
-// Server-authoritative SuperAdmin list — set SUPER_ADMIN_EMAILS env var (comma-separated).
+// Server-authoritative SuperAdmin list â€” set SUPER_ADMIN_EMAILS env var (comma-separated).
 const SUPER_ADMINS = (process.env.SUPER_ADMIN_EMAILS || "")
   .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 if (SUPER_ADMINS.length === 0) {
-  console.error("[Security] SUPER_ADMIN_EMAILS env var is not set — no SuperAdmin access will be granted.");
+  console.error("[Security] SUPER_ADMIN_EMAILS env var is not set â€” no SuperAdmin access will be granted.");
 }
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "gen-lang-client-0070625213";
 const FIREBASE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
@@ -86,8 +86,8 @@ const { Client: PgClient } = require("pg");
 
 /**
  * Calls Gemini Vision API with base64 image data.
- * Vision/image analysis requires Gemini — DeepSeek and Groq do not support inline image input.
- * Key chain: GEMINI_API_KEY → GEMINI_API_KEY_2
+ * Vision/image analysis requires Gemini â€” DeepSeek and Groq do not support inline image input.
+ * Key chain: GEMINI_API_KEY â†’ GEMINI_API_KEY_2
  */
 async function callGeminiVision(base64Image, mimeType = "image/jpeg") {
   // Build key chain: try primary key first, then backup key
@@ -146,7 +146,7 @@ Return ONLY a valid, raw JSON object without markdown fences, with exactly these
   const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-1.5-flash"];
   let lastError = null;
 
-  // Outer loop: per API key — inner loop: per model
+  // Outer loop: per API key â€” inner loop: per model
   for (const { label, value: apiKey } of geminiKeys) {
     for (const model of models) {
       try {
@@ -184,21 +184,21 @@ Return ONLY a valid, raw JSON object without markdown fences, with exactly these
         lastError = e;
       }
     }
-    console.warn(`[Gemini Vision] All models exhausted for ${label} — trying next key.`);
+    console.warn(`[Gemini Vision] All models exhausted for ${label} â€” trying next key.`);
   }
 
   throw lastError || new Error("Gemini Vision failed across all keys and models.");
 }
 
 /**
- * Calls AI text API with a 3-provider fallback chain: Gemini → DeepSeek → Groq.
+ * Calls AI text API with a 3-provider fallback chain: Gemini â†’ DeepSeek â†’ Groq.
  * Used for AI-generated insights, anomaly analysis, and smart summaries.
  * Keys: GEMINI_API_KEY, DEEPSEEK_API, GROQ_API_KEY (set in env vars)
  */
 async function callGeminiText(promptText, temperature = 0.4) {
   let lastError = null;
 
-  // ── Provider 1: Google Gemini (key chain: KEY → KEY_2) ────────────────────
+  // â”€â”€ Provider 1: Google Gemini (key chain: KEY â†’ KEY_2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const geminiKeys = [
     { label: "GEMINI_API_KEY",   value: process.env.GEMINI_API_KEY   || "" },
     { label: "GEMINI_API_KEY_2", value: process.env.GEMINI_API_KEY_2 || "" },
@@ -236,14 +236,14 @@ async function callGeminiText(promptText, temperature = 0.4) {
           lastError = e;
         }
       }
-      console.warn(`[AI Text] All models failed for ${label} — trying next key.`);
+      console.warn(`[AI Text] All models failed for ${label} â€” trying next key.`);
     }
-    console.warn("[AI Text] All Gemini keys exhausted — trying DeepSeek.");
+    console.warn("[AI Text] All Gemini keys exhausted â€” trying DeepSeek.");
   } else {
-    console.warn("[AI Text] No GEMINI_API_KEY set — skipping Gemini.");
+    console.warn("[AI Text] No GEMINI_API_KEY set â€” skipping Gemini.");
   }
 
-  // ── Provider 2: DeepSeek ───────────────────────────────────────────────────
+  // â”€â”€ Provider 2: DeepSeek â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const deepseekKey = process.env.DEEPSEEK_API || "";
   if (deepseekKey) {
     try {
@@ -277,12 +277,12 @@ async function callGeminiText(promptText, temperature = 0.4) {
       console.warn("[AI Text] DeepSeek failed:", e.message);
       lastError = e;
     }
-    console.warn("[AI Text] DeepSeek failed — trying Groq.");
+    console.warn("[AI Text] DeepSeek failed â€” trying Groq.");
   } else {
-    console.warn("[AI Text] DEEPSEEK_API not set — skipping DeepSeek.");
+    console.warn("[AI Text] DEEPSEEK_API not set â€” skipping DeepSeek.");
   }
 
-  // ── Provider 3: Groq ───────────────────────────────────────────────────────
+  // â”€â”€ Provider 3: Groq â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const groqKey = process.env.GROQ_API_KEY || "";
   if (groqKey) {
     try {
@@ -317,7 +317,7 @@ async function callGeminiText(promptText, temperature = 0.4) {
       lastError = e;
     }
   } else {
-    console.warn("[AI Text] GROQ_API_KEY not set — skipping Groq.");
+    console.warn("[AI Text] GROQ_API_KEY not set â€” skipping Groq.");
   }
 
   throw lastError || new Error("All AI providers failed (Gemini, DeepSeek, Groq).");
@@ -553,7 +553,7 @@ async function getFcmAuthHeaders() {
   return { Authorization: `Bearer ${token.token}` };
 }
 
-// Fetch sheet data using server environment variable (GOOGLE_SHEETS_API_KEY only — no hardcoded fallback)
+// Fetch sheet data using server environment variable (GOOGLE_SHEETS_API_KEY only â€” no hardcoded fallback)
 async function fetchSheetDataPublic(range, customSheetId = null) {
   const targetSheetId = customSheetId || SHEET_ID;
   const authHeaders = await getSheetsAuthHeaders();
@@ -831,7 +831,7 @@ async function sendFcmMessage(token, payload) {
   return res.json();
 }
 
-// ── Read User-to-Hospital Mappings from Dedicated Manpower Google Sheet (manpower!A1:AD) ──
+// â”€â”€ Read User-to-Hospital Mappings from Dedicated Manpower Google Sheet (manpower!A1:AD) â”€â”€
 async function getUserHospitalPermissions(email) {
   if (!email) return { hospitals: [], isSuperAdmin: false, isAll: false };
   const cleanEmail = email.toLowerCase().trim();
@@ -868,7 +868,10 @@ async function getUserHospitalPermissions(email) {
 
           // Access criteria: Active status AND (SNMC project or Director/SuperAdmin)
           const isSuper = SUPER_ADMINS.includes(cleanEmail) || role.toLowerCase().includes("superadmin");
-          const isDirector = cleanEmail === "softtech2009@gmail.com" || role.toLowerCase().includes("director");
+          // Director email(s) are env-configurable — no hardcoded fallback (M6 fix).
+          const directorEmails = (process.env.DIRECTOR_EMAILS || "")
+            .split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+          const isDirector = directorEmails.includes(cleanEmail) || role.toLowerCase().includes("director");
           const isProjectAllowed = isSuper || isDirector || !project || project === "SNMC";
           const isStatusActive = status === "ACTIVE" || status === "YES" || status === "1" || status === "TRUE" || !status; // default allow if active/unspecified
 
@@ -920,7 +923,7 @@ async function getUserHospitalPermissions(email) {
 }
 
 
-// ── Check if a hospital matches user's allowed hospital set server-side ──
+// â”€â”€ Check if a hospital matches user's allowed hospital set server-side â”€â”€
 function isHospitalAllowedServer(hospitalName, allowedHospitals, isAll) {
   if (isAll) return true;
   if (!hospitalName) return false;
@@ -928,7 +931,7 @@ function isHospitalAllowedServer(hospitalName, allowedHospitals, isAll) {
   return allowedHospitals.some(h => cleanHosp.includes(h.toUpperCase()));
 }
 
-// Allowed origins — Netlify prod + local dev (XAMPP on :80, netlify dev on :8888, LAN IPs)
+// Allowed origins â€” Netlify prod + local dev (XAMPP on :80, netlify dev on :8888, LAN IPs)
 const ALLOWED_ORIGINS = [
   "https://snmc-smspl.netlify.app",
   "http://localhost",
@@ -957,7 +960,7 @@ exports.handler = async function (event, context) {
   const origin = (event && event.headers && event.headers.origin) ? event.headers.origin : "";
   const allowedOrigin = isOriginAllowed(origin);
 
-  // CORS Headers — restricted to known origins & LAN only
+  // CORS Headers â€” restricted to known origins & LAN only
   const headers = {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Vary": "Origin",
@@ -988,14 +991,14 @@ exports.handler = async function (event, context) {
     const claims = await verifyToken(authHeader);
     const userEmail = (claims.email || "").toLowerCase();
 
-    // ── Enforce Server-Side User Hospital Permissions ──
+    // â”€â”€ Enforce Server-Side User Hospital Permissions â”€â”€
     const userPerms = await getUserHospitalPermissions(userEmail);
     const { hospitals: allowedHospitals, isAll: hasAllAccess, isSuperAdmin: userIsSuperAdmin } = userPerms;
     const userIsDirector = userPerms.isDirector || claims.isDirector || String(claims.role || "").toLowerCase() === "director";
     const userIsAdmin = !userIsSuperAdmin && !userIsDirector && (String(userPerms.role || "").toLowerCase() === "admin" || String(claims.role || "").toLowerCase() === "admin");
     const adminPermissions = userIsAdmin ? await getAdminPermissionsCached() : null;
 
-    // ── 1. Fetch Printer Details (Server-Side Filtered by User Hospital) ──
+    // â”€â”€ 1. Fetch Printer Details (Server-Side Filtered by User Hospital) â”€â”€
     if (action === "printerdetails" && event.httpMethod === "GET") {
       const data = await fetchSheetDataPublic(`'${PRINTER_TAB}'!A:Z`);
       if (!data || !data.values || data.values.length < 2) {
@@ -1028,7 +1031,7 @@ exports.handler = async function (event, context) {
       };
     }
 
-    // ── 2. Fetch Daily Entries for History (Server-Side Filtered by User Hospital) ──
+    // â”€â”€ 2. Fetch Daily Entries for History (Server-Side Filtered by User Hospital) â”€â”€
     if (action === "dailyentries" && event.httpMethod === "GET") {
       const [dailyData, printerSheetData] = await Promise.all([
         fetchSheetDataPublic(`'${DAILY_TAB}'!${DAILY_RANGE}`),
@@ -1088,7 +1091,7 @@ exports.handler = async function (event, context) {
       };
     }
 
-    // ── 3. Append Daily Entry (Server-Side Verified Authorization) ──
+    // â”€â”€ 3. Append Daily Entry (Server-Side Verified Authorization) â”€â”€
     if (action === "appendDailyEntry" && event.httpMethod === "POST") {
       if (userIsAdmin && adminPermissions && !adminPermissions.can_add_entry) {
         return jsonResponse(403, headers, { error: "Forbidden: Admin role has not been granted permission to submit new daily entries." });
@@ -1127,7 +1130,7 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { ok: true, data });
     }
 
-    // ── 4. Fetch Stock / Paper Received (Server-Side Filtered by User Hospital) ──
+    // â”€â”€ 4. Fetch Stock / Paper Received (Server-Side Filtered by User Hospital) â”€â”€
     if (action === "stock" && event.httpMethod === "GET") {
       const data = await fetchSheetDataPublic(`'${STOCK_TAB}'!${STOCK_RANGE}`);
       if (!data || !data.values || data.values.length === 0) {
@@ -1162,7 +1165,7 @@ exports.handler = async function (event, context) {
       };
     }
 
-    // ── 4b. Append Stock Entry (SuperAdmin Only) ──
+    // â”€â”€ 4b. Append Stock Entry (SuperAdmin Only) â”€â”€
     if (action === "appendStockEntry" && event.httpMethod === "POST") {
       if (!userIsSuperAdmin) {
         const err = new Error("Forbidden: Only SuperAdmins can record new stock receipts.");
@@ -1186,7 +1189,7 @@ exports.handler = async function (event, context) {
       });
     }
 
-    // ── 5. Server-authoritative notification sender check ──
+    // â”€â”€ 5. Server-authoritative notification sender check â”€â”€
     if (action === "checkSender" && event.httpMethod === "GET") {
       const email = userEmail;
       const isSuper = userIsSuperAdmin;
@@ -1200,7 +1203,7 @@ exports.handler = async function (event, context) {
       });
     }
 
-    // ── 6. Register FCM/Web Push token server-side ──
+    // â”€â”€ 6. Register FCM/Web Push token server-side â”€â”€
     if (action === "registerFcmToken" && event.httpMethod === "POST") {
       const payload = JSON.parse(event.body || "{}");
       const token = String(payload.token || "").trim();
@@ -1218,7 +1221,7 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { ok: true });
     }
 
-    // ── 7. SuperAdmin approves notification sender ──
+    // â”€â”€ 7. SuperAdmin approves notification sender â”€â”€
     if (action === "approveSender" && event.httpMethod === "POST") {
       if (!userIsSuperAdmin) {
         const err = new Error("Only SuperAdmins can approve notification senders.");
@@ -1241,13 +1244,13 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { ok: true, email });
     }
 
-    // ── 7b. Secure Client Config Endpoint (VAPID key from env) ──
+    // â”€â”€ 7b. Secure Client Config Endpoint (VAPID key from env) â”€â”€
     if (action === "config") {
       const vapidKey = process.env.VITE_FIREBASE_VAPID_KEY || process.env.FIREBASE_VAPID_KEY || "";
       return jsonResponse(200, headers, { vapidKey });
     }
 
-    // ── 8. Server-side push broadcast ──
+    // â”€â”€ 8. Server-side push broadcast â”€â”€
     if (action === "broadcastNotification" && event.httpMethod === "POST") {
       const allowedSenders = await readAllowedSendersFromSheet();
       const adminCanBroadcast = userIsAdmin && adminPermissions && adminPermissions.can_send_broadcast;
@@ -1291,7 +1294,7 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { ok: true, sent, failed, total: tokens.length });
     }
 
-    // ── 9. Live Pre-Login Authorization & User Validation ──
+    // â”€â”€ 9. Live Pre-Login Authorization & User Validation â”€â”€
     if (action === "checkAuth" && event.httpMethod === "GET") {
       const isAllowed = userPerms.isSuperAdmin || (userPerms.isLoginAllowed === true);
       return jsonResponse(200, headers, {
@@ -1304,7 +1307,7 @@ exports.handler = async function (event, context) {
       });
     }
 
-    // ── 10. Live Fetch Employees from Dedicated Manpower Google Sheet (A1:AD) ──
+    // â”€â”€ 10. Live Fetch Employees from Dedicated Manpower Google Sheet (A1:AD) â”€â”€
     if (action === "getEmployees" && event.httpMethod === "GET") {
       const data = await fetchSheetDataPublic(`'${MANPOWER_TAB}'!${MANPOWER_RANGE}`, MANPOWER_SHEET_ID);
       if (!data || !data.values || data.values.length === 0) {
@@ -1356,18 +1359,18 @@ exports.handler = async function (event, context) {
           const isStatusActive = (statusUpper === "ACTIVE" || statusUpper === "YES" || statusUpper === "1" || statusUpper === "TRUE");
 
           let isLoginAllowed = false;
-          let accessReason = "🔴 Access Disabled";
+          let accessReason = "ðŸ”´ Access Disabled";
 
           if (isSuper) {
             isLoginAllowed = true;
-            accessReason = "⚡ SuperAdmin";
+            accessReason = "âš¡ SuperAdmin";
           } else if (isProjSNMC && isStatusActive) {
             isLoginAllowed = true;
-            accessReason = "🟢 Login Active (SNMC)";
+            accessReason = "ðŸŸ¢ Login Active (SNMC)";
           } else if (!isProjSNMC) {
-            accessReason = "🔴 Non-SNMC Project";
+            accessReason = "ðŸ”´ Non-SNMC Project";
           } else {
-            accessReason = "🔴 Inactive Status";
+            accessReason = "ðŸ”´ Inactive Status";
           }
 
           return {
@@ -1396,7 +1399,7 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { employees: filtered, isSuperAdmin: userIsSuperAdmin });
     }
 
-    // ── 11. Add New Employee / Team Member to Manpower Google Sheet ──
+    // â”€â”€ 11. Add New Employee / Team Member to Manpower Google Sheet â”€â”€
     if (action === "addEmployee" && event.httpMethod === "POST") {
       const canManageStaff = userIsSuperAdmin || (userIsAdmin && adminPermissions && adminPermissions.can_manage_employees);
       if (!canManageStaff) {
@@ -1503,7 +1506,7 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { ok: true, id: empId, sNo: nextSNo, name, email, hospital, role, phone, photoUrl, project, status, rowIndex: targetRowIndex });
     }
 
-    // ── 12. Update Existing Employee / Team Member in Manpower Google Sheet ──
+    // â”€â”€ 12. Update Existing Employee / Team Member in Manpower Google Sheet â”€â”€
     if (action === "updateEmployee" && event.httpMethod === "POST") {
       const canManageStaff = userIsSuperAdmin || (userIsAdmin && adminPermissions && adminPermissions.can_manage_employees);
       if (!canManageStaff) {
@@ -1616,7 +1619,7 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { ok: true, id: empId, name, email, hospital, role, phone, photoUrl, rowIndex: targetRowIndex });
     }
 
-    // ── 13. Delete / Clear Employee from Manpower Google Sheet ──
+    // â”€â”€ 13. Delete / Clear Employee from Manpower Google Sheet â”€â”€
     if (action === "deleteEmployee" && event.httpMethod === "POST") {
       const canDeleteStaff = userIsSuperAdmin || (userIsAdmin && adminPermissions && adminPermissions.can_delete_employees);
       if (!canDeleteStaff) {
@@ -1649,7 +1652,7 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { ok: true, deletedEmail: email, rowIndex: targetRowIndex });
     }
 
-    // ── 14. Direct Fast Storage for Employee Photo (Saved to Google Drive, Manpower Sheet & Neon DB) ──
+    // â”€â”€ 14. Direct Fast Storage for Employee Photo (Saved to Google Drive, Manpower Sheet & Neon DB) â”€â”€
     if (action === "uploadEmployeePhoto" && event.httpMethod === "POST") {
       const payload = JSON.parse(event.body || "{}");
       const targetEmail = String(payload.email || userEmail).toLowerCase().trim();
@@ -1728,7 +1731,7 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { ok: true, photoUrl: finalPhotoUrl, email: targetEmail });
     }
 
-    // ── 15. Action: getScannerSettings (SuperAdmin & App Scanner Config) ──
+    // â”€â”€ 15. Action: getScannerSettings (SuperAdmin & App Scanner Config) â”€â”€
     if (action === "getScannerSettings" && event.httpMethod === "GET") {
       let ocrMethod = (process.env.OCR_METHOD || "vision").toLowerCase().trim();
       try {
@@ -1740,7 +1743,7 @@ exports.handler = async function (event, context) {
       return jsonResponse(200, headers, { success: true, ocrMethod, hasGeminiKey: !!(process.env.GEMINI_API_KEY) });
     }
 
-    // ── 16. Action: saveScannerSettings (SuperAdmin Only) ──
+    // â”€â”€ 16. Action: saveScannerSettings (SuperAdmin Only) â”€â”€
     if (action === "saveScannerSettings" && event.httpMethod === "POST") {
       if (!userIsSuperAdmin) {
         return jsonResponse(403, headers, { success: false, error: "Forbidden: SuperAdmin access required." });
@@ -1760,7 +1763,7 @@ exports.handler = async function (event, context) {
       }
     }
 
-    // ── 17. Action: visionScan (Gemini AI Vision Extraction Proxy) ──
+    // â”€â”€ 17. Action: visionScan (Gemini AI Vision Extraction Proxy) â”€â”€
     if (action === "visionScan" && event.httpMethod === "POST") {
       const payload = JSON.parse(event.body || "{}");
       const base64Image = payload.image || payload.base64Data || "";
@@ -1779,14 +1782,16 @@ exports.handler = async function (event, context) {
         });
       } catch (vErr) {
         console.error("[Vision Scan Error]:", vErr.message);
-        return jsonResponse(502, headers, {
-          success: false,
-          error: "AI Vision analysis failed: " + vErr.message
-        });
+        // L3 fix: do NOT expose raw Gemini error to client (may contain API key hints).
+        const isConfigErr = vErr.message && vErr.message.includes("SERVER_CONFIG_ERROR");
+        const clientMsg = isConfigErr
+          ? "AI Vision is not configured on this server."
+          : "AI Vision analysis failed. Please try again or use manual entry.";
+        return jsonResponse(502, headers, { success: false, error: clientMsg });
       }
     }
 
-    // ── 18. Action: aiInsight (Gemini-powered WhatsApp Anomaly Analysis) ──
+    // â”€â”€ 18. Action: aiInsight (Gemini-powered WhatsApp Anomaly Analysis) â”€â”€
     if (action === "aiInsight" && event.httpMethod === "POST") {
       const body      = JSON.parse(event.body || "{}");
       const stats     = body.stats    || {};
@@ -1795,20 +1800,20 @@ exports.handler = async function (event, context) {
       const isFiltered = !!body.isFiltered;
 
       const { delivered = 0, issued = 0, prints = 0, entries = 0 } = stats;
-      // ── PAAS Physical Accountability Audit ─────────────────────────────
-      // Business: We (SNMC) deliver paper → hospital store → counters → printed.
+      // â”€â”€ PAAS Physical Accountability Audit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // Business: We (SNMC) deliver paper â†’ hospital store â†’ counters â†’ printed.
       // Printer meter is the ONLY tamper-proof record of actual consumption.
       //
       // THE ONLY RELIABLE EQUATION:
-      //   physicalGap = delivered − prints
+      //   physicalGap = delivered âˆ’ prints
       //   = sheets that arrived at hospital but NEVER went through any printer
       //   MUST be physically in store right now, OR they were stolen/misused
       //
-      // DO NOT USE issued/unissued — issue entries are admittedly incomplete,
-      // so "Unissued Balance = delivered − issued" gives a FALSE picture.
+      // DO NOT USE issued/unissued â€” issue entries are admittedly incomplete,
+      // so "Unissued Balance = delivered âˆ’ issued" gives a FALSE picture.
       //
-      // issueGap = prints − issued (shows how many prints happened without a
-      //   formal issue log entry — proves register is incomplete, not theft by itself)
+      // issueGap = prints âˆ’ issued (shows how many prints happened without a
+      //   formal issue log entry â€” proves register is incomplete, not theft by itself)
 
       const physicalGap  = delivered - prints;                          // sheets not printed (should be in store)
       const issueGap     = Math.max(0, prints - issued);                // prints without issue entry (register gap)
@@ -1817,79 +1822,79 @@ exports.handler = async function (event, context) {
 
       const prompt = `You are a strict accountability auditor for SNMC PrintTrack, a PAAS (Printer-as-a-Service) operation at Dr. S.N. Medical College, Jodhpur, Rajasthan.
 
-PAAS flow: SNMC delivers paper → Hospital store receives → Store issues to counters → Printers consume.
+PAAS flow: SNMC delivers paper â†’ Hospital store receives â†’ Store issues to counters â†’ Printers consume.
 The PRINTER METER READING is the only tamper-proof record of actual paper consumption.
 
 Your job: Write a SHORT (max 2 lines, WhatsApp-ready) audit finding in Hindi+English.
-IMPORTANT: Do NOT use "Unissued Balance" or "Issue Rate" in your reasoning — issue entries are admittedly incomplete and will give a misleading picture.
+IMPORTANT: Do NOT use "Unissued Balance" or "Issue Rate" in your reasoning â€” issue entries are admittedly incomplete and will give a misleading picture.
 
 === THE ONLY RELIABLE AUDIT EQUATION ===
-Physical Gap = Paper Delivered − Prints Recorded
+Physical Gap = Paper Delivered âˆ’ Prints Recorded
 = Paper that was physically delivered to hospital but NEVER passed through any printer.
 These sheets MUST be physically present in the store right now.
-If they are not found in physical stock verification → THEFT / MISUSE / LOSS suspected.
+If they are not found in physical stock verification â†’ THEFT / MISUSE / LOSS suspected.
 The Store Keeper AND the Rim Distributor are jointly accountable for this gap.
 
-=== DATA FOR ${hospital} — Period: ${period} ===
-Paper Delivered (Stock In)        : ${delivered.toLocaleString("en-IN")} sheets   [Ground truth — vendor supplied]
+=== DATA FOR ${hospital} â€” Period: ${period} ===
+Paper Delivered (Stock In)        : ${delivered.toLocaleString("en-IN")} sheets   [Ground truth â€” vendor supplied]
 Prints Recorded (Printer Meters)  : ${prints.toLocaleString("en-IN")} pages       [Tamper-proof machine count]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHYSICAL GAP (Delivered − Printed): ${physicalGap.toLocaleString("en-IN")} sheets (≈${physGapRims} Rims)
+â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+PHYSICAL GAP (Delivered âˆ’ Printed): ${physicalGap.toLocaleString("en-IN")} sheets (â‰ˆ${physGapRims} Rims)
 ${physicalGap > 0
   ? `These ${physicalGap.toLocaleString("en-IN")} sheets were delivered but never printed. They MUST be in store physically.`
   : physicalGap < 0
-    ? `Prints EXCEED delivered — meter includes pre-system history or delivery entries are missing.`
-    : `All delivered paper is accounted for in printer meters. ✓`}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Issue Register Gap                : ${issueGap.toLocaleString("en-IN")} sheets (≈${issueGapRims} Rims) printed without formal issue entry
+    ? `Prints EXCEED delivered â€” meter includes pre-system history or delivery entries are missing.`
+    : `All delivered paper is accounted for in printer meters. âœ“`}
+â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+Issue Register Gap                : ${issueGap.toLocaleString("en-IN")} sheets (â‰ˆ${issueGapRims} Rims) printed without formal issue entry
 Data mode                         : ${isFiltered ? "Date-filtered (specific period)" : "All-time cumulative (since tracking started)"}
 
 === WHAT TO WRITE ===
 ${physicalGap > 0
-  ? `FINDING: ${physicalGap.toLocaleString("en-IN")} sheets (≈${physGapRims} Rims) physically delivered हुईं लेकिन किसी भी printer से print नहीं हुईं। ये sheets store में होनी चाहिए — तुरंत physical stock count करें। अगर store में नहीं मिलतीं → Store Keeper और Rim Distributor की जवाबदेही बनती है।`
+  ? `FINDING: ${physicalGap.toLocaleString("en-IN")} sheets (â‰ˆ${physGapRims} Rims) physically delivered à¤¹à¥à¤ˆà¤‚ à¤²à¥‡à¤•à¤¿à¤¨ à¤•à¤¿à¤¸à¥€ à¤­à¥€ printer à¤¸à¥‡ print à¤¨à¤¹à¥€à¤‚ à¤¹à¥à¤ˆà¤‚à¥¤ à¤¯à¥‡ sheets store à¤®à¥‡à¤‚ à¤¹à¥‹à¤¨à¥€ à¤šà¤¾à¤¹à¤¿à¤ â€” à¤¤à¥à¤°à¤‚à¤¤ physical stock count à¤•à¤°à¥‡à¤‚à¥¤ à¤…à¤—à¤° store à¤®à¥‡à¤‚ à¤¨à¤¹à¥€à¤‚ à¤®à¤¿à¤²à¤¤à¥€à¤‚ â†’ Store Keeper à¤”à¤° Rim Distributor à¤•à¥€ à¤œà¤µà¤¾à¤¬à¤¦à¥‡à¤¹à¥€ à¤¬à¤¨à¤¤à¥€ à¤¹à¥ˆà¥¤`
   : physicalGap < 0
-    ? `FINDING: Recorded prints (${prints.toLocaleString("en-IN")}) exceed delivered paper (${delivered.toLocaleString("en-IN")}) — meter में पुरानी reading शामिल हो सकती है या कुछ delivery entries missing हैं। Verify करें।`
-    : `FINDING: Physical accountability balanced — all delivered sheets are accounted for in printer meters.`}
+    ? `FINDING: Recorded prints (${prints.toLocaleString("en-IN")}) exceed delivered paper (${delivered.toLocaleString("en-IN")}) â€” meter à¤®à¥‡à¤‚ à¤ªà¥à¤°à¤¾à¤¨à¥€ reading à¤¶à¤¾à¤®à¤¿à¤² à¤¹à¥‹ à¤¸à¤•à¤¤à¥€ à¤¹à¥ˆ à¤¯à¤¾ à¤•à¥à¤› delivery entries missing à¤¹à¥ˆà¤‚à¥¤ Verify à¤•à¤°à¥‡à¤‚à¥¤`
+    : `FINDING: Physical accountability balanced â€” all delivered sheets are accounted for in printer meters.`}
 
 Also mention if issue register has significant gaps (issueGap = ${issueGap.toLocaleString("en-IN")} sheets without formal issue entry).
 
 === FORMAT ===
 Max 2 lines plain text. No bullets. No asterisks. No markdown. No underscores.
-Include specific numbers (sheets and Rims). Be direct — like a CAG audit finding.
-End with: — SNMC PrintTrack AI`;
+Include specific numbers (sheets and Rims). Be direct â€” like a CAG audit finding.
+End with: â€” SNMC PrintTrack AI`;
 
       try {
         const insight = await callGeminiText(prompt, 0.15);
         return jsonResponse(200, headers, { success: true, insight });
       } catch (aiErr) {
         console.error("[aiInsight] Gemini call failed:", aiErr.message);
-        // Rule-based fallback — correct PAAS equation
+        // Rule-based fallback â€” correct PAAS equation
         let fallback;
         if (delivered === 0) {
-          fallback = `⚠️ कोई delivery record नहीं — Stock In entries दर्ज करें। — SNMC PrintTrack`;
+          fallback = `âš ï¸ à¤•à¥‹à¤ˆ delivery record à¤¨à¤¹à¥€à¤‚ â€” Stock In entries à¤¦à¤°à¥à¤œ à¤•à¤°à¥‡à¤‚à¥¤ â€” SNMC PrintTrack`;
         } else if (physicalGap > 0) {
-          fallback = `⚠️ Audit: ${physicalGap.toLocaleString("en-IN")} sheets (≈${physGapRims} Rims) deliver हुईं लेकिन किसी printer से print नहीं हुईं — तुरंत physical stock count करें। Store में नहीं मिलीं तो Store Keeper व Rim Distributor जवाबदेह होंगे। — SNMC PrintTrack`;
+          fallback = `âš ï¸ Audit: ${physicalGap.toLocaleString("en-IN")} sheets (â‰ˆ${physGapRims} Rims) deliver à¤¹à¥à¤ˆà¤‚ à¤²à¥‡à¤•à¤¿à¤¨ à¤•à¤¿à¤¸à¥€ printer à¤¸à¥‡ print à¤¨à¤¹à¥€à¤‚ à¤¹à¥à¤ˆà¤‚ â€” à¤¤à¥à¤°à¤‚à¤¤ physical stock count à¤•à¤°à¥‡à¤‚à¥¤ Store à¤®à¥‡à¤‚ à¤¨à¤¹à¥€à¤‚ à¤®à¤¿à¤²à¥€à¤‚ à¤¤à¥‹ Store Keeper à¤µ Rim Distributor à¤œà¤µà¤¾à¤¬à¤¦à¥‡à¤¹ à¤¹à¥‹à¤‚à¤—à¥‡à¥¤ â€” SNMC PrintTrack`;
         } else if (physicalGap < 0) {
           const overRims = (Math.abs(physicalGap) / 500).toFixed(1);
-          fallback = `⚠️ Prints (${prints.toLocaleString("en-IN")}) > Delivered (${delivered.toLocaleString("en-IN")}) — ${Math.abs(physicalGap).toLocaleString("en-IN")} sheets (${overRims} Rims) का हिसाब नहीं। Delivery entries verify करें। — SNMC PrintTrack`;
+          fallback = `âš ï¸ Prints (${prints.toLocaleString("en-IN")}) > Delivered (${delivered.toLocaleString("en-IN")}) â€” ${Math.abs(physicalGap).toLocaleString("en-IN")} sheets (${overRims} Rims) à¤•à¤¾ à¤¹à¤¿à¤¸à¤¾à¤¬ à¤¨à¤¹à¥€à¤‚à¥¤ Delivery entries verify à¤•à¤°à¥‡à¤‚à¥¤ â€” SNMC PrintTrack`;
         } else {
-          fallback = `✅ Physical accountability balanced — सभी delivered sheets printer meters में accounted हैं। — SNMC PrintTrack`;
+          fallback = `âœ… Physical accountability balanced â€” à¤¸à¤­à¥€ delivered sheets printer meters à¤®à¥‡à¤‚ accounted à¤¹à¥ˆà¤‚à¥¤ â€” SNMC PrintTrack`;
         }
         return jsonResponse(200, headers, { success: true, insight: fallback, fallback: true });
       }
     }
 
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // ── TONER TRACKING MODULE ─────────────────────────────────────────────────
-    // ══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // â”€â”€ TONER TRACKING MODULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    // ── T1. GET /tonerModels — return approved Konica Minolta toner list ──────
+    // â”€â”€ T1. GET /tonerModels â€” return approved Konica Minolta toner list â”€â”€â”€â”€â”€â”€
     if (action === "tonerModels" && event.httpMethod === "GET") {
       return jsonResponse(200, headers, { success: true, models: KONICA_MINOLTA_TONERS });
     }
 
-    // ── T2. GET /tonerStock — HO Inventory Ledger (RECEIVED + DISPATCHED) ─────
+    // â”€â”€ T2. GET /tonerStock â€” HO Inventory Ledger (RECEIVED + DISPATCHED) â”€â”€â”€â”€â”€
     if (action === "tonerStock" && event.httpMethod === "GET") {
       const data = await fetchSheetDataPublic(`'${TONER_STOCK_TAB}'!${TONER_STOCK_RANGE}`);
       if (!data || !data.values || data.values.length < 2) {
@@ -1906,7 +1911,7 @@ End with: — SNMC PrintTrack AI`;
       return jsonResponse(200, headers, { success: true, rows, headers: sheetHeaders });
     }
 
-    // ── T3. POST /appendTonerStock — RECEIVED or DISPATCHED entry ─────────────
+    // â”€â”€ T3. POST /appendTonerStock â€” RECEIVED or DISPATCHED entry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Also auto-syncs RECEIVED entries to the main stock tab as "Toner" category.
     if (action === "appendTonerStock" && event.httpMethod === "POST") {
       let body;
@@ -1949,7 +1954,7 @@ End with: — SNMC PrintTrack AI`;
       ];
       await appendSheetRow(TONER_STOCK_TAB, TONER_STOCK_RANGE, stockRow);
 
-      // ── Auto-sync: RECEIVED → also write to main stock tab as "Toner" category ──
+      // â”€â”€ Auto-sync: RECEIVED â†’ also write to main stock tab as "Toner" category â”€â”€
       // stock tab columns (A:P): Date|Hospital|Category|Item|Qty|Unit|TotalSheets|InvoiceNo|Amount|Notes|Source|...
       if (String(entryType).toUpperCase() === "RECEIVED") {
         try {
@@ -1960,7 +1965,7 @@ End with: — SNMC PrintTrack AI`;
             tonerModel,         // D: Item/Description
             String(qtyNum),     // E: Qty
             "Cartridge",        // F: Unit
-            "",                 // G: (TotalSheets — N/A for toner)
+            "",                 // G: (TotalSheets â€” N/A for toner)
             supplier || "",     // H: Invoice No / Supplier
             unitCost ? String(unitCost) : "",  // I: Amount/Unit Cost
             notes || "",        // J: Notes
@@ -1979,7 +1984,7 @@ End with: — SNMC PrintTrack AI`;
       return jsonResponse(200, headers, { success: true, message: "Toner stock entry recorded." });
     }
 
-    // ── T4. GET /tonerLog — Printer Installation Log ───────────────────────────
+    // â”€â”€ T4. GET /tonerLog â€” Printer Installation Log â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (action === "tonerLog" && event.httpMethod === "GET") {
       const data = await fetchSheetDataPublic(`'${TONER_LOG_TAB}'!${TONER_LOG_RANGE}`);
       if (!data || !data.values || data.values.length < 2) {
@@ -2002,7 +2007,7 @@ End with: — SNMC PrintTrack AI`;
       return jsonResponse(200, headers, { success: true, rows, headers: sheetHeaders });
     }
 
-    // ── T5. POST /appendTonerInstall — Install toner on a printer ─────────────
+    // â”€â”€ T5. POST /appendTonerInstall â€” Install toner on a printer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (action === "appendTonerInstall" && event.httpMethod === "POST") {
       let body;
       try { body = JSON.parse(event.body || "{}"); } catch {
@@ -2037,7 +2042,7 @@ End with: — SNMC PrintTrack AI`;
         color || "",
         String(meterNum),
         claims.name || claims.email || "",
-        "",   // J: RemovalDate (empty — active)
+        "",   // J: RemovalDate (empty â€” active)
         "",   // K: ClosingMeter
         "",   // L: PagesYield (computed on close)
         "Active",
@@ -2048,7 +2053,7 @@ End with: — SNMC PrintTrack AI`;
       return jsonResponse(200, headers, { success: true, message: "Toner installation recorded." });
     }
 
-    // ── T6. POST /closeTonerEntry — Mark toner replaced, set closing meter ────
+    // â”€â”€ T6. POST /closeTonerEntry â€” Mark toner replaced, set closing meter â”€â”€â”€â”€
     if (action === "closeTonerEntry" && event.httpMethod === "POST") {
       let body;
       try { body = JSON.parse(event.body || "{}"); } catch {
@@ -2076,7 +2081,7 @@ End with: — SNMC PrintTrack AI`;
       if (isNaN(closingMeterNum) || closingMeterNum < openingMeter) {
         return jsonResponse(400, headers, {
           success: false,
-          error: `Closing meter (${closingMeterNum}) must be ≥ opening meter (${openingMeter}).`
+          error: `Closing meter (${closingMeterNum}) must be â‰¥ opening meter (${openingMeter}).`
         });
       }
       const pagesYield = closingMeterNum - openingMeter;
@@ -2104,10 +2109,10 @@ End with: — SNMC PrintTrack AI`;
       });
     }
 
-    // ── T7. GET /getTonerSettings — Near-end alert threshold from Neon DB ─────
+    // â”€â”€ T7. GET /getTonerSettings â€” Near-end alert threshold from Neon DB â”€â”€â”€â”€â”€
     if (action === "getTonerSettings" && event.httpMethod === "GET") {
-      let threshold = 1000; // default pages remaining for 🔴 alert
-      let warnThreshold = 2000; // default pages remaining for 🟡 warning
+      let threshold = 1000; // default pages remaining for ðŸ”´ alert
+      let warnThreshold = 2000; // default pages remaining for ðŸŸ¡ warning
       try {
         const rows = await queryNeon("SELECT setting_value FROM app_settings WHERE setting_key = 'toner_alert_settings' LIMIT 1;");
         if (rows.length > 0 && rows[0].setting_value) {
@@ -2121,7 +2126,7 @@ End with: — SNMC PrintTrack AI`;
       return jsonResponse(200, headers, { success: true, threshold, warnThreshold });
     }
 
-    // ── T8. POST /saveTonerSettings — SuperAdmin only, save threshold ──────────
+    // â”€â”€ T8. POST /saveTonerSettings â€” SuperAdmin only, save threshold â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (action === "saveTonerSettings" && event.httpMethod === "POST") {
       if (!userIsSuperAdmin) {
         return jsonResponse(403, headers, { success: false, error: "SuperAdmin access required to change toner alert settings." });
@@ -2149,7 +2154,7 @@ End with: — SNMC PrintTrack AI`;
       );
       return jsonResponse(200, headers, { success: true, message: "Toner alert settings saved.", threshold, warnThreshold });
     }
-    // ── END TONER TRACKING MODULE ──────────────────────────────────────────────
+    // â”€â”€ END TONER TRACKING MODULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     return {
       statusCode: 400,

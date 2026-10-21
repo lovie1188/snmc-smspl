@@ -405,7 +405,12 @@ exports.handler = async function (event, context) {
     }
 
     // ── 2B. Action: getAdminPermissions (Fetch Granular Admin Role Permissions) ──
+    // AUTH REQUIRED: Any authenticated user may read permissions (to apply them client-side).
     if (action === "getAdminPermissions" && event.httpMethod === "GET") {
+      const authUser = verifyAuthToken(event.headers.authorization || event.headers.Authorization);
+      if (!authUser) {
+        return jsonResponse(401, headers, { success: false, error: "Unauthorized: Please log in to fetch admin permissions." });
+      }
       try {
         const rows = await queryNeon(`SELECT setting_value FROM app_settings WHERE setting_key = 'snmc_admin_permissions' LIMIT 1;`);
         let perms = {
