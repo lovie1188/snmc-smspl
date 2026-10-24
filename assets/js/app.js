@@ -908,7 +908,8 @@ function exportHistoryToExcel() {
 }
 
 // ── Export History to PDF / Printable View ──────────────────
-function exportHistoryToPDF() {
+// L4 fix: renamed from exportHistoryToPDF — this prints the browser window, not a PDF export.
+function printDailyHistory() {
   if (!allDailyRows.length) {
     showToast("No history data to print.", "warn");
     return;

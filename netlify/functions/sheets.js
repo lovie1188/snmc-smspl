@@ -32,7 +32,12 @@ function loadEnvFallback() {
 }
 loadEnvFallback();
 
-const SHEET_ID = "1Zbx8wOV3FTTxEH0k4i_F2v7SA2_pSp3R6VACroY19H0";
+// H2 fix: Sheet IDs now read from env vars with hardcoded fallback.
+// Set MAIN_SHEET_ID and MANPOWER_SHEET_ID in Netlify env vars to avoid hardcoded values.
+const SHEET_ID = process.env.MAIN_SHEET_ID || "1Zbx8wOV3FTTxEH0k4i_F2v7SA2_pSp3R6VACroY19H0";
+if (!process.env.MAIN_SHEET_ID) {
+  console.warn("[Config] MAIN_SHEET_ID not set — using hardcoded fallback Sheet ID.");
+}
 const DAILY_TAB = "Form responses 1";
 const PRINTER_TAB = "printerdetails";
 const DAILY_RANGE = "A:L";
@@ -67,9 +72,13 @@ const KONICA_MINOLTA_TONERS = [
 ];
 
 // â”€â”€ New Manpower Sheet Integration (Dedicated Employee & Team Master) â”€â”€
-const MANPOWER_SHEET_ID = "1FrHbNqlJF1BpFdlVLsUMYVIGC9z0N_JS3vjrYAhwazA";
+const MANPOWER_SHEET_ID = process.env.MANPOWER_SHEET_ID || "1FrHbNqlJF1BpFdlVLsUMYVIGC9z0N_JS3vjrYAhwazA";
+if (!process.env.MANPOWER_SHEET_ID) {
+  console.warn("[Config] MANPOWER_SHEET_ID not set — using hardcoded fallback Sheet ID.");
+}
 const MANPOWER_TAB = "manpower";
-const MANPOWER_RANGE = "A1:AD";
+// L5 fix: cap at 500 rows to prevent unbounded Google Sheets read.
+const MANPOWER_RANGE = "A1:AD500";
 
 const GOOGLE_DRIVE_PHOTO_FOLDER_ID = "129N1_3z_802vJ-9I5nH9jMmSBinpbzGY";
 // Server-authoritative SuperAdmin list â€” set SUPER_ADMIN_EMAILS env var (comma-separated).
@@ -79,6 +88,10 @@ if (SUPER_ADMINS.length === 0) {
   console.error("[Security] SUPER_ADMIN_EMAILS env var is not set â€” no SuperAdmin access will be granted.");
 }
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "gen-lang-client-0070625213";
+// M7: Warn if using hardcoded fallback — set FIREBASE_PROJECT_ID in Netlify env vars.
+if (!process.env.FIREBASE_PROJECT_ID) {
+  console.warn("[Config] FIREBASE_PROJECT_ID not set — using hardcoded fallback 'gen-lang-client-0070625213'. Set this env var in production.");
+}
 const FIREBASE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
 const { createVerify } = require("crypto");
 const { JWT } = require("google-auth-library");
@@ -956,6 +969,23 @@ function isOriginAllowed(origin) {
   return ALLOWED_ORIGINS[0];
 }
 
+// ── M4: Simple in-memory per-IP rate limiter for expensive AI endpoints ──────
+// Resets on cold start (serverless). 20 req/min per IP for visionScan/aiInsight.
+const _rateLimitMap = new Map();
+function _checkRateLimit(ip, action, maxPerMin = 20) {
+  const key = `${ip}:${action}`;
+  const now = Date.now();
+  const window = 60_000;
+  const entry = _rateLimitMap.get(key) || { count: 0, resetAt: now + window };
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + window;
+  }
+  entry.count += 1;
+  _rateLimitMap.set(key, entry);
+  return entry.count > maxPerMin; // true = rate limited
+}
+
 exports.handler = async function (event, context) {
   const origin = (event && event.headers && event.headers.origin) ? event.headers.origin : "";
   const allowedOrigin = isOriginAllowed(origin);
@@ -1765,6 +1795,11 @@ exports.handler = async function (event, context) {
 
     // â”€â”€ 17. Action: visionScan (Gemini AI Vision Extraction Proxy) â”€â”€
     if (action === "visionScan" && event.httpMethod === "POST") {
+      // M4: rate-limit AI vision endpoint (20 req/min per IP)
+      const _vsIp = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || 'unknown';
+      if (_checkRateLimit(_vsIp, 'visionScan', 20)) {
+        return jsonResponse(429, headers, { success: false, error: "Too many scan requests. Please wait a moment." });
+      }
       const payload = JSON.parse(event.body || "{}");
       const base64Image = payload.image || payload.base64Data || "";
       const mimeType = payload.mimeType || "image/jpeg";
@@ -1793,6 +1828,11 @@ exports.handler = async function (event, context) {
 
     // â”€â”€ 18. Action: aiInsight (Gemini-powered WhatsApp Anomaly Analysis) â”€â”€
     if (action === "aiInsight" && event.httpMethod === "POST") {
+      // M4: rate-limit AI insight endpoint (15 req/min per IP)
+      const _aiIp = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || 'unknown';
+      if (_checkRateLimit(_aiIp, 'aiInsight', 15)) {
+        return jsonResponse(429, headers, { success: false, error: "Too many AI requests. Please wait a moment." });
+      }
       const body      = JSON.parse(event.body || "{}");
       const stats     = body.stats    || {};
       const hospital  = body.hospital || "Hospital";
