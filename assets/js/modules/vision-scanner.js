@@ -44,18 +44,18 @@ function setEntryMode(mode) {
     // Hide intro badges
     document.querySelectorAll(".step-intro-box").forEach(b => b.style.display = "none");
     
-    // Manage nav bars: show only submit in panel 4
-    document.querySelectorAll(".wizard-nav-bar").forEach(n => {
-      if (n.id === "wizard-panel-4-nav" || n.closest("#wizard-panel-4")) {
-        n.style.display = "flex";
-        const prevBtn = n.querySelector(".btn-wizard-prev");
-        if (prevBtn) prevBtn.style.display = "none";
-        const subBtn = n.querySelector("#submit-btn");
-        if (subBtn) subBtn.style.display = "flex";
-      } else {
-        n.style.display = "none";
-      }
-    });
+    // Manage nav bars in Direct Form mode:
+    // — Hide all nav bars first (wizard step-nav buttons not needed in direct mode)
+    // — Then explicitly show only the panel-4 submit nav bar
+    document.querySelectorAll(".wizard-nav-bar").forEach(n => { n.style.display = "none"; });
+    const submitNavBar = document.getElementById("wizard-panel-4-nav");
+    if (submitNavBar) {
+      submitNavBar.style.display = "flex";
+      const prevBtn = submitNavBar.querySelector(".btn-wizard-prev");
+      if (prevBtn) prevBtn.style.display = "none";
+      const subBtn = document.getElementById("submit-btn");
+      if (subBtn) { subBtn.style.display = "flex"; subBtn.style.flex = "1"; }
+    }
 
   } else {
     if (btnWizard) btnWizard.classList.add("active");
